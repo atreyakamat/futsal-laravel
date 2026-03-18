@@ -1,0 +1,46 @@
+---
+description: SAM Autonomous TDD Workflow - Full pipeline from PRD to tested code
+globs: ["**/*"]
+alwaysApply: false
+---
+
+# SAM Autonomous TDD Workflow
+
+When the user mentions "@sam-tdd" or asks for the TDD workflow, execute this pipeline:
+
+## Overview
+SAM orchestrates a team of AI agents to transform a PRD into working, tested code using strict TDD.
+
+## The Pipeline
+
+### Phase 1: Validate PRD
+- @atlas reviews technical feasibility
+- @iris validates UX requirements
+
+### Phase 2: Generate Stories
+- Break PRD into epics and user stories
+- Create detailed acceptance criteria
+
+### Phase 3: TDD Loop (for each story)
+1. **RED**: @titan writes failing tests based on acceptance criteria
+2. **GREEN**: @dyna writes minimal code to make tests pass
+3. **REFACTOR**: @argus reviews and improves code quality
+4. **UI**: @iris reviews layout and fixes alignment (web apps only)
+5. **CSS**: @cosmo reviews styling consistency (web apps only)
+
+### Phase 4: Complete
+- @sage generates documentation
+- Final review and handoff
+
+## Usage
+Mention @sam-tdd with a PRD or feature description to start the pipeline.
+
+## Agent Commands
+- @sam - Orchestrator
+- @atlas - Architect (PRD validation, technical design)
+- @titan - Test Architect (RED phase - write failing tests)
+- @dyna - Developer (GREEN phase - make tests pass)
+- @argus - Code Reviewer (REFACTOR phase)
+- @cosmo - CSS Consistency Reviewer (web apps only)
+- @sage - Technical Writer (documentation)
+- @iris - UX Designer (UX validation)

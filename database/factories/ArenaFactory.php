@@ -25,6 +25,8 @@ class ArenaFactory extends Factory
             'name' => $name,
             'slug' => Str::slug($name),
             'address' => $this->faker->address(),
+            'gmaps_link' => 'https://maps.app.goo.gl/' . Str::slug($name),
+            'contact_phone' => '91' . $this->faker->numerify('##########'),
             'status' => 'active',
         ];
     }

@@ -19,24 +19,22 @@ class SlotController extends Controller
 
     public function status(Request $request)
     {
-        $arenaId = $request->query('arena_id');
-        $date = $request->query('date');
-        $sessionId = session()->getId();
+        $validated = $request->validate([
+            'arena_id' => 'required|exists:arenas,id',
+            'date' => 'required|date_format:Y-m-d',
+        ]);
 
-        if (!$arenaId || !$date) {
-            return response()->json(['error' => 'Missing parameters'], 400);
-        }
+        $arenaId = $validated['arena_id'];
+        $date = $validated['date'];
+        $sessionId = session()->getId();
 
         $arena = Arena::findOrFail($arenaId);
         
-        // Get all possible slots for this arena from pricing table
         $allSlots = Pricing::where('arena_id', $arenaId)->get();
 
         $bookedSlots = $this->slotService->getBookedSlots($arenaId, $date);
         $lockedByOthers = $this->slotService->getLockedSlots($arenaId, $date, $sessionId);
-        $lockedByMe = $this->slotService->getLockedSlots($arenaId, $date) ?? []; // Actually get mine too if needed or just filter session
         
-        // Refine locked by me
         $lockedByMe = \App\Models\SlotLock::where('arena_id', $arenaId)
             ->where('booking_date', $date)
             ->where('session_id', $sessionId)
@@ -51,7 +49,7 @@ class SlotController extends Controller
             } elseif (in_array($p->time_slot, $lockedByOthers)) {
                 $status = 'locked';
             } elseif (in_array($p->time_slot, $lockedByMe)) {
-                $status = 'selected'; // already in my cart
+                $status = 'selected';
             }
 
             return [
@@ -70,9 +68,16 @@ class SlotController extends Controller
 
     public function lock(Request $request)
     {
-        $arenaId = $request->input('arena_id');
-        $date = $request->input('date');
-        $slots = $request->input('slots', []);
+        $validated = $request->validate([
+            'arena_id' => 'required|exists:arenas,id',
+            'date' => 'required|date_format:Y-m-d',
+            'slots' => 'required|array',
+            'slots.*' => 'string'
+        ]);
+
+        $arenaId = $validated['arena_id'];
+        $date = $validated['date'];
+        $slots = $validated['slots'];
         $sessionId = session()->getId();
 
         $result = $this->slotService->lockSlots($arenaId, $date, $slots, $sessionId);
@@ -86,9 +91,14 @@ class SlotController extends Controller
 
     public function unlock(Request $request)
     {
+        $validated = $request->validate([
+            'arena_id' => 'required|exists:arenas,id',
+            'date' => 'required|date_format:Y-m-d',
+        ]);
+
         $sessionId = session()->getId();
-        $arenaId = $request->input('arena_id');
-        $date = $request->input('date');
+        $arenaId = $validated['arena_id'];
+        $date = $validated['date'];
 
         $this->slotService->releaseLocks($sessionId, $arenaId, $date);
 

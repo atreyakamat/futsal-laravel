@@ -23,8 +23,13 @@ class GetPricingTool implements Tool
      */
     public function handle(Request $request): Stringable|string
     {
-        $arenaId = $request->get('arena_id');
-        $timeSlot = $request->get('time_slot');
+        $arenaId = $request['arena_id'];
+        $timeSlot = $request['time_slot'];
+
+        $arena = \App\Models\Arena::find($arenaId);
+        if (!$arena || !$arena->bot_enabled) {
+            return "I'm sorry, but the AI Assistant is not enabled for this arena at the moment.";
+        }
 
         $pricing = Pricing::where('arena_id', $arenaId)
             ->where('time_slot', $timeSlot)

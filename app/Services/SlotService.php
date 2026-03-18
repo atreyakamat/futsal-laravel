@@ -9,7 +9,7 @@ use Illuminate\Support\Carbon;
 
 class SlotService
 {
-    const SLOT_LOCK_DURATION = 120;
+    const SLOT_LOCK_DURATION = 600;
 
     /**
      * Clean expired locks
@@ -54,12 +54,25 @@ class SlotService
                 ->whereIn('payment_status', ['confirmed', 'pending'])
                 ->exists();
 
-            if ($isBooked || $this->isSlotLocked($arenaId, $date, $slot, $sessionId)) {
+            $isLocked = $this->isSlotLocked($arenaId, $date, $slot, $sessionId);
+
+            if ($isBooked || $isLocked) {
                 $failed[] = $slot;
                 continue;
             }
 
             try {
+                // Ensure we don't overwrite someone else's active lock
+                $existingLock = SlotLock::where('arena_id', $arenaId)
+                    ->where('booking_date', $date)
+                    ->where('time_slot', $slot)
+                    ->first();
+
+                if ($existingLock && $existingLock->session_id !== $sessionId && $existingLock->expires_at > now()) {
+                    $failed[] = $slot;
+                    continue;
+                }
+
                 SlotLock::updateOrCreate(
                     [
                         'arena_id' => $arenaId,

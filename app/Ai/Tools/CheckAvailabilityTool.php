@@ -24,9 +24,14 @@ class CheckAvailabilityTool implements Tool
      */
     public function handle(Request $request): Stringable|string
     {
-        $arenaId = $request->get('arena_id');
-        $date = $request->get('date');
-        $timeSlot = $request->get('time_slot');
+        $arenaId = $request['arena_id'];
+        $date = $request['date'];
+        $timeSlot = $request['time_slot'];
+
+        $arena = \App\Models\Arena::find($arenaId);
+        if (!$arena || !$arena->bot_enabled) {
+            return "I'm sorry, but the AI Assistant is not enabled for this arena at the moment.";
+        }
 
         // Check if there is an existing confirmed booking
         $isBooked = Booking::where('arena_id', $arenaId)

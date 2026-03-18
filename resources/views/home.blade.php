@@ -2,76 +2,125 @@
 
 @section('content')
 <style>
-    .arena-card:hover { transform: translateY(-8px); box-shadow: 0 12px 30px -8px rgba(13,242,32,0.35); }
-    .hero-overlay { background: linear-gradient(rgba(16,34,17,0.7), rgba(16,34,17,0.95)); }
+    .arena-card:hover { transform: translateY(-8px); }
+    .hero-overlay { background: radial-gradient(circle at center, rgba(13,242,32,0.1) 0%, rgba(10,10,10,0.9) 100%); }
+    .text-stroke { -webkit-text-stroke: 1px rgba(13,242,32,0.5); color: transparent; }
 </style>
 
-<section class="relative h-[550px] flex items-center justify-center bg-cover bg-center" style="background-image:url('https://images.unsplash.com/photo-1574629810360-7efbbe195018?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80')">
-    <div class="absolute inset-0 hero-overlay"></div>
-    <div class="relative z-10 text-center px-6 max-w-3xl">
-        <h1 class="text-5xl md:text-6xl font-black leading-tight mb-6">BOOK YOUR TURF.<br><span class="text-primary">PLAY WITHOUT LIMITS.</span></h1>
-        <p class="text-gray-300 text-lg mb-10">Fast, easy booking for futsal enthusiasts. No hassle, just play.</p>
-        <a href="#arenas" class="inline-flex px-8 py-4 bg-primary text-black rounded-lg font-black text-lg shadow-xl shadow-primary/40 hover:bg-green-400 transition-all">START BOOKING</a>
+<!-- Hero Section -->
+<section class="relative min-h-[85vh] flex items-center justify-center overflow-hidden border-b border-white/5">
+    <div class="absolute inset-0 z-0 bg-cover bg-center scale-105 transition-transform duration-1000" style="background-image:url('https://images.unsplash.com/photo-1574629810360-7efbbe195018?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=90')"></div>
+    <div class="absolute inset-0 z-10 hero-overlay"></div>
+    
+    <div class="relative z-20 text-center px-6 max-w-5xl">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full glass mb-8 animate-bounce">
+            <span class="w-2 h-2 rounded-full bg-primary"></span>
+            <span class="text-[10px] font-bold tracking-widest text-primary uppercase">Now Open in Pilar</span>
+        </div>
+        <h1 class="text-6xl md:text-8xl font-black leading-none mb-8 tracking-tighter">
+            <span class="block">BOOK. PLAY.</span>
+            <span class="text-primary block italic">DOMINATE.</span>
+        </h1>
+        <p class="text-gray-400 text-lg md:text-xl mb-12 max-w-2xl mx-auto font-light leading-relaxed">
+            Experience the future of futsal in Goa. Premium turfs, AI-powered booking, and a professional atmosphere for true ballers.
+        </p>
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            <a href="#arenas" class="px-10 py-5 bg-primary text-black rounded-full font-black text-sm tracking-widest shadow-2xl shadow-primary/40 hover:scale-105 transition-all active:scale-95">BOOK A TURF</a>
+            <a href="/chat" class="px-10 py-5 glass text-white rounded-full font-black text-sm tracking-widest hover:bg-white/5 transition-all">ASK AI ASSISTANT</a>
+        </div>
+    </div>
+
+    <!-- Decorative floating elements -->
+    <div class="absolute bottom-10 left-10 hidden lg:block opacity-20">
+        <div class="text-8xl font-black text-stroke italic">GOA</div>
     </div>
 </section>
 
-<section id="arenas" class="py-20">
-    <div class="max-w-6xl mx-auto px-6">
-        <h2 class="text-3xl font-black mb-2 uppercase">Featured Arenas</h2>
-        <p class="text-gray-500 mb-10">Select an arena to book your slot</p>
+<!-- Arenas Section -->
+<section id="arenas" class="py-32 bg-dark">
+    <div class="max-w-7xl mx-auto px-6">
+        <div class="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
+            <div>
+                <h2 class="text-4xl font-black mb-4 tracking-tighter uppercase">Our <span class="text-primary">Arenas</span></h2>
+                <p class="text-gray-500 max-w-md">Every arena is equipped with professional-grade FIFA approved turf and high-intensity stadium lighting.</p>
+            </div>
+            <div class="text-right">
+                <span class="text-primary font-bold text-5xl">03</span>
+                <span class="block text-gray-600 text-[10px] tracking-widest font-bold uppercase mt-1">Prime Locations</span>
+            </div>
+        </div>
         
         @if($arenas->isEmpty())
-            <div class="text-center py-16 bg-white/5 rounded-xl border border-gray-800">
-                <span class="material-symbols-outlined text-6xl text-gray-600 mb-4">sports_soccer</span>
-                <p class="text-gray-500">No arenas available at the moment.</p>
+            <div class="text-center py-24 glass rounded-3xl border-dashed border-white/10">
+                <span class="material-symbols-outlined text-8xl text-gray-800 mb-6">stadium</span>
+                <p class="text-gray-500 font-bold uppercase tracking-widest">No arenas found in our network.</p>
             </div>
         @else
-        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-10">
             @foreach($arenas as $arena)
-            <a href="{{ route('arena.show', $arena->slug) }}" class="arena-card block bg-white/5 rounded-xl border border-gray-800 overflow-hidden transition-all duration-300 hover:border-primary/50">
-                <div class="h-48 bg-cover bg-center" style="background-image:url('{{ $arena->cover_image ?: 'https://images.unsplash.com/photo-1551958219-acbc608c6377?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80' }}')"></div>
-                <div class="p-5">
-                    <h3 class="text-lg font-extrabold mb-2">{{ $arena->name }}</h3>
-                    <p class="text-gray-500 text-sm mb-4 line-clamp-2 flex items-start gap-1">
-                        <span class="material-symbols-outlined text-base mt-0.5">location_on</span> 
-                        {{ $arena->address }}
-                    </p>
-                    <div class="flex justify-between items-center border-t border-gray-800 pt-4">
-                        <span class="text-primary font-black text-lg">₹{{ number_format($arena->min_price) }}<small class="text-gray-500 font-normal">/hr</small></span>
-                        <span class="text-sm text-primary font-bold flex items-center gap-1">Book <span class="material-symbols-outlined text-base">arrow_forward</span></span>
+            <div class="group">
+                <a href="{{ route('arena.show', $arena->slug) }}" class="arena-card block glass rounded-[2rem] overflow-hidden transition-all duration-500 hover:shadow-2xl hover:shadow-primary/10">
+                    <div class="h-64 overflow-hidden relative">
+                        <img src="{{ $arena->cover_image ?: 'https://images.unsplash.com/photo-1551958219-acbc608c6377?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' }}" 
+                             class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                             alt="{{ $arena->name }}">
+                        <div class="absolute top-4 left-4">
+                            <span class="glass px-3 py-1 rounded-full text-[10px] font-bold text-white tracking-widest uppercase">Goa, IN</span>
+                        </div>
                     </div>
-                </div>
-            </a>
+                    <div class="p-8">
+                        <div class="flex justify-between items-start mb-6">
+                            <div>
+                                <h3 class="text-xl font-bold mb-2 group-hover:text-primary transition-colors">{{ $arena->name }}</h3>
+                                <p class="text-gray-500 text-xs flex items-center gap-1.5 font-medium">
+                                    <span class="material-symbols-outlined text-sm text-primary">location_on</span> 
+                                    {{ $arena->address }}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center pt-6 border-t border-white/5">
+                            <div>
+                                <span class="text-gray-500 text-[10px] uppercase font-bold block mb-1">Starting At</span>
+                                <span class="text-2xl font-black text-white italic">₹{{ number_format($arena->min_price) }}<small class="text-gray-600 text-xs font-normal not-italic ml-1">/HR</small></span>
+                            </div>
+                            <span class="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-black group-hover:translate-x-1 transition-transform">
+                                <span class="material-symbols-outlined font-black">arrow_outward</span>
+                            </span>
+                        </div>
+                    </div>
+                </a>
+            </div>
             @endforeach
         </div>
         @endif
     </div>
 </section>
 
-<section class="py-16 border-t border-gray-800">
-    <div class="max-w-6xl mx-auto px-6">
-        <h2 class="text-2xl font-bold mb-10 text-center">How It Works</h2>
-        <div class="grid md:grid-cols-3 gap-8">
-            <div class="text-center">
-                <div class="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <span class="material-symbols-outlined text-primary text-3xl">search</span>
+<!-- Features Section -->
+<section class="py-32 border-t border-white/5 bg-surface relative overflow-hidden">
+    <div class="max-w-7xl mx-auto px-6 relative z-10">
+        <h2 class="text-center text-3xl font-black mb-20 tracking-tighter uppercase">The <span class="text-primary italic">FutsalGoa</span> Experience</h2>
+        <div class="grid md:grid-cols-3 gap-16">
+            <div class="space-y-6">
+                <div class="w-14 h-14 glass rounded-2xl flex items-center justify-center border-primary/20">
+                    <span class="material-symbols-outlined text-primary text-3xl">bolt</span>
                 </div>
-                <h3 class="font-bold mb-2">1. Choose Arena</h3>
-                <p class="text-gray-500 text-sm">Browse available futsal arenas in your area</p>
+                <h3 class="text-xl font-bold">Instant Booking</h3>
+                <p class="text-gray-500 text-sm leading-relaxed">Lock your favorite slot in seconds with our high-speed booking engine. Real-time availability, zero lag.</p>
             </div>
-            <div class="text-center">
-                <div class="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <span class="material-symbols-outlined text-primary text-3xl">calendar_month</span>
+            <div class="space-y-6">
+                <div class="w-14 h-14 glass rounded-2xl flex items-center justify-center border-primary/20">
+                    <span class="material-symbols-outlined text-primary text-3xl">robot_2</span>
                 </div>
-                <h3 class="font-bold mb-2">2. Select Slot</h3>
-                <p class="text-gray-500 text-sm">Pick your preferred date and time slot</p>
+                <h3 class="text-xl font-bold">AI Assistant</h3>
+                <p class="text-gray-500 text-sm leading-relaxed">Chat with our intelligent bot to check pricing, availability across locations, and get recommendations.</p>
             </div>
-            <div class="text-center">
-                <div class="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <span class="material-symbols-outlined text-primary text-3xl">sports_soccer</span>
+            <div class="space-y-6">
+                <div class="w-14 h-14 glass rounded-2xl flex items-center justify-center border-primary/20">
+                    <span class="material-symbols-outlined text-primary text-3xl">verified</span>
                 </div>
-                <h3 class="font-bold mb-2">3. Play!</h3>
-                <p class="text-gray-500 text-sm">Pay online and show up to play</p>
+                <h3 class="text-xl font-bold">Pro Turfs</h3>
+                <p class="text-gray-500 text-sm leading-relaxed">We maintain the highest standards for our fields, ensuring consistent bounce and player safety at all times.</p>
             </div>
         </div>
     </div>
