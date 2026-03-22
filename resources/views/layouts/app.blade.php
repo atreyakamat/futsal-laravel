@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'FutsalGoa | Premium Booking')</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -48,12 +49,6 @@
         <div class="max-w-7xl mx-auto px-6 flex justify-between items-center">
             <a href="/" class="text-2xl font-black text-primary italic tracking-tighter">FUTSAL<span class="text-white">GOA</span></a>
             <div class="flex gap-8 items-center">
-                @if((\App\Models\Setting::where('key', 'global_ai_enabled')->first()->value ?? 'true') === 'true')
-                <a href="/chat" class="text-xs font-bold tracking-widest text-white/70 hover:text-primary transition-all flex items-center gap-1.5 group">
-                    <span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
-                    AI ASSISTANT
-                </a>
-                @endif
                 <a href="/admin/login" class="px-5 py-2 glass rounded-full text-xs font-bold tracking-widest hover:bg-primary hover:text-black transition-all">LOGIN</a>
             </div>
         </div>
@@ -77,5 +72,7 @@
             <p class="text-gray-500 text-sm">© {{ date('Y') }} Futsal Booking Platform. All rights reserved.</p>
         </div>
     </footer>
+
+    <x-ai-chat-popup />
 </body>
 </html>

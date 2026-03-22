@@ -69,6 +69,9 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
 
 // Security Routes
 Route::middleware(['auth'])->prefix('security')->name('security.')->group(function () {
+    Route::get('/scan', function () {
+        return view('security.scan');
+    })->name('scan');
     Route::get('/verify', [App\Http\Controllers\Security\SecurityController::class, 'index'])->name('index');
     Route::post('/verify', [App\Http\Controllers\Security\SecurityController::class, 'verify'])->name('verify');
     Route::post('/confirm-entry', [App\Http\Controllers\Security\SecurityController::class, 'confirmEntry'])->name('confirm-entry');
@@ -90,11 +93,27 @@ Route::post('/chat', function (Request $request) {
 
     $prompt = $request->input('message');
     
+    // Add user message to history
+    $history = session()->get('chat_history', []);
+    $history[] = ['role' => 'user', 'content' => $prompt];
+
     $provider = env('AI_PROVIDER', config('ai.default'));
     $model = env('AI_MODEL');
 
     $agent = new BookingAssistant();
     $response = $agent->prompt($prompt, provider: $provider, model: $model);
     
-    return response()->json(['reply' => (string) $response]);
+    $reply = (string) $response;
+
+    // Add assistant message to history
+    $history[] = ['role' => 'assistant', 'content' => $reply];
+    
+    // Keep only last 10 messages to save context
+    if (count($history) > 10) {
+        $history = array_slice($history, -10);
+    }
+    
+    session()->put('chat_history', $history);
+    
+    return response()->json(['reply' => $reply]);
 });

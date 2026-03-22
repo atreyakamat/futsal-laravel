@@ -317,7 +317,6 @@ class AdminBooking extends Page implements HasForms
         $bookingRef = 'FREE-' . strtoupper(Str::random(8));
 
         try {
-            \Illuminate\Support\Facades\Log::info('Confirming Free Booking with data: ' . json_encode($data));
             DB::transaction(function () use ($data, $bookingRef, $approval) {
                 foreach ($data['slots'] as $slot) {
                     Booking::create([
