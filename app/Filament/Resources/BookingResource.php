@@ -41,7 +41,8 @@ class BookingResource extends Resource
                 Forms\Components\Section::make('Booking Details')
                     ->schema([
                         Forms\Components\Select::make('arena_id')
-                            ->relationship('arena', 'name')
+                            ->label('Arena')
+                            ->options(\App\Models\Arena::all()->pluck('name', 'id'))
                             ->required()
                             ->searchable()
                             ->preload(),
@@ -95,6 +96,13 @@ class BookingResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->headerActions([
+                Tables\Actions\Action::make('admin_booking')
+                    ->label('Legacy Admin Booking')
+                    ->url(fn (): string => static::getUrl('admin-booking'))
+                    ->icon('heroicon-o-plus-circle')
+                    ->color('info'),
+            ])
             ->columns([
                 Tables\Columns\TextColumn::make('ticket_number')
                     ->searchable()
@@ -124,8 +132,9 @@ class BookingResource extends Resource
                     ->label('Entry'),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('arena')
-                    ->relationship('arena', 'name'),
+                Tables\Filters\SelectFilter::make('arena_id')
+                    ->label('Arena')
+                    ->options(\App\Models\Arena::all()->pluck('name', 'id')),
                 Tables\Filters\Filter::make('booking_date')
                     ->form([
                         Forms\Components\DatePicker::make('from'),
@@ -168,6 +177,7 @@ class BookingResource extends Resource
         return [
             'index' => Pages\ListBookings::route('/'),
             'create' => Pages\CreateBooking::route('/create'),
+            'admin-booking' => Pages\AdminBooking::route('/admin-booking'),
             'edit' => Pages\EditBooking::route('/{record}/edit'),
         ];
     }

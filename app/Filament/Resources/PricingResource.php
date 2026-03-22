@@ -25,7 +25,8 @@ class PricingResource extends Resource
         return $form
             ->schema([
                 Forms\Components\Select::make('arena_id')
-                    ->relationship('arena', 'name')
+                    ->label('Arena')
+                    ->options(\App\Models\Arena::all()->pluck('name', 'id'))
                     ->required()
                     ->disabled(!auth()->user()->isSuperAdmin()),
                 Forms\Components\TextInput::make('time_slot')
@@ -51,8 +52,9 @@ class PricingResource extends Resource
                     ->sortable(),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('arena')
-                    ->relationship('arena', 'name'),
+                Tables\Filters\SelectFilter::make('arena_id')
+                    ->label('Arena')
+                    ->options(\App\Models\Arena::all()->pluck('name', 'id')),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
@@ -86,6 +88,7 @@ class PricingResource extends Resource
         return [
             'index' => Pages\ListPricings::route('/'),
             'create' => Pages\CreatePricing::route('/create'),
+            'bulk-create' => Pages\BulkCreatePricing::route('/bulk-setup'),
             'edit' => Pages\EditPricing::route('/{record}/edit'),
         ];
     }

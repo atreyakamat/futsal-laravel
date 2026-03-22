@@ -28,8 +28,9 @@ class ApprovalRequestResource extends Resource
             ->schema([
                 Forms\Components\Section::make('Request Details')
                     ->schema([
-                        Forms\Components\TextInput::make('user_id')
-                            ->relationship('user', 'name')
+                        Forms\Components\Select::make('user_id')
+                            ->label('Requester')
+                            ->options(\App\Models\User::all()->pluck('name', 'id'))
                             ->disabled(),
                         Forms\Components\TextInput::make('type')
                             ->disabled(),
@@ -56,6 +57,13 @@ class ApprovalRequestResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->headerActions([
+                Tables\Actions\Action::make('global_settings')
+                    ->label('Global AI Settings')
+                    ->url(fn (): string => static::getUrl('settings'))
+                    ->icon('heroicon-o-cog-6-tooth')
+                    ->color('gray'),
+            ])
             ->columns([
                 Tables\Columns\TextColumn::make('user.name')
                     ->label('Requester')
@@ -131,6 +139,7 @@ class ApprovalRequestResource extends Resource
         return [
             'index' => Pages\ListApprovalRequests::route('/'),
             'create' => Pages\CreateApprovalRequest::route('/create'),
+            'settings' => Pages\GlobalSettings::route('/settings'),
             'edit' => Pages\EditApprovalRequest::route('/{record}/edit'),
         ];
     }

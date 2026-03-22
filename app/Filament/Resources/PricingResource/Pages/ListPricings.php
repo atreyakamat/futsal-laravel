@@ -13,6 +13,11 @@ class ListPricings extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            Actions\Action::make('bulk_setup')
+                ->label('Bulk Setup')
+                ->url(PricingResource::getUrl('bulk-create'))
+                ->color('info')
+                ->icon('heroicon-o-plus-circle'),
             Actions\CreateAction::make(),
         ];
     }

@@ -18,14 +18,14 @@ Route::get('/booking/success/{ref}', function ($ref) {
 
 // Admin & Super Admin Routes
 Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
-    // Admin Booking
-    Route::get('/bookings/create', [App\Http\Controllers\Admin\AdminBookingController::class, 'create'])->name('bookings.create');
-    Route::post('/bookings', [App\Http\Controllers\Admin\AdminBookingController::class, 'store'])->name('bookings.store');
+    // Admin Booking (Migrated to Filament BookingResource\Pages\AdminBooking)
+    // Route::get('/bookings/create', [App\Http\Controllers\Admin\AdminBookingController::class, 'create'])->name('bookings.create');
+    // Route::post('/bookings', [App\Http\Controllers\Admin\AdminBookingController::class, 'store'])->name('bookings.store');
 
-    // Approvals (Super Admin Only)
-    Route::get('/approvals', [App\Http\Controllers\Admin\ApprovalController::class, 'index'])->name('approvals.index');
-    Route::post('/approvals/{approvalRequest}/approve', [App\Http\Controllers\Admin\ApprovalController::class, 'approve'])->name('approvals.approve');
-    Route::post('/approvals/confirm-free', [App\Http\Controllers\Admin\ApprovalController::class, 'confirmFreeBooking'])->name('approvals.confirm-free');
+    // Approvals (Migrated to Filament ApprovalRequestResource)
+    // Route::get('/approvals', [App\Http\Controllers\Admin\ApprovalController::class, 'index'])->name('approvals.index');
+    // Route::post('/approvals/{approvalRequest}/approve', [App\Http\Controllers\Admin\ApprovalController::class, 'approve'])->name('approvals.approve');
+    // Route::post('/approvals/confirm-free', [App\Http\Controllers\Admin\ApprovalController::class, 'confirmFreeBooking'])->name('approvals.confirm-free');
 });
 
 // Security Routes
