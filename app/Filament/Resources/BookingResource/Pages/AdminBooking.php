@@ -17,6 +17,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
@@ -189,6 +190,26 @@ class AdminBooking extends Page implements HasForms
         }
     }
 
+    public function otpForm(Form $form): Form
+    {
+        return $form
+            ->schema([
+                Section::make('Confirm Approved Free Booking')
+                    ->description('Enter the Request ID and OTP code to finalize the free booking.')
+                    ->schema([
+                        TextInput::make('request_id')
+                            ->label('Request ID')
+                            ->required()
+                            ->numeric(),
+                        TextInput::make('otp')
+                            ->label('6-digit OTP')
+                            ->required()
+                            ->length(6),
+                    ])->columns(2)
+            ])
+            ->statePath('otpData');
+    }
+
     public function submitBooking(): void
     {
         $data = $this->form->getState();
@@ -222,6 +243,18 @@ class AdminBooking extends Page implements HasForms
         try {
             DB::transaction(function () use ($data, $slotsArray, $bookingRef, $keepSame, $basePrice, $customPrices) {
                 foreach ($slotsArray as $slot) {
+                    // Check availability inside transaction
+                    $exists = Booking::where('arena_id', $data['arena_id'])
+                        ->where('booking_date', $data['date'])
+                        ->where('time_slot', $slot)
+                        ->whereIn('payment_status', ['confirmed', 'pending'])
+                        ->lockForUpdate()
+                        ->exists();
+
+                    if ($exists) {
+                        throw new \Exception("Slot {$slot} is already booked.");
+                    }
+
                     $price = $basePrice;
                     if (!$keepSame) {
                         $custom = collect($customPrices)->firstWhere('time_slot', $slot);

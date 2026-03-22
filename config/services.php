@@ -15,17 +15,23 @@ return [
     */
 
     'postmark' => [
-        'key' => env('POSTMARK_API_KEY'),
-    ],
-
-    'resend' => [
-        'key' => env('RESEND_API_KEY'),
+        'token' => env('POSTMARK_TOKEN'),
     ],
 
     'ses' => [
         'key' => env('AWS_ACCESS_KEY_ID'),
         'secret' => env('AWS_SECRET_ACCESS_KEY'),
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
+    ],
+
+    'resend' => [
+        'key' => env('RESEND_API_KEY'),
+    ],
+
+    'payu' => [
+        'key' => env('PAYU_MERCHANT_KEY'),
+        'salt' => env('PAYU_MERCHANT_SALT'),
+        'test_mode' => env('PAYU_TEST_MODE', true),
     ],
 
     'slack' => [

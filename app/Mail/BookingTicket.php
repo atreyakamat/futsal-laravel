@@ -53,6 +53,12 @@ class BookingTicket extends Mailable
      */
     public function attachments(): array
     {
-        return [];
+        $ticketService = app(\App\Services\TicketService::class);
+        $pdfContent = $ticketService->generateTicketPdf($this->booking);
+
+        return [
+            Attachment::fromData(fn() => $pdfContent, 'Ticket-' . $this->booking->ticket_number . '.pdf')
+                ->withMime('application/pdf'),
+        ];
     }
 }

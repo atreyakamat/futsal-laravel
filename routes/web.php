@@ -2,12 +2,51 @@
 
 use App\Http\Controllers\ArenaController;
 use App\Http\Controllers\BookingController;
+use App\Http\Controllers\AuthController;
 use App\Ai\Agents\BookingAssistant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [ArenaController::class, 'index'])->name('home');
 Route::get('/arena/{slug}', [ArenaController::class, 'show'])->name('arena.show');
+
+// Auth Routes
+Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
+Route::post('/send-otp', [AuthController::class, 'sendOtp'])->name('send-otp');
+Route::post('/verify-otp', [AuthController::class, 'verifyOtp'])->name('verify-otp');
+Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+// User Dashboard
+Route::middleware(['auth'])->group(function () {
+    Route::get('/my-bookings', function () {
+        $bookings = \App\Models\Booking::where('user_id', auth()->id())
+            ->with('arena')
+            ->latest()
+            ->get()
+            ->groupBy('booking_ref');
+        return view('booking.my-bookings', compact('bookings'));
+    })->name('my-bookings');
+
+    Route::get('/booking/ticket/{ref}', function ($ref) {
+        $bookings = \App\Models\Booking::where('booking_ref', $ref)
+            ->where('user_id', auth()->id())
+            ->get();
+        if ($bookings->isEmpty()) abort(404);
+        
+        $ticketService = app(\App\Services\TicketService::class);
+        $pdfContent = $ticketService->generateTicketPdf($bookings->first());
+        
+        return response($pdfContent)
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'inline; filename="ticket.pdf"');
+    })->name('booking.ticket.download');
+});
+
+// Ticket Verification (Public)
+Route::get('/verify-ticket/{ticket_number}', function ($ticket_number) {
+    $booking = \App\Models\Booking::where('ticket_number', $ticket_number)->with('arena')->firstOrFail();
+    return view('booking.verify-public', compact('booking'));
+})->name('ticket.verify.public');
 
 Route::get('/checkout', [BookingController::class, 'checkout'])->name('booking.checkout');
 Route::post('/process-booking', [BookingController::class, 'process'])->name('booking.process');
