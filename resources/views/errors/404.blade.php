@@ -14,7 +14,7 @@
     
     <div class="flex flex-col sm:flex-row gap-4 justify-center mt-12">
         <a href="{{ route('home') }}" class="px-10 py-4 bg-primary text-black rounded-full font-black text-xs tracking-widest hover:scale-105 transition-all">BACK TO HOME</a>
-        <a href="/chat" class="px-10 py-4 glass text-white rounded-full font-black text-xs tracking-widest hover:bg-white/5 transition-all">ASK AI ASSISTANT</a>
+
     </div>
 </div>
 @endsection

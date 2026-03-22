@@ -25,25 +25,23 @@ class BookingAssistant implements Agent, Conversational, HasTools
     public function instructions(): Stringable|string
     {
         $arenas = Arena::where('status', 'active')->get(['id', 'name']);
-        $arenaList = $arenas->map(fn($a) => "[CHOICE: {$a->name}]")->implode(' ');
+        $arenaChoices = $arenas->map(fn($a) => "[CHOICE: {$a->name}]")->implode(' ');
         
-        return "You are the 'FutsalGoa' AI Concierge. You must guide users through a booking flow.
+        return "You are the 'FutsalGoa' AI Concierge.
         
-        STRICT FLOW:
-        1. GREETING: Welcome them and list arenas: {$arenaList}.
-        2. AFTER ARENA PICKED: Ask for the date. Suggest [CHOICE: Today] [CHOICE: Tomorrow].
-        3. AFTER DATE PICKED: 
-           - Use 'GetDayScheduleTool' to see all slots.
-           - List all slots. For 'Available' slots, wrap them in [CHOICE: HH:MM-HH:MM]. 
-           - For 'Booked' or 'Reserved' slots, just list them as text (e.g., '18:00-19:00 (Booked) ❌'). 
-           - Users CANNOT click booked slots.
-        4. AFTER SLOT PICKED: Use 'BookSlotTool' to reserve it and provide the checkout link.
+        FLOW:
+        1. Start by listing arenas exactly like this: {$arenaChoices}.
+        2. When an arena is chosen, ask for the date. Suggest [CHOICE: Today] [CHOICE: Tomorrow].
+        3. When a date is chosen, use 'GetDayScheduleTool'.
+           - List all available slots as [CHOICE: HH:MM-HH:MM].
+           - List booked slots as text only (e.g., 18:00-19:00 Booked ❌).
+        4. When they pick a slot, use 'BookSlotTool' and give them the checkout link.
         
         STRICT RULES:
-        - NEVER suggest a booked slot as a choice.
-        - If a user tries to book a booked slot manually, tell them it's unavailable and show the schedule again.
-        - IMPORTANT: Final message MUST include the checkout URL for the auto-redirect to work.
-        - Use ⚽, 🏟️, and 📅 emojis.";
+        - ONLY use [CHOICE: text] for things the user can click.
+        - ALWAYS format dates as YYYY-MM-DD for tools.
+        - NEVER suggest a booked slot as a [CHOICE].
+        - Use emojis ⚽🏟️. Keep responses short.";
     }
 
     public function messages(): iterable

@@ -77,14 +77,6 @@ Route::middleware(['auth'])->prefix('security')->name('security.')->group(functi
     Route::post('/confirm-entry', [App\Http\Controllers\Security\SecurityController::class, 'confirmEntry'])->name('confirm-entry');
 });
 
-Route::get('/chat', function () {
-    $globalAiEnabled = \App\Models\Setting::where('key', 'global_ai_enabled')->first()->value ?? 'true';
-    if ($globalAiEnabled !== 'true') {
-        return redirect()->route('home')->with('error', 'AI Assistant is currently disabled globally by the administrator.');
-    }
-    return view('chat');
-})->name('chat');
-
 Route::post('/chat', function (Request $request) {
     $globalAiEnabled = \App\Models\Setting::where('key', 'global_ai_enabled')->first()->value ?? 'true';
     if ($globalAiEnabled !== 'true') {
@@ -92,28 +84,36 @@ Route::post('/chat', function (Request $request) {
     }
 
     $prompt = $request->input('message');
-    
-    // Add user message to history
+    if (!$prompt) return response()->json(['reply' => 'Please say something!']);
+
+    // Get existing history
     $history = session()->get('chat_history', []);
+    
+    // Add user message to local history array for the agent to read
     $history[] = ['role' => 'user', 'content' => $prompt];
 
     $provider = env('AI_PROVIDER', config('ai.default'));
     $model = env('AI_MODEL');
 
-    $agent = new BookingAssistant();
-    $response = $agent->prompt($prompt, provider: $provider, model: $model);
-    
-    $reply = (string) $response;
+    try {
+        $agent = new BookingAssistant();
+        $response = $agent->prompt($prompt, provider: $provider, model: $model);
+        $reply = (string) $response;
 
-    // Add assistant message to history
-    $history[] = ['role' => 'assistant', 'content' => $reply];
-    
-    // Keep only last 10 messages to save context
-    if (count($history) > 10) {
-        $history = array_slice($history, -10);
+        // Add assistant message to history
+        $history[] = ['role' => 'assistant', 'content' => $reply];
+        
+        // Trim history to prevent context overflow
+        if (count($history) > 12) {
+            $history = array_slice($history, -12);
+        }
+        
+        // Save back to session
+        session()->put('chat_history', $history);
+        
+        return response()->json(['reply' => $reply]);
+    } catch (\Exception $e) {
+        \Illuminate\Support\Facades\Log::error('AI Chat Error: ' . $e->getMessage());
+        return response()->json(['reply' => '⚽ Sorry, I slipped! Please try again in a moment.'], 500);
     }
-    
-    session()->put('chat_history', $history);
-    
-    return response()->json(['reply' => $reply]);
-});
+})->name('chat');

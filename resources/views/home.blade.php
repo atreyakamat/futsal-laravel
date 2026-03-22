@@ -26,7 +26,7 @@
         </p>
         <div class="flex flex-col sm:flex-row gap-4 justify-center">
             <a href="#arenas" class="px-10 py-5 bg-primary text-black rounded-full font-black text-sm tracking-widest shadow-2xl shadow-primary/40 hover:scale-105 transition-all active:scale-95">BOOK A TURF</a>
-            <a href="/chat" class="px-10 py-5 glass text-white rounded-full font-black text-sm tracking-widest hover:bg-white/5 transition-all">ASK AI ASSISTANT</a>
+
         </div>
     </div>
 
@@ -108,13 +108,7 @@
                 <h3 class="text-xl font-bold">Instant Booking</h3>
                 <p class="text-gray-500 text-sm leading-relaxed">Lock your favorite slot in seconds with our high-speed booking engine. Real-time availability, zero lag.</p>
             </div>
-            <div class="space-y-6">
-                <div class="w-14 h-14 glass rounded-2xl flex items-center justify-center border-primary/20">
-                    <span class="material-symbols-outlined text-primary text-3xl">robot_2</span>
-                </div>
-                <h3 class="text-xl font-bold">AI Assistant</h3>
-                <p class="text-gray-500 text-sm leading-relaxed">Chat with our intelligent bot to check pricing, availability across locations, and get recommendations.</p>
-            </div>
+
             <div class="space-y-6">
                 <div class="w-14 h-14 glass rounded-2xl flex items-center justify-center border-primary/20">
                     <span class="material-symbols-outlined text-primary text-3xl">verified</span>
