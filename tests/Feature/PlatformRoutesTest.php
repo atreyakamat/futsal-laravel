@@ -5,16 +5,17 @@ namespace Tests\Feature;
 use App\Models\Arena;
 use App\Models\Pricing;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\WithoutMiddleware;
 use Tests\TestCase;
 
 class PlatformRoutesTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, WithoutMiddleware;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->withoutMiddleware();
+        
         // Create basic data for tests
         $this->arena = Arena::factory()->create([
             'name' => 'Test Arena',
@@ -119,11 +120,12 @@ class PlatformRoutesTest extends TestCase
             'customer_name' => 'Old Customer',
             'customer_mobile' => '0000000000',
             'amount' => 1000,
-            'payment_status' => 'confirmed'
+            'payment_status' => 'confirmed',
+            'ticket_number' => 'TKT-OLD'
         ]);
 
         // Attempt second booking for same slot
-        $response = $this->post('/process-booking', [
+        $response = $this->from('/checkout')->post('/process-booking', [
             'arena_id' => $this->arena->id,
             'date' => '2026-04-01',
             'slots' => '["18:00-19:00"]',
@@ -131,6 +133,7 @@ class PlatformRoutesTest extends TestCase
             'customer_mobile' => '1111111111'
         ]);
 
+        $response->assertStatus(302);
         $response->assertSessionHasErrors(['slots']);
     }
 }

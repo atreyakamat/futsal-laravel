@@ -30,14 +30,16 @@ class AdminBooking extends Page implements HasForms
 
     protected static string $view = 'filament.resources.booking-resource.pages.admin-booking';
 
-    protected static ?string $title = 'Admin Booking';
+    protected static ?string $title = 'Admin Manual Booking';
 
     public ?array $data = [];
     public ?array $otpData = [];
 
     public function mount(): void
     {
-        $this->form->fill();
+        $this->form->fill([
+            'keep_same_pricing' => true,
+        ]);
     }
 
     protected function getForms(): array
@@ -153,7 +155,11 @@ class AdminBooking extends Page implements HasForms
     {
         if (!$get) return;
 
-        $slots = $get('slots') ?? [];
+        $slots = $get('slots');
+        if (!is_array($slots)) {
+            $slots = [];
+        }
+        
         $arenaId = $get('arena_id');
         
         if (!$get('keep_same_pricing')) {
@@ -311,11 +317,12 @@ class AdminBooking extends Page implements HasForms
         $bookingRef = 'FREE-' . strtoupper(Str::random(8));
 
         try {
+            \Illuminate\Support\Facades\Log::info('Confirming Free Booking with data: ' . json_encode($data));
             DB::transaction(function () use ($data, $bookingRef, $approval) {
                 foreach ($data['slots'] as $slot) {
                     Booking::create([
                         'arena_id' => $data['arena_id'],
-                        'booking_date' => $data['date'],
+                        'booking_date' => $data['date'] ?? $data['booking_date'],
                         'time_slot' => $slot,
                         'booking_ref' => $bookingRef,
                         'customer_name' => $data['customer_name'],
@@ -326,18 +333,19 @@ class AdminBooking extends Page implements HasForms
                         'ticket_number' => 'TKT-FREE-' . date('ymd') . '-' . strtoupper(Str::random(4))
                     ]);
                 }
-                $approval->update(['status' => 'finalized']);
+                $approval->update(['status' => 'completed']);
             });
 
             Notification::make()
                 ->title('Free Booking Confirmed')
-                ->body("Free booking confirmed! Ref: {$bookingRef}")
+                ->body("Booking created successfully. Ref: {$bookingRef}")
                 ->success()
                 ->send();
 
             $this->otpForm->fill();
 
         } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to confirm free booking: ' . $e->getMessage() . ' Trace: ' . $e->getTraceAsString());
             Notification::make()
                 ->title('Error')
                 ->body('Failed to confirm free booking: ' . $e->getMessage())

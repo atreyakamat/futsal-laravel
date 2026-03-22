@@ -70,7 +70,7 @@ class LegacyMigrationTest extends TestCase
         Livewire::test(AdminBooking::class)
             ->set('data.arena_id', $this->arena->id)
             ->set('data.date', now()->format('Y-m-d'))
-            ->set('data.slots', '18:00-19:00, 19:00-20:00')
+            ->set('data.slots', ['18:00-19:00', '19:00-20:00'])
             ->set('data.customer_name', 'John Doe')
             ->set('data.customer_mobile', '9876543210')
             ->set('data.is_free', false)
@@ -88,7 +88,7 @@ class LegacyMigrationTest extends TestCase
         Livewire::test(AdminBooking::class)
             ->set('data.arena_id', $this->arena->id)
             ->set('data.date', now()->format('Y-m-d'))
-            ->set('data.slots', '18:00-19:00')
+            ->set('data.slots', ['18:00-19:00'])
             ->set('data.customer_name', 'Free User')
             ->set('data.customer_mobile', '9876543210')
             ->set('data.is_free', true)
@@ -131,6 +131,7 @@ class LegacyMigrationTest extends TestCase
     /** @test */
     public function admin_can_confirm_free_booking_with_otp_after_approval()
     {
+        $uniqueName = 'Free VIP ' . uniqid();
         $request = ApprovalRequest::create([
             'user_id' => $this->admin->id,
             'type' => 'free_booking',
@@ -138,7 +139,7 @@ class LegacyMigrationTest extends TestCase
                 'arena_id' => $this->arena->id,
                 'date' => now()->format('Y-m-d'),
                 'slots' => ['18:00-19:00'],
-                'customer_name' => 'Free VIP',
+                'customer_name' => $uniqueName,
                 'customer_mobile' => '9876543210'
             ],
             'reason' => 'VIP Guest',
@@ -151,11 +152,11 @@ class LegacyMigrationTest extends TestCase
         Livewire::test(AdminBooking::class)
             ->set('otpData.request_id', $request->id)
             ->set('otpData.otp', '123456')
-            ->call('confirmFreeBooking');
+            ->call('confirmFreeBooking')
+            ->assertHasNoErrors();
 
-        $this->assertEquals(1, Booking::where('customer_name', 'Free VIP')->count());
-        // Note: status check removed due to transaction visibility issues in tests, 
-        // but verified via logs that it works in practice.
+        $this->assertEquals(1, Booking::where('customer_name', $uniqueName)->count());
+        $this->assertEquals('completed', $request->fresh()->status);
     }
 
     /** @test */

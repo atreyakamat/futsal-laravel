@@ -56,55 +56,63 @@ class BookingController extends Controller
         $slots = json_decode($request->slots, true);
         $bookingRef = 'REF-' . strtoupper(Str::random(8));
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($slots, $arenaId, $date, $bookingRef, $request) {
-            foreach ($slots as $slot) {
-                // Ensure pricing exists or fail
-                $pricing = Pricing::where('arena_id', $arenaId)->where('time_slot', $slot)->firstOrFail();
+        try {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($slots, $arenaId, $date, $bookingRef, $request) {
+                foreach ($slots as $slot) {
+                    // Ensure pricing exists or fail
+                    $pricing = Pricing::where('arena_id', $arenaId)->where('time_slot', $slot)->firstOrFail();
 
-                // Prevent double booking
-                $isBooked = Booking::where('arena_id', $arenaId)
-                    ->where('booking_date', $date)
-                    ->where('time_slot', $slot)
-                    ->whereIn('payment_status', ['confirmed', 'pending'])
-                    ->exists();
+                    // Prevent double booking
+                    $isBooked = Booking::where('arena_id', $arenaId)
+                        ->where('booking_date', $date)
+                        ->where('time_slot', $slot)
+                        ->whereIn('payment_status', ['confirmed', 'pending'])
+                        ->lockForUpdate()
+                        ->exists();
 
-                if ($isBooked) {
-                    throw \Illuminate\Validation\ValidationException::withMessages([
-                        'slots' => "Slot {$slot} has already been booked."
+                    if ($isBooked) {
+                        throw \Illuminate\Validation\ValidationException::withMessages([
+                            'slots' => "Slot {$slot} has already been booked."
+                        ]);
+                    }
+
+                    Booking::create([
+                        'arena_id' => $arenaId,
+                        'booking_date' => $date,
+                        'time_slot' => $slot,
+                        'booking_ref' => $bookingRef,
+                        'customer_name' => $request->customer_name,
+                        'customer_mobile' => $request->customer_mobile,
+                        'customer_email' => $request->customer_email,
+                        'amount' => $pricing->price,
+                        'payment_status' => 'confirmed', // Auto-confirming for now as we don't have real PayU keys
+                        'payment_method' => 'online',
+                        'ticket_number' => 'TKT-' . date('ymd') . '-' . strtoupper(Str::random(4))
                     ]);
                 }
 
-                Booking::create([
-                    'arena_id' => $arenaId,
-                    'booking_date' => $date,
-                    'time_slot' => $slot,
-                    'booking_ref' => $bookingRef,
-                    'customer_name' => $request->customer_name,
-                    'customer_mobile' => $request->customer_mobile,
-                    'customer_email' => $request->customer_email,
-                    'amount' => $pricing->price,
-                    'payment_status' => 'confirmed', // Auto-confirming for now as we don't have real PayU keys
-                    'payment_method' => 'online',
-                    'ticket_number' => 'TKT-' . date('ymd') . '-' . strtoupper(Str::random(4))
-                ]);
-            }
+                // Release locks
+                \App\Models\SlotLock::where('session_id', session()->getId())->delete();
+                
+                // Send WhatsApp notification
+                $this->whatsappService->sendBookingConfirmation($bookingRef);
 
-            // Release locks
-            \App\Models\SlotLock::where('session_id', session()->getId())->delete();
-            
-            // Send WhatsApp notification
-            $this->whatsappService->sendBookingConfirmation($bookingRef);
-
-            // Send Email Ticket
-            try {
-                if ($request->customer_email) {
-                    \Illuminate\Support\Facades\Mail::to($request->customer_email)
-                        ->send(new \App\Mail\BookingTicket(Booking::where('booking_ref', $bookingRef)->first()));
+                // Send Email Ticket
+                try {
+                    if ($request->customer_email) {
+                        \Illuminate\Support\Facades\Mail::to($request->customer_email)
+                            ->send(new \App\Mail\BookingTicket(Booking::where('booking_ref', $bookingRef)->first()));
+                    }
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error('Failed to send ticket email: ' . $e->getMessage());
                 }
-            } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error('Failed to send ticket email: ' . $e->getMessage());
-            }
-        });
+            });
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Booking failed: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Something went wrong. Please try again.');
+        }
 
         return redirect()->route('booking.success', ['ref' => $bookingRef]);
     }
