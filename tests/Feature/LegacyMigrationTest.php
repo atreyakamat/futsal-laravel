@@ -169,7 +169,7 @@ class LegacyMigrationTest extends TestCase
             ->call('save');
 
         $this->assertEquals('false', Setting::where('key', 'global_ai_enabled')->first()->value);
-        $this->get('/chat')->assertRedirect(route('home'));
+        $this->postJson('/chat', ['message' => 'hi'])->assertStatus(403);
     }
 
     /** @test */

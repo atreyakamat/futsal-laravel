@@ -7,6 +7,8 @@ use App\Models\Pricing;
 use App\Models\Booking;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Database\QueryException;
+use Illuminate\Validation\ValidationException;
 
 use App\Services\WhatsappService;
 
@@ -54,17 +56,24 @@ class BookingController extends Controller
         $arenaId = $request->arena_id;
         $date = $request->date;
         $slots = json_decode($request->slots, true);
+        if (!is_array($slots) || count($slots) === 0) {
+            throw ValidationException::withMessages([
+                'slots' => 'Please select at least one valid slot.',
+            ]);
+        }
+
+        $dateOnly = \Illuminate\Support\Carbon::parse($date)->toDateString();
         $bookingRef = 'REF-' . strtoupper(Str::random(8));
 
         try {
-            \Illuminate\Support\Facades\DB::transaction(function () use ($slots, $arenaId, $date, $bookingRef, $request) {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($slots, $arenaId, $dateOnly, $bookingRef, $request) {
                 foreach ($slots as $slot) {
                     // Ensure pricing exists or fail
                     $pricing = Pricing::where('arena_id', $arenaId)->where('time_slot', $slot)->firstOrFail();
 
                     // Prevent double booking
                     $isBooked = Booking::where('arena_id', $arenaId)
-                        ->where('booking_date', $date)
+                        ->whereDate('booking_date', $dateOnly)
                         ->where('time_slot', $slot)
                         ->whereIn('payment_status', ['confirmed', 'pending'])
                         ->lockForUpdate()
@@ -78,7 +87,7 @@ class BookingController extends Controller
 
                     Booking::create([
                         'arena_id' => $arenaId,
-                        'booking_date' => $date,
+                        'booking_date' => $dateOnly,
                         'time_slot' => $slot,
                         'booking_ref' => $bookingRef,
                         'customer_name' => $request->customer_name,
@@ -92,7 +101,10 @@ class BookingController extends Controller
                 }
 
                 // Release locks
-                \App\Models\SlotLock::where('session_id', session()->getId())->delete();
+                \App\Models\SlotLock::where('session_id', session()->getId())
+                    ->where('arena_id', $arenaId)
+                    ->whereDate('booking_date', $dateOnly)
+                    ->delete();
                 
                 // Send WhatsApp notification
                 $this->whatsappService->sendBookingConfirmation($bookingRef);
@@ -107,11 +119,20 @@ class BookingController extends Controller
                     \Illuminate\Support\Facades\Log::error('Failed to send ticket email: ' . $e->getMessage());
                 }
             });
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             throw $e;
+        } catch (QueryException $e) {
+            if ($e->getCode() === '23000' || str_contains(strtolower($e->getMessage()), 'unique constraint')) {
+                return redirect()->back()->withInput()->withErrors([
+                    'slots' => 'One or more selected slots were just booked by someone else. Please pick another slot.',
+                ]);
+            }
+
+            \Illuminate\Support\Facades\Log::error('Booking DB failure: ' . $e->getMessage());
+            return redirect()->back()->withInput()->with('error', 'Booking failed due to a database issue. Please try again.');
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Booking failed: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Something went wrong. Please try again.');
+            return redirect()->back()->withInput()->with('error', 'Something went wrong. Please try again.');
         }
 
         return redirect()->route('booking.success', ['ref' => $bookingRef]);

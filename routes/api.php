@@ -5,10 +5,12 @@ use Illuminate\Support\Facades\Route;
 use App\Models\Booking;
 use App\Http\Controllers\Api\SlotController;
 
-// Slot Routes
-Route::get('/slots/status', [SlotController::class, 'status']);
-Route::post('/slots/lock', [SlotController::class, 'lock']);
-Route::post('/slots/unlock', [SlotController::class, 'unlock']);
+// Slot Routes (web middleware ensures stable session IDs for lock ownership)
+Route::middleware('web')->group(function () {
+    Route::get('/slots/status', [SlotController::class, 'status']);
+    Route::post('/slots/lock', [SlotController::class, 'lock']);
+    Route::post('/slots/unlock', [SlotController::class, 'unlock']);
+});
 
 // Security Routes
 Route::middleware(['auth'])->prefix('security')->group(function () {
