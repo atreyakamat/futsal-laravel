@@ -108,6 +108,43 @@ class PlatformRoutesTest extends TestCase
         $response->assertJson(['success' => true]);
     }
 
+    public function test_api_unlock_releases_only_requested_slot_when_slots_provided()
+    {
+        $slotService = app(\App\Services\SlotService::class);
+        $sessionId = session()->getId();
+
+        $slotService->lockSlots($this->arena->id, '2026-04-01', ['18:00-19:00'], $sessionId);
+
+        Pricing::create([
+            'arena_id' => $this->arena->id,
+            'time_slot' => '19:00-20:00',
+            'price' => 1000,
+        ]);
+        $slotService->lockSlots($this->arena->id, '2026-04-01', ['19:00-20:00'], $sessionId);
+
+        $response = $this->postJson('/api/slots/unlock', [
+            'arena_id' => $this->arena->id,
+            'date' => '2026-04-01',
+            'slots' => ['18:00-19:00'],
+        ]);
+
+        $response->assertStatus(200)->assertJson(['success' => true]);
+
+        $this->assertDatabaseMissing('slot_locks', [
+            'arena_id' => $this->arena->id,
+            'booking_date' => '2026-04-01',
+            'time_slot' => '18:00-19:00',
+            'session_id' => $sessionId,
+        ]);
+
+        $this->assertDatabaseHas('slot_locks', [
+            'arena_id' => $this->arena->id,
+            'booking_date' => '2026-04-01',
+            'time_slot' => '19:00-20:00',
+            'session_id' => $sessionId,
+        ]);
+    }
+
     public function test_double_booking_prevention_on_process()
     {
         // First booking

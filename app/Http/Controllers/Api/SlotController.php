@@ -25,7 +25,7 @@ class SlotController extends Controller
         ]);
 
         $arenaId = $validated['arena_id'];
-        $date = $validated['date'];
+        $date = \Illuminate\Support\Carbon::parse($validated['date'])->toDateString();
         $sessionId = session()->getId();
 
         $arena = Arena::findOrFail($arenaId);
@@ -36,7 +36,7 @@ class SlotController extends Controller
         $lockedByOthers = $this->slotService->getLockedSlots($arenaId, $date, $sessionId);
         
         $lockedByMe = \App\Models\SlotLock::where('arena_id', $arenaId)
-            ->where('booking_date', $date)
+            ->whereDate('booking_date', $date)
             ->where('session_id', $sessionId)
             ->where('expires_at', '>', now())
             ->pluck('time_slot')
@@ -76,7 +76,7 @@ class SlotController extends Controller
         ]);
 
         $arenaId = $validated['arena_id'];
-        $date = $validated['date'];
+        $date = \Illuminate\Support\Carbon::parse($validated['date'])->toDateString();
         $slots = $validated['slots'];
         $sessionId = session()->getId();
 
@@ -94,13 +94,16 @@ class SlotController extends Controller
         $validated = $request->validate([
             'arena_id' => 'required|exists:arenas,id',
             'date' => 'required|date_format:Y-m-d',
+            'slots' => 'nullable|array',
+            'slots.*' => 'string',
         ]);
 
         $sessionId = session()->getId();
         $arenaId = $validated['arena_id'];
-        $date = $validated['date'];
+        $date = \Illuminate\Support\Carbon::parse($validated['date'])->toDateString();
+        $slots = $validated['slots'] ?? null;
 
-        $this->slotService->releaseLocks($sessionId, $arenaId, $date);
+        $this->slotService->releaseLocks($sessionId, $arenaId, $date, $slots);
 
         return response()->json(['success' => true]);
     }

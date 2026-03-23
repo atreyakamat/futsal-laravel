@@ -13,6 +13,22 @@
             <p class="text-xs font-bold text-gray-500 uppercase tracking-widest">Complete your booking for {{ $arena->name }}</p>
         </div>
     </div>
+
+    @if(isset($errors) && $errors->any())
+    <div class="mb-8 rounded-2xl border border-red-500/40 bg-red-500/10 p-4">
+        <div class="flex items-start gap-3">
+            <span class="material-symbols-outlined text-red-400">error</span>
+            <div>
+                <p class="text-sm font-bold text-red-300">Please fix the following and try again:</p>
+                <ul class="mt-2 space-y-1 text-xs text-red-200 list-disc ml-4">
+                    @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        </div>
+    </div>
+    @endif
     
     <div class="grid lg:grid-cols-12 gap-16">
         <!-- Booking Details -->
@@ -88,6 +104,7 @@
                                 <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 text-lg">person</span>
                                 <input type="text" name="customer_name" required 
                                        placeholder="John Doe"
+                                       value="{{ old('customer_name') }}"
                                        class="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-primary transition-all placeholder:text-gray-700">
                             </div>
                         </div>
@@ -97,6 +114,7 @@
                                 <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 text-lg">phone_iphone</span>
                                 <input type="tel" name="customer_mobile" required 
                                        placeholder="+91 98765 43210"
+                                       value="{{ old('customer_mobile') }}"
                                        class="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-primary transition-all placeholder:text-gray-700">
                             </div>
                         </div>
@@ -108,6 +126,7 @@
                             <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 text-lg">mail</span>
                             <input type="email" name="customer_email" 
                                    placeholder="john@example.com"
+                                   value="{{ old('customer_email') }}"
                                    class="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-primary transition-all placeholder:text-gray-700">
                         </div>
                     </div>

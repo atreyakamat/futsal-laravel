@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\Booking;
 use App\Models\SlotLock;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 
 class SlotService
@@ -24,8 +23,10 @@ class SlotService
      */
     public function isSlotLocked(int $arenaId, string $date, string $slot, ?string $sessionId = null): bool
     {
+        $bookingDate = Carbon::parse($date)->toDateString();
+
         $query = SlotLock::where('arena_id', $arenaId)
-            ->where('booking_date', $date)
+            ->whereDate('booking_date', $bookingDate)
             ->where('time_slot', $slot)
             ->where('expires_at', '>', now());
 
@@ -42,6 +43,7 @@ class SlotService
     public function lockSlots(int $arenaId, string $date, array $slots, string $sessionId): array
     {
         $this->cleanExpiredLocks();
+        $bookingDate = Carbon::parse($date)->toDateString();
         $expires = now()->addSeconds(self::SLOT_LOCK_DURATION);
         $locked = [];
         $failed = [];
@@ -49,12 +51,12 @@ class SlotService
         foreach ($slots as $slot) {
             // Check if already booked
             $isBooked = Booking::where('arena_id', $arenaId)
-                ->where('booking_date', $date)
+                ->whereDate('booking_date', $bookingDate)
                 ->where('time_slot', $slot)
                 ->whereIn('payment_status', ['confirmed', 'pending'])
                 ->exists();
 
-            $isLocked = $this->isSlotLocked($arenaId, $date, $slot, $sessionId);
+            $isLocked = $this->isSlotLocked($arenaId, $bookingDate, $slot, $sessionId);
 
             if ($isBooked || $isLocked) {
                 $failed[] = $slot;
@@ -64,7 +66,7 @@ class SlotService
             try {
                 // Ensure we don't overwrite someone else's active lock
                 $existingLock = SlotLock::where('arena_id', $arenaId)
-                    ->where('booking_date', $date)
+                    ->whereDate('booking_date', $bookingDate)
                     ->where('time_slot', $slot)
                     ->first();
 
@@ -76,7 +78,7 @@ class SlotService
                 SlotLock::updateOrCreate(
                     [
                         'arena_id' => $arenaId,
-                        'booking_date' => $date,
+                        'booking_date' => $bookingDate,
                         'time_slot' => $slot,
                     ],
                     [
@@ -97,7 +99,7 @@ class SlotService
     /**
      * Release locks for a session
      */
-    public function releaseLocks(string $sessionId, ?int $arenaId = null, ?string $date = null): void
+    public function releaseLocks(string $sessionId, ?int $arenaId = null, ?string $date = null, ?array $slots = null): void
     {
         $query = SlotLock::where('session_id', $sessionId);
         
@@ -106,7 +108,11 @@ class SlotService
         }
         
         if ($date) {
-            $query->where('booking_date', $date);
+            $query->whereDate('booking_date', Carbon::parse($date)->toDateString());
+        }
+
+        if (is_array($slots) && count($slots) > 0) {
+            $query->whereIn('time_slot', $slots);
         }
 
         $query->delete();
@@ -117,8 +123,10 @@ class SlotService
      */
     public function getLockedSlots(int $arenaId, string $date, ?string $sessionId = null): array
     {
+        $bookingDate = Carbon::parse($date)->toDateString();
+
         $query = SlotLock::where('arena_id', $arenaId)
-            ->where('booking_date', $date)
+            ->whereDate('booking_date', $bookingDate)
             ->where('expires_at', '>', now());
 
         if ($sessionId) {
@@ -133,8 +141,10 @@ class SlotService
      */
     public function getBookedSlots(int $arenaId, string $date): array
     {
+        $bookingDate = Carbon::parse($date)->toDateString();
+
         return Booking::where('arena_id', $arenaId)
-            ->where('booking_date', $date)
+            ->whereDate('booking_date', $bookingDate)
             ->whereIn('payment_status', ['confirmed', 'pending'])
             ->pluck('time_slot')
             ->toArray();
