@@ -3,14 +3,13 @@
 namespace App\Services;
 
 use App\Models\Booking;
-use App\Models\Arena;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 
 class WhatsappService
 {
     /**
-     * Send a booking confirmation message via WhatsApp using Aisensy API.
+     * Send a booking confirmation message via WhatsApp using AISENSY API.
      */
     public function sendBookingConfirmation(string $bookingRef): bool
     {
@@ -20,33 +19,45 @@ class WhatsappService
             return false;
         }
 
+        $apiKey = config('services.aisensy.api_key');
+        $campaignName = config('services.aisensy.campaign_name');
+
+        if (empty($apiKey)) {
+            Log::warning('AISENSY API key not configured. Skipping WhatsApp notification.');
+            return false;
+        }
+
         $firstBooking = $bookings->first();
         $arena = $firstBooking->arena;
         $customerName = $firstBooking->customer_name;
         $customerMobile = $firstBooking->customer_mobile;
-        
-        // Ensure mobile has country code for Aisensy
-        if (!str_starts_with($customerMobile, '91') && strlen($customerMobile) === 10) {
-            $customerMobile = '91' . $customerMobile;
+
+        // Ensure mobile has country code for AISENSY
+        $mobileDigits = preg_replace('/[^0-9]/', '', $customerMobile);
+        if (strlen($mobileDigits) === 10) {
+            $mobileDigits = '91' . $mobileDigits;
         }
 
         $date = date('d M Y', strtotime($firstBooking->booking_date));
-        $slots = $bookings->pluck('time_slot')->implode(', ');
-        $paymentStatus = $firstBooking->payment_status === 'confirmed' ? '✅ Received' : '❌ Pending (Pay at Arena)';
-        
+
+        // Use SlotMergeService to display merged consecutive slots
+        $slots = $bookings->pluck('time_slot')->toArray();
+        $mergedSlots = SlotMergeService::mergeSlots($slots);
+
+        $paymentStatus = $firstBooking->payment_status === 'confirmed' ? 'Received' : 'Pending (Pay at Arena)';
+
         $qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=" . $firstBooking->ticket_number;
-        $successUrl = route('booking.success', ['ref' => $bookingRef]);
-        
-        // Aisensy Precise Payload
+
+        // AISENSY Payload matching template parameters
         $payload = [
-            'apiKey' => env('AISENSY_API_KEY'),
-            'campaignName' => env('AISENSY_CAMPAIGN_NAME', 'FutsalTicketBook'),
-            'destination' => $customerMobile,
-            'userName' => "Agnel Futsal Arena",
+            'apiKey' => $apiKey,
+            'campaignName' => $campaignName,
+            'destination' => $mobileDigits,
+            'userName' => $arena->name,
             'templateParams' => [
                 $customerName,
                 $arena->name,
-                $date . " (" . $slots . ")",
+                $date . " (" . $mergedSlots . ")",
                 $paymentStatus
             ],
             'source' => 'FutsalGoa Platform',
@@ -62,7 +73,7 @@ class WhatsappService
                     'parameters' => [
                         [
                             'type' => 'text',
-                            'text' => $bookingRef // Dynamically fill the URL parameter if your button is setup as site.com/success/{{1}}
+                            'text' => $bookingRef
                         ]
                     ]
                 ]
@@ -72,19 +83,19 @@ class WhatsappService
             ]
         ];
 
-        Log::info("Attempting to send Aisensy WhatsApp to {$customerMobile} for campaign: " . $payload['campaignName']);
+        Log::info("Attempting to send AISENSY WhatsApp to {$mobileDigits} for campaign: {$campaignName}");
 
         try {
             $response = Http::post('https://backend.aisensy.com/campaign/t1/api/v2', $payload);
-            
+
             if ($response->successful()) {
-                Log::info("WhatsApp sent successfully via Aisensy. Response: " . $response->body());
+                Log::info("WhatsApp sent successfully via AISENSY. Response: " . $response->body());
                 return true;
-            } else {
-                Log::error("Aisensy API Error: " . $response->status() . " - " . $response->body());
             }
+
+            Log::error("AISENSY API Error: " . $response->status() . " - " . $response->body());
         } catch (\Exception $e) {
-            Log::error("Aisensy Connection Exception: " . $e->getMessage());
+            Log::error("AISENSY Connection Exception: " . $e->getMessage());
         }
 
         return false;

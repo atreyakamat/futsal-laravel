@@ -1,5 +1,5 @@
 <x-mail::message>
-# Booking Confirmed! ⚽
+# Booking Confirmed!
 
 Hello {{ $booking->customer_name }},
 
@@ -13,7 +13,9 @@ Your booking at **{{ $booking->arena->name }}** is confirmed. Please show the QR
 **Booking Details:**
 - **Ref:** {{ $booking->booking_ref }}
 - **Date:** {{ date('d M Y', strtotime($booking->booking_date)) }}
-- **Slot:** {{ $booking->time_slot }}
+- **Time:** {{ $mergedSlots }}
+- **Duration:** {{ $duration }}
+- **Total:** Rs. {{ number_format($totalAmount, 0) }}
 - **Venue:** {{ $booking->arena->address }}
 
 <x-mail::button :url="$qrCodeUrl">

@@ -2,6 +2,8 @@
 
 namespace App\Mail;
 
+use App\Models\Booking;
+use App\Services\SlotMergeService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -16,6 +18,9 @@ class BookingTicket extends Mailable
 
     public $booking;
     public $qrCodeUrl;
+    public $mergedSlots;
+    public $totalAmount;
+    public $duration;
 
     /**
      * Create a new message instance.
@@ -24,6 +29,14 @@ class BookingTicket extends Mailable
     {
         $this->booking = $booking;
         $this->qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . $booking->ticket_number;
+
+        // Get all bookings with same booking_ref for merged slot display
+        $allBookings = Booking::where('booking_ref', $booking->booking_ref)->get();
+        $slots = $allBookings->pluck('time_slot')->toArray();
+
+        $this->mergedSlots = SlotMergeService::mergeSlots($slots);
+        $this->totalAmount = $allBookings->sum('amount');
+        $this->duration = SlotMergeService::getDurationText($slots);
     }
 
     /**

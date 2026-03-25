@@ -10,6 +10,31 @@
         </div>
         <h1 class="text-5xl md:text-7xl font-black mb-4 tracking-tighter italic text-primary uppercase">BOOKING CONFIRMED!</h1>
         <p class="text-gray-400 font-bold tracking-widest uppercase text-xs">Your slot at {{ $booking->arena->name }} is now yours.</p>
+
+        <!-- Booking Summary -->
+        <div class="mt-8 glass inline-block px-8 py-4 rounded-2xl border border-primary/30">
+            <div class="flex items-center gap-6 text-sm">
+                <div class="text-left">
+                    <span class="text-gray-500 text-[10px] tracking-widest uppercase block">Date</span>
+                    <span class="font-bold text-white">{{ $booking->booking_date->format('d M Y') }}</span>
+                </div>
+                <div class="w-px h-8 bg-primary/30"></div>
+                <div class="text-left">
+                    <span class="text-gray-500 text-[10px] tracking-widest uppercase block">Time</span>
+                    <span class="font-bold text-primary">{{ $mergedSlots }}</span>
+                </div>
+                <div class="w-px h-8 bg-primary/30"></div>
+                <div class="text-left">
+                    <span class="text-gray-500 text-[10px] tracking-widest uppercase block">Duration</span>
+                    <span class="font-bold text-white">{{ $duration }}</span>
+                </div>
+                <div class="w-px h-8 bg-primary/30"></div>
+                <div class="text-left">
+                    <span class="text-gray-500 text-[10px] tracking-widest uppercase block">Total</span>
+                    <span class="font-bold text-white">Rs. {{ number_format($totalAmount, 0) }}</span>
+                </div>
+            </div>
+        </div>
     </div>
     
     <div class="grid md:grid-cols-2 gap-12 max-w-5xl mx-auto">

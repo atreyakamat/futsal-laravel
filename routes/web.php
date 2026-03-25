@@ -51,8 +51,16 @@ Route::get('/verify-ticket/{ticket_number}', function ($ticket_number) {
 Route::get('/checkout', [BookingController::class, 'checkout'])->name('booking.checkout');
 Route::post('/process-booking', [BookingController::class, 'process'])->name('booking.process');
 Route::get('/booking/success/{ref}', function ($ref) {
-    $booking = \App\Models\Booking::where('booking_ref', $ref)->firstOrFail();
-    return view('booking.success', compact('booking'));
+    $bookings = \App\Models\Booking::where('booking_ref', $ref)->with('arena')->get();
+    if ($bookings->isEmpty()) {
+        abort(404);
+    }
+    $booking = $bookings->first();
+    $slots = $bookings->pluck('time_slot')->toArray();
+    $mergedSlots = \App\Services\SlotMergeService::mergeSlots($slots);
+    $totalAmount = $bookings->sum('amount');
+    $duration = \App\Services\SlotMergeService::getDurationText($slots);
+    return view('booking.success', compact('booking', 'mergedSlots', 'totalAmount', 'duration'));
 })->name('booking.success');
 
 // Admin & Super Admin Routes

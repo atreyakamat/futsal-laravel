@@ -13,6 +13,7 @@
         .label { font-weight: bold; width: 120px; display: inline-block; }
         .qr-code { text-align: center; margin-top: 20px; }
         .footer { text-align: center; font-size: 12px; margin-top: 20px; color: #777; }
+        .highlight { background: #f0f0f0; padding: 8px; border-radius: 4px; }
     </style>
 </head>
 <body>
@@ -26,7 +27,15 @@
             <div class="row"><span class="label">Ticket #:</span> {{ $booking->ticket_number }}</div>
             <div class="row"><span class="label">Customer:</span> {{ $booking->customer_name }}</div>
             <div class="row"><span class="label">Date:</span> {{ $booking->booking_date->format('d M Y') }}</div>
-            <div class="row"><span class="label">Slot:</span> {{ $booking->time_slot }}</div>
+            <div class="row highlight">
+                <span class="label">Time:</span> {{ $mergedSlots ?? $booking->time_slot }}
+                @if(isset($duration))
+                    <br><span class="label">Duration:</span> {{ $duration }}
+                @endif
+            </div>
+            @if(isset($totalAmount))
+                <div class="row"><span class="label">Amount:</span> Rs. {{ number_format($totalAmount, 0) }}</div>
+            @endif
             <div class="row"><span class="label">Ref:</span> {{ $booking->booking_ref }}</div>
             <div class="row"><span class="label">Status:</span> CONFIRMED</div>
         </div>

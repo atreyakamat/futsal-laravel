@@ -41,4 +41,9 @@ return [
         ],
     ],
 
+    'aisensy' => [
+        'api_key' => env('AISENSY_API_KEY'),
+        'campaign_name' => env('AISENSY_CAMPAIGN_NAME', 'FutsalTicketBook'),
+    ],
+
 ];
