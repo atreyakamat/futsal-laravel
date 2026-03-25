@@ -5,20 +5,22 @@ namespace App\Http\Controllers;
 use App\Models\Arena;
 use App\Models\Pricing;
 use App\Models\Booking;
+use App\Services\PricingService;
+use App\Services\WhatsappService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Database\QueryException;
 use Illuminate\Validation\ValidationException;
 
-use App\Services\WhatsappService;
-
 class BookingController extends Controller
 {
     protected $whatsappService;
+    protected $pricingService;
 
-    public function __construct(WhatsappService $whatsappService)
+    public function __construct(WhatsappService $whatsappService, PricingService $pricingService)
     {
         $this->whatsappService = $whatsappService;
+        $this->pricingService = $pricingService;
     }
 
     public function checkout(Request $request)
@@ -32,11 +34,9 @@ class BookingController extends Controller
         }
 
         $arena = Arena::findOrFail($arenaId);
-        
-        $pricing = Pricing::where('arena_id', $arenaId)
-            ->whereIn('time_slot', $slots)
-            ->get();
 
+        // Use cached pricing
+        $pricing = $this->pricingService->getPricingForSlots($arenaId, $slots);
         $total = $pricing->sum('price');
 
         return view('booking.checkout', compact('arena', 'date', 'slots', 'pricing', 'total'));
@@ -65,11 +65,20 @@ class BookingController extends Controller
         $dateOnly = \Illuminate\Support\Carbon::parse($date)->toDateString();
         $bookingRef = 'REF-' . strtoupper(Str::random(8));
 
+        // Pre-fetch all pricing from cache
+        $pricingMap = $this->pricingService->getPricingForSlots($arenaId, $slots)
+            ->keyBy('time_slot');
+
         try {
-            \Illuminate\Support\Facades\DB::transaction(function () use ($slots, $arenaId, $dateOnly, $bookingRef, $request) {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($slots, $arenaId, $dateOnly, $bookingRef, $request, $pricingMap) {
                 foreach ($slots as $slot) {
-                    // Ensure pricing exists or fail
-                    $pricing = Pricing::where('arena_id', $arenaId)->where('time_slot', $slot)->firstOrFail();
+                    // Get pricing from pre-fetched cached data
+                    $pricing = $pricingMap->get($slot);
+                    if (!$pricing) {
+                        throw ValidationException::withMessages([
+                            'slots' => "Pricing not found for slot {$slot}."
+                        ]);
+                    }
 
                     // Prevent double booking
                     $isBooked = Booking::where('arena_id', $arenaId)
@@ -80,7 +89,7 @@ class BookingController extends Controller
                         ->exists();
 
                     if ($isBooked) {
-                        throw \Illuminate\Validation\ValidationException::withMessages([
+                        throw ValidationException::withMessages([
                             'slots' => "Slot {$slot} has already been booked."
                         ]);
                     }
@@ -94,9 +103,10 @@ class BookingController extends Controller
                         'customer_mobile' => $request->customer_mobile,
                         'customer_email' => $request->customer_email,
                         'amount' => $pricing->price,
-                        'payment_status' => 'confirmed', // Auto-confirming for now as we don't have real PayU keys
+                        'payment_status' => 'confirmed',
                         'payment_method' => 'online',
-                        'ticket_number' => 'TKT-' . date('ymd') . '-' . strtoupper(Str::random(4))
+                        'ticket_number' => 'TKT-' . date('ymd') . '-' . strtoupper(Str::random(4)),
+                        'user_id' => auth()->id(),
                     ]);
                 }
 
@@ -105,15 +115,16 @@ class BookingController extends Controller
                     ->where('arena_id', $arenaId)
                     ->whereDate('booking_date', $dateOnly)
                     ->delete();
-                
+
                 // Send WhatsApp notification
                 $this->whatsappService->sendBookingConfirmation($bookingRef);
 
-                // Send Email Ticket
+                // Send Email Ticket - pass all bookings to avoid extra query
                 try {
                     if ($request->customer_email) {
+                        $allBookings = Booking::where('booking_ref', $bookingRef)->with('arena')->get();
                         \Illuminate\Support\Facades\Mail::to($request->customer_email)
-                            ->send(new \App\Mail\BookingTicket(Booking::where('booking_ref', $bookingRef)->first()));
+                            ->send(new \App\Mail\BookingTicket($allBookings));
                     }
                 } catch (\Exception $e) {
                     \Illuminate\Support\Facades\Log::error('Failed to send ticket email: ' . $e->getMessage());

@@ -60,6 +60,30 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /**
+     * Get the bookings for the user.
+     */
+    public function bookings()
+    {
+        return $this->hasMany(Booking::class);
+    }
+
+    /**
+     * Get the user's confirmed bookings.
+     */
+    public function confirmedBookings()
+    {
+        return $this->bookings()->where('payment_status', 'confirmed');
+    }
+
+    /**
+     * Get the user's booking count.
+     */
+    public function getBookingCountAttribute(): int
+    {
+        return $this->bookings()->count();
+    }
+
+    /**
      * The attributes that should be hidden for serialization.
      *
      * @var list<string>

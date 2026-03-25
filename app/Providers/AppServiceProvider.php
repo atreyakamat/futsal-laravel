@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\Pricing;
+use App\Observers\PricingObserver;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -22,5 +24,8 @@ class AppServiceProvider extends ServiceProvider
         if (config('app.env') !== 'local') {
             \Illuminate\Support\Facades\URL::forceScheme('https');
         }
+
+        // Register observers for cache invalidation
+        Pricing::observe(PricingObserver::class);
     }
 }
