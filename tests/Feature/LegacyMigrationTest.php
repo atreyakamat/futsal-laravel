@@ -169,6 +169,8 @@ class LegacyMigrationTest extends TestCase
             ->call('save');
 
         $this->assertEquals('false', Setting::where('key', 'global_ai_enabled')->first()->value);
+        
+        $this->withoutMiddleware();
         $this->postJson('/chat', ['message' => 'hi'])->assertStatus(403);
     }
 

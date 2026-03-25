@@ -10,8 +10,6 @@ class ArenaController extends Controller
 {
     public function index()
     {
-        // Fix: Replace N+1 Pricing queries with an eager-loaded aggregate query or simple join.
-        // We'll map the minimum prices using a single query to the Pricing table.
         $arenas = Arena::where('status', 'active')->orderBy('name')->get();
         
         $arenaIds = $arenas->pluck('id');
@@ -30,6 +28,10 @@ class ArenaController extends Controller
     public function show($slug)
     {
         $arena = Arena::where('slug', $slug)->firstOrFail();
+        
+        // Ensure min_price is available for the view
+        $arena->min_price = Pricing::where('arena_id', $arena->id)->min('price') ?? 500;
+
         return view('arena.show', compact('arena'));
     }
 }

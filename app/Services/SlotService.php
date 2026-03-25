@@ -43,52 +43,62 @@ class SlotService
     public function lockSlots(int $arenaId, string $date, array $slots, string $sessionId): array
     {
         $this->cleanExpiredLocks();
-        $bookingDate = Carbon::parse($date)->toDateString();
+        $bookingDate = \Illuminate\Support\Carbon::parse($date)->toDateString();
         $expires = now()->addSeconds(self::SLOT_LOCK_DURATION);
         $locked = [];
         $failed = [];
 
         foreach ($slots as $slot) {
-            // Check if already booked
-            $isBooked = Booking::where('arena_id', $arenaId)
-                ->whereDate('booking_date', $bookingDate)
-                ->where('time_slot', $slot)
-                ->whereIn('payment_status', ['confirmed', 'pending'])
-                ->exists();
-
-            $isLocked = $this->isSlotLocked($arenaId, $bookingDate, $slot, $sessionId);
-
-            if ($isBooked || $isLocked) {
-                $failed[] = $slot;
-                continue;
-            }
-
             try {
-                // Ensure we don't overwrite someone else's active lock
-                $existingLock = SlotLock::where('arena_id', $arenaId)
-                    ->whereDate('booking_date', $bookingDate)
-                    ->where('time_slot', $slot)
-                    ->first();
+                \Illuminate\Support\Facades\DB::transaction(function () use ($arenaId, $bookingDate, $slot, $sessionId, $expires, &$locked, &$failed) {
+                    // Check if already booked
+                    $isBooked = Booking::where('arena_id', $arenaId)
+                        ->whereDate('booking_date', $bookingDate)
+                        ->where('time_slot', $slot)
+                        ->whereIn('payment_status', ['confirmed', 'pending'])
+                        ->lockForUpdate()
+                        ->exists();
 
-                if ($existingLock && $existingLock->session_id !== $sessionId && $existingLock->expires_at > now()) {
-                    $failed[] = $slot;
-                    continue;
-                }
+                    if ($isBooked) {
+                        $failed[] = $slot;
+                        return;
+                    }
 
-                SlotLock::updateOrCreate(
-                    [
-                        'arena_id' => $arenaId,
-                        'booking_date' => $bookingDate,
-                        'time_slot' => $slot,
-                    ],
-                    [
-                        'session_id' => $sessionId,
-                        'expires_at' => $expires,
-                        'locked_at' => now(),
-                    ]
-                );
-                $locked[] = $slot;
+                    // Atomic check and update/create
+                    $existingLock = SlotLock::where('arena_id', $arenaId)
+                        ->whereDate('booking_date', $bookingDate)
+                        ->where('time_slot', $slot)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if ($existingLock) {
+                        // If it's locked by others and NOT expired, we fail
+                        if ($existingLock->session_id !== $sessionId && $existingLock->expires_at > now()) {
+                            $failed[] = $slot;
+                            return;
+                        }
+                        
+                        // Overwrite expired lock or update our own lock
+                        $existingLock->update([
+                            'session_id' => $sessionId,
+                            'expires_at' => $expires,
+                            'locked_at' => now(),
+                        ]);
+                    } else {
+                        // Create new lock
+                        SlotLock::create([
+                            'arena_id' => $arenaId,
+                            'booking_date' => $bookingDate,
+                            'time_slot' => $slot,
+                            'session_id' => $sessionId,
+                            'expires_at' => $expires,
+                            'locked_at' => now(),
+                        ]);
+                    }
+                    $locked[] = $slot;
+                });
             } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Slot locking failure for slot ' . $slot . ': ' . $e->getMessage());
                 $failed[] = $slot;
             }
         }

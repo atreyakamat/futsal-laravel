@@ -315,13 +315,26 @@ class AdminBooking extends Page implements HasForms
 
         $data = $approval->data;
         $bookingRef = 'FREE-' . strtoupper(Str::random(8));
+        $date = $data['date'] ?? $data['booking_date'];
 
         try {
-            DB::transaction(function () use ($data, $bookingRef, $approval) {
+            DB::transaction(function () use ($data, $bookingRef, $approval, $date) {
                 foreach ($data['slots'] as $slot) {
+                    // Check availability inside transaction
+                    $exists = Booking::where('arena_id', $data['arena_id'])
+                        ->where('booking_date', $date)
+                        ->where('time_slot', $slot)
+                        ->whereIn('payment_status', ['confirmed', 'pending'])
+                        ->lockForUpdate()
+                        ->exists();
+
+                    if ($exists) {
+                        throw new \Exception("Slot {$slot} on {$date} is already booked.");
+                    }
+
                     Booking::create([
                         'arena_id' => $data['arena_id'],
-                        'booking_date' => $data['date'] ?? $data['booking_date'],
+                        'booking_date' => $date,
                         'time_slot' => $slot,
                         'booking_ref' => $bookingRef,
                         'customer_name' => $data['customer_name'],
