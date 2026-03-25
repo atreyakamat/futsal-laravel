@@ -91,7 +91,7 @@
 
             <div class="flex gap-4">
                 <a href="{{ route('home') }}" class="flex-1 py-5 bg-primary text-black rounded-2xl font-black text-xs tracking-widest text-center shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all">BOOK ANOTHER</a>
-                <a href="/admin/bookings" class="flex-1 py-5 glass text-white rounded-2xl font-black text-xs tracking-widest text-center hover:bg-white/5 transition-all">MY BOOKINGS</a>
+                <a href="{{ route('my-bookings') }}" class="flex-1 py-5 glass text-white rounded-2xl font-black text-xs tracking-widest text-center hover:bg-white/5 transition-all">MY BOOKINGS</a>
             </div>
         </div>
     </div>

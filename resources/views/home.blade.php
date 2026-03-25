@@ -37,62 +37,76 @@
 </section>
 
 <!-- Arenas Section -->
-<section id="arenas" class="py-32 bg-dark">
+<section id="arenas" class="py-32 bg-dark" x-data="{ 
+    search: '',
+    arenas: {{ $arenas->toJson() }},
+    get filteredArenas() {
+        if (!this.search) return this.arenas;
+        return this.arenas.filter(a => 
+            a.name.toLowerCase().includes(this.search.toLowerCase()) || 
+            a.address.toLowerCase().includes(this.search.toLowerCase())
+        );
+    }
+}">
     <div class="max-w-7xl mx-auto px-6">
-        <div class="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
-            <div>
+        <div class="flex flex-col md:flex-row justify-between items-end mb-16 gap-8">
+            <div class="flex-1">
                 <h2 class="text-4xl font-black mb-4 tracking-tighter uppercase">Our <span class="text-primary">Arenas</span></h2>
-                <p class="text-gray-500 max-w-md">Every arena is equipped with professional-grade FIFA approved turf and high-intensity stadium lighting.</p>
+                <div class="relative max-w-md">
+                    <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-xl">search</span>
+                    <input type="text" 
+                           x-model="search"
+                           placeholder="Search by arena name or location..." 
+                           class="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-sm text-white focus:outline-none focus:border-primary transition-all placeholder:text-gray-700">
+                </div>
             </div>
-            <div class="text-right">
-                <span class="text-primary font-bold text-5xl">03</span>
-                <span class="block text-gray-600 text-[10px] tracking-widest font-bold uppercase mt-1">Prime Locations</span>
+            <div class="text-right hidden md:block">
+                <span class="text-primary font-bold text-5xl" x-text="String(filteredArenas.length).padStart(2, '0')"></span>
+                <span class="block text-gray-600 text-[10px] tracking-widest font-bold uppercase mt-1">Available Spots</span>
             </div>
         </div>
         
-        @if($arenas->isEmpty())
-            <div class="text-center py-24 glass rounded-3xl border-dashed border-white/10">
-                <span class="material-symbols-outlined text-8xl text-gray-800 mb-6">stadium</span>
-                <p class="text-gray-500 font-bold uppercase tracking-widest">No arenas found in our network.</p>
-            </div>
-        @else
-        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-10">
-            @foreach($arenas as $arena)
-            <div class="group">
-                <a href="{{ route('arena.show', $arena->slug) }}" class="arena-card block glass rounded-[2rem] overflow-hidden transition-all duration-500 hover:shadow-2xl hover:shadow-primary/10">
-                    <div class="h-64 overflow-hidden relative">
-                        <img src="{{ $arena->cover_image ?: 'https://images.unsplash.com/photo-1551958219-acbc608c6377?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' }}" 
-                             class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
-                             alt="{{ $arena->name }}">
-                        <div class="absolute top-4 left-4">
-                            <span class="glass px-3 py-1 rounded-full text-[10px] font-bold text-white tracking-widest uppercase">Goa, IN</span>
-                        </div>
-                    </div>
-                    <div class="p-8">
-                        <div class="flex justify-between items-start mb-6">
-                            <div>
-                                <h3 class="text-xl font-bold mb-2 group-hover:text-primary transition-colors">{{ $arena->name }}</h3>
-                                <p class="text-gray-500 text-xs flex items-center gap-1.5 font-medium">
-                                    <span class="material-symbols-outlined text-sm text-primary">location_on</span> 
-                                    {{ $arena->address }}
-                                </p>
-                            </div>
-                        </div>
-                        <div class="flex justify-between items-center pt-6 border-t border-white/5">
-                            <div>
-                                <span class="text-gray-500 text-[10px] uppercase font-bold block mb-1">Starting At</span>
-                                <span class="text-2xl font-black text-white italic">₹{{ number_format($arena->min_price) }}<small class="text-gray-600 text-xs font-normal not-italic ml-1">/HR</small></span>
-                            </div>
-                            <span class="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-black group-hover:translate-x-1 transition-transform">
-                                <span class="material-symbols-outlined font-black">arrow_outward</span>
-                            </span>
-                        </div>
-                    </div>
-                </a>
-            </div>
-            @endforeach
+        <div x-show="filteredArenas.length === 0" class="text-center py-24 glass rounded-3xl border-dashed border-white/10" x-cloak>
+            <span class="material-symbols-outlined text-8xl text-gray-800 mb-6">search_off</span>
+            <p class="text-gray-500 font-bold uppercase tracking-widest">No arenas match your search.</p>
         </div>
-        @endif
+
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-10">
+            <template x-for="arena in filteredArenas" :key="arena.id">
+                <div class="group">
+                    <a :href="'/arena/' + arena.slug" class="arena-card block glass rounded-[2rem] overflow-hidden transition-all duration-500 hover:shadow-2xl hover:shadow-primary/10">
+                        <div class="h-64 overflow-hidden relative">
+                            <img :src="arena.cover_image || 'https://images.unsplash.com/photo-1551958219-acbc608c6377?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'" 
+                                 class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                                 :alt="arena.name">
+                            <div class="absolute top-4 left-4">
+                                <span class="glass px-3 py-1 rounded-full text-[10px] font-bold text-white tracking-widest uppercase">Goa, IN</span>
+                            </div>
+                        </div>
+                        <div class="p-8">
+                            <div class="flex justify-between items-start mb-6">
+                                <div>
+                                    <h3 class="text-xl font-bold mb-2 group-hover:text-primary transition-colors" x-text="arena.name"></h3>
+                                    <p class="text-gray-500 text-xs flex items-center gap-1.5 font-medium">
+                                        <span class="material-symbols-outlined text-sm text-primary">location_on</span> 
+                                        <span x-text="arena.address"></span>
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-center pt-6 border-t border-white/5">
+                                <div>
+                                    <span class="text-gray-500 text-[10px] uppercase font-bold block mb-1">Starting At</span>
+                                    <span class="text-2xl font-black text-white italic">₹<span x-text="new Intl.NumberFormat().format(arena.min_price)"></span><small class="text-gray-600 text-xs font-normal not-italic ml-1">/HR</small></span>
+                                </div>
+                                <span class="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-black group-hover:translate-x-1 transition-transform">
+                                    <span class="material-symbols-outlined font-black">arrow_outward</span>
+                                </span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </template>
+        </div>
     </div>
 </section>
 

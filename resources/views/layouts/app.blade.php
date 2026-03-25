@@ -48,8 +48,16 @@
     <nav class="border-b border-white/5 py-4 sticky top-0 z-50 glass">
         <div class="max-w-7xl mx-auto px-6 flex justify-between items-center">
             <a href="/" class="text-2xl font-black text-primary italic tracking-tighter">FUTSAL<span class="text-white">GOA</span></a>
-            <div class="flex gap-8 items-center">
-                <a href="/admin/login" class="px-5 py-2 glass rounded-full text-xs font-bold tracking-widest hover:bg-primary hover:text-black transition-all">LOGIN</a>
+            <div class="flex gap-4 md:gap-8 items-center">
+                @auth
+                    <a href="{{ route('my-bookings') }}" class="text-[10px] font-bold tracking-widest text-gray-400 hover:text-primary transition-colors uppercase">MY BOOKINGS</a>
+                    <form action="{{ route('logout') }}" method="POST" class="inline">
+                        @csrf
+                        <button type="submit" class="px-5 py-2 glass rounded-full text-[10px] font-bold tracking-widest hover:bg-red-500/20 hover:text-red-500 hover:border-red-500/50 transition-all uppercase">LOGOUT</button>
+                    </form>
+                @else
+                    <a href="{{ route('login') }}" class="px-5 py-2 glass rounded-full text-[10px] font-bold tracking-widest hover:bg-primary hover:text-black transition-all uppercase">LOGIN</a>
+                @endauth
             </div>
         </div>
     </nav>

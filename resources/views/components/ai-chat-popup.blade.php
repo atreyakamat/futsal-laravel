@@ -1,8 +1,9 @@
 <div x-data="aiChat()" class="fixed bottom-6 right-6 z-50" x-cloak>
     <!-- Chat Toggle Button -->
-    <button @click="toggleChat()" class="bg-green-500 hover:bg-green-600 text-white rounded-full p-4 shadow-lg transition-all transform hover:scale-110 flex items-center justify-center">
-        <svg x-show="!isOpen" class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
-        <svg x-show="isOpen" class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+    <button @click="toggleChat()" class="bg-primary hover:scale-105 text-black rounded-full p-4 shadow-[0_0_30px_rgba(13,242,32,0.3)] transition-all transform flex items-center justify-center relative group">
+        <div class="absolute inset-0 rounded-full border border-primary/50 animate-ping group-hover:animate-none"></div>
+        <span x-show="!isOpen" class="material-symbols-outlined font-black">smart_toy</span>
+        <span x-show="isOpen" class="material-symbols-outlined font-black">close</span>
     </button>
 
     <!-- Chat Window -->
@@ -10,32 +11,41 @@
          x-transition:enter="transition ease-out duration-300"
          x-transition:enter-start="opacity-0 translate-y-10 scale-95"
          x-transition:enter-end="opacity-100 translate-y-0 scale-100"
-         class="absolute bottom-20 right-0 w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 flex flex-col overflow-hidden chat-glass">
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+         x-transition:leave-end="opacity-0 translate-y-10 scale-95"
+         class="absolute bottom-20 right-0 w-[350px] md:w-96 glass bg-black/80 rounded-[2rem] shadow-2xl shadow-black/50 border border-white/10 flex flex-col overflow-hidden">
         
         <!-- Header -->
-        <div class="bg-green-500 p-4 text-white flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">⚽</div>
-            <div>
-                <h3 class="font-bold leading-tight">FutsalGoa Concierge</h3>
-                <p class="text-xs opacity-80">Online | Click & Book</p>
+        <div class="p-5 border-b border-white/5 flex items-center gap-4 bg-gradient-to-b from-white/5 to-transparent relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-32 h-32 bg-primary/20 blur-[50px] rounded-full -mr-10 -mt-10"></div>
+            <div class="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20 relative z-10">
+                <span class="material-symbols-outlined text-primary text-2xl">sports_soccer</span>
+            </div>
+            <div class="relative z-10">
+                <h3 class="font-black leading-tight uppercase tracking-tight text-white">AI Concierge</h3>
+                <div class="flex items-center gap-1.5 mt-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                    <p class="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Online | Ready to Assist</p>
+                </div>
             </div>
         </div>
 
         <!-- Messages Area -->
-        <div id="chat-messages" class="flex-1 p-4 h-96 overflow-y-auto space-y-4 bg-gray-50/50">
+        <div id="chat-messages" class="flex-1 p-5 h-[400px] overflow-y-auto space-y-6 no-scrollbar relative z-10">
             <template x-for="(msg, index) in messages" :key="index">
                 <div :class="msg.role === 'user' ? 'flex justify-end' : 'flex justify-start'">
-                    <div :class="msg.role === 'user' ? 'bg-green-500 text-white' : 'bg-white text-gray-800 border'"
-                         class="max-w-[85%] rounded-2xl px-4 py-2 shadow-sm text-sm">
+                    <div :class="msg.role === 'user' ? 'bg-primary text-black rounded-tr-sm' : 'glass rounded-tl-sm text-white'"
+                         class="max-w-[85%] rounded-2xl px-5 py-3 text-sm shadow-lg leading-relaxed relative">
                         
                         <div x-html="renderMessage(msg.content)"></div>
 
                         <!-- Render Choice Buttons if Assistant Message -->
                         <template x-if="msg.role === 'assistant' && hasChoices(msg.content)">
-                            <div class="mt-3 flex flex-wrap gap-2">
+                            <div class="mt-4 flex flex-wrap gap-2">
                                 <template x-for="choice in getChoices(msg.content)">
                                     <button @click="selectChoice(choice)" 
-                                            class="bg-green-50 text-green-700 border border-green-200 px-3 py-1 rounded-full text-xs font-bold hover:bg-green-500 hover:text-white transition-all">
+                                            class="bg-white/5 border border-white/10 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-primary hover:text-black hover:border-primary transition-all text-gray-300">
                                         <span x-text="choice"></span>
                                     </button>
                                 </template>
@@ -45,23 +55,28 @@
                 </div>
             </template>
             <div x-show="isTyping" class="flex justify-start">
-                <div class="bg-white border rounded-2xl px-4 py-2 shadow-sm">
-                    <span class="animate-pulse text-green-500 font-bold">●●●</span>
+                <div class="glass rounded-2xl rounded-tl-sm px-5 py-3 flex gap-1">
+                    <span class="w-1.5 h-1.5 bg-primary rounded-full animate-bounce"></span>
+                    <span class="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style="animation-delay: 0.1s"></span>
+                    <span class="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style="animation-delay: 0.2s"></span>
                 </div>
             </div>
         </div>
 
         <!-- Input -->
-        <div class="p-4 bg-white border-t">
+        <div class="p-4 border-t border-white/5 bg-black/50 backdrop-blur-xl relative z-10">
             <div class="flex gap-2">
                 <input type="text" 
                        x-model="userInput" 
                        @keydown.enter="sendMessage()"
-                       placeholder="Type or click options..."
-                       class="flex-1 border-gray-200 rounded-xl focus:ring-green-500 focus:border-green-500 text-sm text-black">
-                <button @click="sendMessage()" class="bg-green-500 text-white p-2 rounded-xl hover:bg-green-600 transition-colors">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                       placeholder="Ask about arenas or availability..."
+                       class="flex-1 bg-white/5 border border-white/10 rounded-2xl px-4 py-3 focus:outline-none focus:border-primary text-sm text-white placeholder:text-gray-600 transition-colors">
+                <button @click="sendMessage()" class="w-12 h-12 bg-primary text-black rounded-2xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center shrink-0 shadow-lg shadow-primary/20">
+                    <span class="material-symbols-outlined font-black">send</span>
                 </button>
+            </div>
+            <div class="text-center mt-3">
+                <span class="text-[8px] font-bold text-gray-600 uppercase tracking-[0.2em]">Powered by Advanced AI</span>
             </div>
         </div>
     </div>
@@ -69,11 +84,10 @@
 
 <style>
 [x-cloak] { display: none !important; }
-.chat-glass {
-    background: rgba(255, 255, 255, 0.98);
-    backdrop-filter: blur(15px);
-    -webkit-backdrop-filter: blur(15px);
-}
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 </style>
 
 <script>
@@ -85,11 +99,12 @@ function aiChat() {
         messages: [],
         
         init() {
-            // Initial greeting with choices
+            // Check if there is existing history from the server (in a real app, you might pass this via blade)
+            // For now, default greeting
             this.messages = [
                 { 
                     role: 'assistant', 
-                    content: 'Welcome to FutsalGoa! ⚽ I can help you find and book a court in seconds. Which arena would you like to check? [CHOICE: Mapusa] [CHOICE: Assagao] [CHOICE: Panjim]' 
+                    content: 'Welcome to FutsalGoa! ⚡ I can help you find and book a court in seconds. Which arena would you like to check? [CHOICE: Mapusa] [CHOICE: Assagao] [CHOICE: Panjim]' 
                 }
             ];
         },
@@ -102,7 +117,6 @@ function aiChat() {
         },
 
         renderMessage(content) {
-            // Remove choice tags for clean display and convert line breaks
             return content.replace(/\[CHOICE: (.*?)\]/g, '').trim().replace(/\n/g, '<br>');
         },
 
@@ -124,7 +138,6 @@ function aiChat() {
             const text = overrideText || this.userInput;
             if (!text.trim()) return;
 
-            // Clear input if manual
             if (!overrideText) this.userInput = '';
 
             this.messages.push({ role: 'user', content: text });
@@ -146,10 +159,9 @@ function aiChat() {
                 const data = await response.json();
                 this.isTyping = false;
                 
-                // Detect checkout URL
                 const urlMatch = data.reply.match(/https?:\/\/[^\s]+/);
                 if (urlMatch) {
-                    this.messages.push({ role: 'assistant', content: data.reply + '<br><br><strong class="text-green-600 animate-pulse">Redirecting to checkout...</strong>' });
+                    this.messages.push({ role: 'assistant', content: data.reply + '<br><br><strong class="text-primary text-xs uppercase tracking-widest animate-pulse flex items-center gap-2 mt-4"><span class="material-symbols-outlined text-sm">open_in_new</span> Redirecting to secure checkout...</strong>' });
                     this.scrollToBottom();
                     setTimeout(() => {
                         window.location.href = urlMatch[0];
@@ -162,7 +174,7 @@ function aiChat() {
             } catch (e) {
                 console.error(e);
                 this.isTyping = false;
-                this.messages.push({ role: 'assistant', content: '⚽ Sorry, I slipped! Please try again.' });
+                this.messages.push({ role: 'assistant', content: '⚡ Systems overloaded. Please try again in a moment.' });
                 this.scrollToBottom();
             }
         },

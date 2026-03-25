@@ -62,14 +62,15 @@
                     </div>
 
                     <div class="pt-6 border-t border-white/5">
-                        <span class="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-4">Selected Slots</span>
+                        <div class="flex justify-between items-center mb-4">
+                            <span class="text-[10px] font-bold text-gray-500 uppercase tracking-widest block">Selected Duration</span>
+                            <span class="text-[10px] font-bold text-primary uppercase tracking-widest block">{{ \App\Services\SlotMergeService::getDurationText($slots) }}</span>
+                        </div>
                         <div class="space-y-3">
-                            @foreach($pricing as $p)
-                            <div class="flex justify-between items-center p-3 rounded-xl bg-white/5 text-sm">
-                                <span class="font-bold">{{ $p->time_slot }}</span>
-                                <span class="text-primary font-black">₹{{ number_format($p->price) }}</span>
+                            <div class="p-4 rounded-2xl bg-white/5 border border-white/5">
+                                <span class="text-xs font-bold text-gray-400 block mb-1 uppercase tracking-wider">Time Slots</span>
+                                <span class="text-lg font-black text-white italic tracking-tighter">{{ \App\Services\SlotMergeService::mergeSlots($slots) }}</span>
                             </div>
-                            @endforeach
                         </div>
                     </div>
 
