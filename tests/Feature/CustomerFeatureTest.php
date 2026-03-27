@@ -101,7 +101,8 @@ class CustomerFeatureTest extends TestCase
 
         $this->get('/verify-ticket/TKT-PUBLIC-123')
              ->assertStatus(200)
-             ->assertSee('Valid Ticket')
+             ->assertSee('VALID')
+             ->assertSee('TICKET')
              ->assertSee('Test Arena');
     }
 }
