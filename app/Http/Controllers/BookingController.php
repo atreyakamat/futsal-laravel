@@ -16,11 +16,13 @@ class BookingController extends Controller
 {
     protected $whatsappService;
     protected $pricingService;
+    protected $slotService;
 
-    public function __construct(WhatsappService $whatsappService, PricingService $pricingService)
+    public function __construct(WhatsappService $whatsappService, PricingService $pricingService, \App\Services\SlotService $slotService)
     {
         $this->whatsappService = $whatsappService;
         $this->pricingService = $pricingService;
+        $this->slotService = $slotService;
     }
 
     public function checkout(Request $request)
@@ -116,19 +118,13 @@ class BookingController extends Controller
                     ->whereDate('booking_date', $dateOnly)
                     ->delete();
 
-                // Send WhatsApp notification
-                $this->whatsappService->sendBookingConfirmation($bookingRef);
+                // Invalidate availability cache
+                $this->slotService->invalidateAvailabilityCache($arenaId, $dateOnly);
 
-                // Send Email Ticket - pass all bookings to avoid extra query
-                try {
-                    if ($request->customer_email) {
-                        $allBookings = Booking::where('booking_ref', $bookingRef)->with('arena')->get();
-                        \Illuminate\Support\Facades\Mail::to($request->customer_email)
-                            ->send(new \App\Mail\BookingTicket($allBookings));
-                    }
-                } catch (\Exception $e) {
-                    \Illuminate\Support\Facades\Log::error('Failed to send ticket email: ' . $e->getMessage());
-                }
+                // Dispatch notifications after commit
+                \Illuminate\Support\Facades\DB::afterCommit(function () use ($bookingRef, $request) {
+                    \App\Jobs\SendBookingNotificationsJob::dispatch($bookingRef, $request->customer_email);
+                });
             });
         } catch (ValidationException $e) {
             throw $e;

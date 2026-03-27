@@ -42,7 +42,6 @@ class SlotService
      */
     public function lockSlots(int $arenaId, string $date, array $slots, string $sessionId): array
     {
-        $this->cleanExpiredLocks();
         $bookingDate = \Illuminate\Support\Carbon::parse($date)->toDateString();
         $expires = now()->addSeconds(self::SLOT_LOCK_DURATION);
         $locked = [];
@@ -147,16 +146,28 @@ class SlotService
     }
 
     /**
-     * Get confirmed/pending booking slots
+     * Get confirmed/pending booking slots (with caching)
      */
     public function getBookedSlots(int $arenaId, string $date): array
     {
         $bookingDate = Carbon::parse($date)->toDateString();
+        $cacheKey = "arena_{$arenaId}_booked_{$bookingDate}";
 
-        return Booking::where('arena_id', $arenaId)
-            ->whereDate('booking_date', $bookingDate)
-            ->whereIn('payment_status', ['confirmed', 'pending'])
-            ->pluck('time_slot')
-            ->toArray();
+        return \Illuminate\Support\Facades\Cache::remember($cacheKey, 60, function () use ($arenaId, $bookingDate) {
+            return Booking::where('arena_id', $arenaId)
+                ->whereDate('booking_date', $bookingDate)
+                ->whereIn('payment_status', ['confirmed', 'pending'])
+                ->pluck('time_slot')
+                ->toArray();
+        });
+    }
+
+    /**
+     * Invalidate availability cache for an arena and date
+     */
+    public function invalidateAvailabilityCache(int $arenaId, string $date): void
+    {
+        $bookingDate = Carbon::parse($date)->toDateString();
+        \Illuminate\Support\Facades\Cache::forget("arena_{$arenaId}_booked_{$bookingDate}");
     }
 }
