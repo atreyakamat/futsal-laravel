@@ -105,7 +105,7 @@ class BookingController extends Controller
                         'customer_mobile' => $request->customer_mobile,
                         'customer_email' => $request->customer_email,
                         'amount' => $pricing->price,
-                        'payment_status' => 'confirmed',
+                        'payment_status' => 'pending',
                         'payment_method' => 'online',
                         'ticket_number' => 'TKT-' . date('ymd') . '-' . strtoupper(Str::random(4)),
                         'user_id' => auth()->id(),
@@ -117,14 +117,6 @@ class BookingController extends Controller
                     ->where('arena_id', $arenaId)
                     ->whereDate('booking_date', $dateOnly)
                     ->delete();
-
-                // Invalidate availability cache
-                $this->slotService->invalidateAvailabilityCache($arenaId, $dateOnly);
-
-                // Dispatch notifications after commit
-                \Illuminate\Support\Facades\DB::afterCommit(function () use ($bookingRef, $request) {
-                    \App\Jobs\SendBookingNotificationsJob::dispatch($bookingRef, $request->customer_email);
-                });
             });
         } catch (ValidationException $e) {
             throw $e;
@@ -142,6 +134,6 @@ class BookingController extends Controller
             return redirect()->back()->withInput()->with('error', 'Something went wrong. Please try again.');
         }
 
-        return redirect()->route('booking.success', ['ref' => $bookingRef]);
+        return redirect()->route('payment.checkout', ['ref' => $bookingRef]);
     }
 }

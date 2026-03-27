@@ -12,7 +12,7 @@ Route::get('/arena/{slug}', [ArenaController::class, 'show'])->name('arena.show'
 
 // Auth Routes
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-Route::post('/send-otp', [AuthController::class, 'sendOtp'])->name('send-otp');
+Route::post('/send-otp', [AuthController::class, 'sendOtp'])->middleware('throttle:booking')->name('send-otp');
 Route::post('/verify-otp', [AuthController::class, 'verifyOtp'])->name('verify-otp');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
@@ -49,7 +49,12 @@ Route::get('/verify-ticket/{ticket_number}', function ($ticket_number) {
 })->name('ticket.verify.public');
 
 Route::get('/checkout', [BookingController::class, 'checkout'])->name('booking.checkout');
-Route::post('/process-booking', [BookingController::class, 'process'])->name('booking.process');
+Route::post('/process-booking', [BookingController::class, 'process'])->middleware('throttle:booking')->name('booking.process');
+
+// Payment Routes
+Route::get('/payment/checkout/{ref}', [App\Http\Controllers\PaymentController::class, 'checkout'])->name('payment.checkout');
+Route::post('/payment/callback', [App\Http\Controllers\PaymentController::class, 'callback'])->name('payment.callback');
+
 Route::get('/booking/success/{ref}', function ($ref) {
     $bookings = \App\Models\Booking::where('booking_ref', $ref)->with('arena')->get();
     if ($bookings->isEmpty()) {
@@ -84,7 +89,6 @@ Route::middleware(['auth'])->prefix('security')->name('security.')->group(functi
     Route::post('/verify', [App\Http\Controllers\Security\SecurityController::class, 'verify'])->name('verify');
     Route::post('/confirm-entry', [App\Http\Controllers\Security\SecurityController::class, 'confirmEntry'])->name('confirm-entry');
 });
-
 Route::post('/chat', function (Request $request) {
     $globalAiEnabled = \App\Models\Setting::where('key', 'global_ai_enabled')->first()->value ?? 'true';
     if ($globalAiEnabled !== 'true') {
@@ -124,4 +128,4 @@ Route::post('/chat', function (Request $request) {
         \Illuminate\Support\Facades\Log::error('AI Chat Error: ' . $e->getMessage());
         return response()->json(['reply' => '⚽ Sorry, I slipped! Please try again in a moment.'], 500);
     }
-})->name('chat');
+})->middleware('throttle:booking')->name('chat');
