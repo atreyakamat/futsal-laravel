@@ -7,6 +7,8 @@ use App\Models\UserOtp;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
@@ -21,59 +23,69 @@ class AuthController extends Controller
             'identifier' => 'required|string', // email or mobile
         ]);
 
-        $otp = (string) rand(1000, 9999);
+        $otp = (string) rand(100000, 999999);
         $expiresAt = now()->addMinutes(10);
 
         UserOtp::updateOrCreate(
             ['identifier' => $request->identifier],
-            ['otp' => $hash = \Illuminate\Support\Facades\Hash::make($otp), 'expires_at' => $expiresAt]
+            ['otp' => Hash::make($otp), 'expires_at' => $expiresAt]
         );
 
-        // For now, log the OTP for testing
         Log::info("OTP for {$request->identifier}: {$otp}");
 
-        // In production, send via SMS or Email
-        // if (filter_var($request->identifier, FILTER_VALIDATE_EMAIL)) { ... } else { ... }
+        session(['otp_identifier' => $request->identifier]);
 
-        return response()->json(['success' => true, 'message' => 'OTP sent successfully.']);
+        return redirect()->route('verify-otp.show');
+    }
+
+    public function showVerifyOtp()
+    {
+        if (!session('otp_identifier')) {
+            return redirect()->route('login');
+        }
+        return view('auth.verify-otp');
     }
 
     public function verifyOtp(Request $request)
     {
         $request->validate([
             'identifier' => 'required|string',
-            'otp' => 'required|string|size:4',
+            'otp' => 'required|string|size:6',
         ]);
 
         $userOtp = UserOtp::where('identifier', $request->identifier)->first();
 
-        if (!$userOtp || $userOtp->isExpired() || !\Illuminate\Support\Facades\Hash::check($request->otp, $userOtp->otp)) {
-            return response()->json(['success' => false, 'message' => 'Invalid or expired OTP.'], 422);
+        if (!$userOtp || $userOtp->isExpired() || !Hash::check($request->otp, $userOtp->otp)) {
+            return back()->withErrors(['otp' => 'Invalid or expired OTP.']);
         }
 
-        // Find or create user
+        // Check if user exists
         $user = User::where('email', $request->identifier)
-                    ->orWhere('name', $request->identifier) // Assuming name could be mobile for now
+                    ->orWhere('customer_mobile', $request->identifier) 
                     ->first();
 
-        if (!$user) {
-            $user = User::create([
-                'name' => $request->identifier,
-                'email' => filter_var($request->identifier, FILTER_VALIDATE_EMAIL) ? $request->identifier : $request->identifier . '@futsalgoa.com',
-                'password' => \Illuminate\Support\Facades\Hash::make(\Illuminate\Support\Str::random(16)),
-                'role' => 'user'
+        if ($user) {
+            Auth::login($user);
+            $userOtp->delete();
+            session()->forget('otp_identifier');
+            return redirect()->route('home');
+        } else {
+            // User doesn't exist yet - set "Guest Session"
+            // They will only be created in DB after first booking
+            session([
+                'guest_authenticated' => true,
+                'guest_identifier' => $request->identifier,
             ]);
+            $userOtp->delete();
+            session()->forget('otp_identifier');
+            return redirect()->route('home');
         }
-
-        Auth::login($user);
-        $userOtp->delete();
-
-        return response()->json(['success' => true, 'redirect' => route('home')]);
     }
 
     public function logout()
     {
         Auth::logout();
+        session()->flush();
         return redirect()->route('home');
     }
 }

@@ -12,12 +12,17 @@ Route::get('/arena/{slug}', [ArenaController::class, 'show'])->name('arena.show'
 
 // Auth Routes
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
+Route::get('/verify-otp', [AuthController::class, 'showVerifyOtp'])->name('verify-otp.show');
 Route::post('/send-otp', [AuthController::class, 'sendOtp'])->middleware('throttle:booking')->name('send-otp');
 Route::post('/verify-otp', [AuthController::class, 'verifyOtp'])->name('verify-otp');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // User Dashboard
 Route::middleware(['auth'])->group(function () {
+    Route::get('/dashboard', function () {
+        return view('user.dashboard');
+    })->name('dashboard');
+
     Route::get('/my-bookings', function () {
         $bookings = \App\Models\Booking::where('user_id', auth()->id())
             ->with('arena')
