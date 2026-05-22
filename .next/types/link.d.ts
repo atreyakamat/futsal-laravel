@@ -40,6 +40,7 @@ declare namespace __next_route_internal_types__ {
     | `/api/auth/verify-otp`
     | `/api/bookings/process`
     | `/api/chat`
+    | `/api/health`
     | `/api/payment/callback`
     | `/api/security/confirm-entry`
     | `/api/slots/lock`
