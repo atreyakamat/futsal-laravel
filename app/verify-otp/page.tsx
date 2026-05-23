@@ -12,7 +12,7 @@ export default async function VerifyOtpPage({ searchParams }: Props) {
       <section className="hero-card">
         <span className="pill">OTP verification</span>
         <h1 className="display">Enter the 6-digit code</h1>
-        <p className="meta">The OTP is stored in MySQL for 10 minutes, matching the original Laravel behavior.</p>
+        <p className="meta">The OTP is stored in PostgreSQL for 10 minutes, matching the original Laravel behavior.</p>
 
         {hasError ? <div className="notice error">Invalid or expired OTP. Try again.</div> : null}
 

@@ -26,7 +26,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <header className="topbar">
             <a className="brand" href="/">
               <strong>FutsalGoa</strong>
-              <span className="meta">Next.js migration on MySQL</span>
+              <span className="meta">Next.js migration on PostgreSQL</span>
             </a>
             <nav className="actions">
               <a className="button-secondary" href="/login">

@@ -38,7 +38,7 @@ export default async function ArenaPage({ params, searchParams }: Props) {
       <section className="hero-card">
         <span className="pill">Arena detail</span>
         <h1 className="display">{arena.name}</h1>
-        <p className="meta">{arena.description ?? 'Arena details loaded from MySQL.'}</p>
+        <p className="meta">{arena.description ?? 'Arena details loaded from PostgreSQL.'}</p>
         <p className="meta">{arena.address ?? 'No address provided'}</p>
       </section>
 

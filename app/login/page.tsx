@@ -5,7 +5,7 @@ export default function LoginPage() {
         <span className="pill">OTP authentication</span>
         <h1 className="display">Login with your mobile or email</h1>
         <p className="meta">
-          The OTP flow writes to MySQL and returns you to the verification step with a short-lived code.
+          The OTP flow writes to PostgreSQL and returns you to the verification step with a short-lived code.
         </p>
 
         <form className="form" action="/api/auth/send-otp" method="post">
