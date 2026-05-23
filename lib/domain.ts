@@ -1,10 +1,7 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
-import type { PoolConnection } from 'mysql2/promise';
 import { query, queryOne, transaction } from '@/lib/db';
 import type { ArenaSummary, BookingRow, PricingRow, SlotLockRow } from '@/lib/types';
-
-type QueryRunner = Pick<PoolConnection, 'execute'>;
 
 export async function getActiveArenas(): Promise<ArenaSummary[]> {
   const rows = await query<{
@@ -164,7 +161,7 @@ export async function lockSlots(arenaId: number, bookingDate: string, slots: str
         [arenaId, bookingDate, slot]
       );
 
-      const existingLock = (existingRows as SlotLockRow[])[0];
+      const existingLock = (existingRows as unknown as SlotLockRow[])[0];
       if (existingLock && existingLock.session_id !== sessionId && new Date(existingLock.expires_at) > new Date()) {
         failed.push(slot);
         continue;
@@ -257,7 +254,7 @@ export async function createBookingBatch(params: {
           ticket_number, booking_ref, arena_id, user_id, booking_date, time_slot,
           customer_name, customer_mobile, customer_email, amount, payment_status,
           payment_method, notes, checked_in, is_free_booking, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'online', NULL, 0, 0, NOW(), NOW())`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'online', NULL, FALSE, FALSE, NOW(), NOW())`,
         [
           ticketNumber,
           bookingRef,
@@ -314,7 +311,7 @@ export async function markPaymentFailed(bookingRef: string) {
 }
 
 export async function getSetting(key: string) {
-  return queryOne<{ key: string; value: string | null }>('SELECT `key`, value FROM settings WHERE `key` = ? LIMIT 1', [key]);
+  return queryOne<{ key: string; value: string | null }>('SELECT "key", value FROM settings WHERE "key" = ? LIMIT 1', [key]);
 }
 
 export async function getBooleanSetting(key: string, defaultValue = true) {
@@ -331,8 +328,9 @@ export async function storeOtp(identifier: string, otp: string) {
 
   await query(
     `INSERT INTO user_otps (identifier, otp, expires_at, created_at, updated_at)
-     VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 10 MINUTE), NOW(), NOW())
-     ON DUPLICATE KEY UPDATE otp = VALUES(otp), expires_at = VALUES(expires_at), updated_at = NOW()`,
+     VALUES (?, ?, NOW() + INTERVAL '10 minutes', NOW(), NOW())
+     ON CONFLICT (identifier)
+     DO UPDATE SET otp = EXCLUDED.otp, expires_at = EXCLUDED.expires_at, updated_at = NOW()`,
     [identifier, hashedOtp]
   );
 }
@@ -383,7 +381,7 @@ export async function confirmEntryByTicket(ticketNumber: string, checkedInByUser
 
   await query(
     `UPDATE bookings
-        SET checked_in = 1, checked_in_at = NOW(), checked_in_by = ?, updated_at = NOW()
+        SET checked_in = TRUE, checked_in_at = NOW(), checked_in_by = ?, updated_at = NOW()
       WHERE ticket_number = ?`,
     [checkedInByUserId, ticketNumber]
   );

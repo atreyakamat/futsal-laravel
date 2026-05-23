@@ -36,7 +36,7 @@ export default async function HomePage() {
     <main>
       <section className="hero">
         <div className="hero-card">
-          <span className="pill">MySQL-backed booking platform</span>
+          <span className="pill">PostgreSQL-backed booking platform</span>
           <h1 className="display">Book a futsal slot without the Laravel stack.</h1>
           <p>
             This migration keeps the booking, OTP, slot locking, payment callback, ticket,
@@ -78,7 +78,7 @@ export default async function HomePage() {
               {arena.name}
             </h3>
             <p className="meta" style={{ minHeight: 72 }}>
-              {arena.description ?? 'Arena details are managed from MySQL and rendered here in Next.js.'}
+              {arena.description ?? 'Arena details are managed from PostgreSQL and rendered here in Next.js.'}
             </p>
             <div className="actions">
               <a className="button-secondary" href={`/arena/${arena.slug}`}>
@@ -88,7 +88,7 @@ export default async function HomePage() {
           </article>
         ))}
         {arenas.length === 0 ? (
-          <div className="arena-card">No active arenas were found in MySQL.</div>
+          <div className="arena-card">No active arenas were found in PostgreSQL.</div>
         ) : null}
       </div>
     </main>

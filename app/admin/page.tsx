@@ -12,7 +12,7 @@ export default async function AdminPage() {
     <main className="grid">
       <section className="hero-card">
         <span className="pill">Admin overview</span>
-        <h1 className="display">MySQL-backed control center</h1>
+        <h1 className="display">PostgreSQL-backed control center</h1>
         <p className="meta">This replaces the Filament surface with a Next.js admin entry point.</p>
       </section>
 

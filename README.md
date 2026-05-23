@@ -1,89 +1,75 @@
-# Futsal Goa - Arena Booking System
+# Futsal Booking Platform (Next.js + PostgreSQL)
 
-A modern Futsal arena booking and management system built with Laravel, Filament, and AI integration.
+Next.js 15 application for futsal arena booking with OTP auth, slot locking, payment callback handling, ticket verification, and admin/security views.
 
-## ⚽ Features
+## Stack
 
-### For Users
-- **AI Booking Assistant:** Interactive AI chat to find available slots and book arenas using natural language.
-- **Arena Discovery:** Browse available arenas with detailed images, descriptions, and Google Maps integration.
-- **Real-time Slot Locking:** Prevents double-booking by locking slots during the checkout process.
-- **OTP Authentication:** Secure and simple login via mobile/email OTP.
-- **Digital Tickets:** Automatic PDF ticket generation with QR codes for easy entry verification.
-- **My Bookings:** User dashboard to view and manage past and upcoming reservations.
+- Next.js 15 (App Router)
+- TypeScript
+- PostgreSQL
+- Prisma (schema and client generation)
+- Docker + Docker Compose for deployment
 
-### For Arena Owners & Admins
-- **Filament Admin Panel:** Comprehensive dashboard for managing arenas, pricing, and availability.
-- **Approval Workflow:** Manual approval system for specific booking types or free slots.
-- **Security Portal:** Dedicated mobile-friendly interface for security guards to scan and verify tickets at the venue.
-- **Pricing Management:** Dynamic pricing based on time slots and peak hours.
-- **WhatsApp Integration:** Automated notifications for booking confirmations and reminders via AISENSY.
+## Local Development
 
-### For Developers
-- **AI-First Architecture:** Integrated with OpenRouter/OpenAI for intelligent booking assistance.
-- **Modular Services:** Clean separation of logic for payments, slot management, and notifications.
-- **RESTful API:** Internal APIs for real-time slot status and lock management.
+1. Install dependencies:
 
-## 🛠 Tech Stack
+```bash
+npm install
+```
 
-- **Framework:** [Laravel 12](https://laravel.com)
-- **Admin UI:** [Filament v3](https://filamentphp.com)
-- **Frontend:** Vite, Tailwind CSS, Alpine.js
-- **Database:** SQLite (default) / MySQL / PostgreSQL
-- **AI Provider:** OpenRouter (supporting GPT-4o-mini and others)
-- **PDF Generation:** Laravel DomPDF
-- **Notifications:** AISENSY (WhatsApp), AWS SES (Email)
+2. Configure environment:
 
-## 🚀 Getting Started
+```bash
+cp .env.example .env
+```
 
-### Prerequisites
-- PHP 8.2+
-- Composer
-- Node.js & NPM
-- SQLite (or your preferred DB)
+3. Set `DATABASE_URL` in `.env` (PostgreSQL):
 
-### Installation
+```bash
+DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/futsal_laravel?schema=public
+```
 
-1. **Clone the repository:**
-   ```bash
-   git clone <repository-url>
-   cd futsal-laravel
-   ```
+4. Sync Prisma schema and generate client:
 
-2. **Install dependencies:**
-   ```bash
-   composer install
-   npm install
-   ```
+```bash
+npm run db:pull
+npm run db:generate
+```
 
-3. **Environment Setup:**
-   ```bash
-   cp .env.example .env
-   php artisan key:generate
-   ```
-   *Configure your AI, WhatsApp, and Email credentials in the `.env` file.*
+5. Start development server:
 
-4. **Database & Assets:**
-   ```bash
-   touch database/database.sqlite
-   php artisan migrate --seed
-   npm run build
-   ```
+```bash
+npm run dev
+```
 
-5. **Start the application:**
-   ```bash
-   php artisan serve
-   ```
+## Docker Deployment
 
-## 📖 Documentation
+Run application and PostgreSQL together:
 
-- [Deployment Guide](DEPLOYMENT.md) - Detailed production setup instructions.
-- [API Documentation](API_DOCUMENTATION.md) - Details on internal and external endpoints.
+```bash
+docker compose up --build -d
+```
 
-## 🛡 Security & Verification
+Services:
 
-The system includes a public verification endpoint at `/verify-ticket/{ticket_number}` and a restricted security portal at `/security/scan` for venue-side verification.
+- App: http://localhost:3000
+- PostgreSQL: `localhost:5432`
 
-## 📝 License
+Stop services:
 
-This project is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+```bash
+docker compose down
+```
+
+Remove services and database volume:
+
+```bash
+docker compose down -v
+```
+
+## Build Verification
+
+```bash
+npm run build
+```
