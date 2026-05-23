@@ -3,20 +3,22 @@
 
 BEGIN;
 
-INSERT INTO users (id, name, phone, email, created_at, updated_at)
-VALUES ('11111111-1111-1111-1111-111111111111', 'Demo User', '+10000000000', 'demo@example.com', now(), now())
-ON CONFLICT (id) DO NOTHING;
+INSERT INTO arenas (name, slug, address, description, status, bot_enabled, created_at, updated_at)
+VALUES ('Angle Futsal', 'angle-futsal', 'Sample Address', 'Starter arena created for first-run environments.', 'active', FALSE, NOW(), NOW())
+ON CONFLICT (slug) DO NOTHING;
 
-INSERT INTO pricings (id, arena_id, description, price_cents, duration_minutes, created_at, updated_at)
-VALUES (
-  '22222222-2222-2222-2222-222222222222',
-  (SELECT id FROM arenas ORDER BY created_at LIMIT 1),
-  'Standard 60min', 5000, 60, now(), now()
-)
-ON CONFLICT (id) DO NOTHING;
+INSERT INTO users (name, email, password, customer_mobile, created_at, updated_at)
+VALUES ('Angle Futsal Guest', 'demo@example.com', '$2a$10$NDRVkc0jgROSDrWdYjA8T.JX51bQVpnCxtjnhOSzsnp4sS5DHOEKu', '+10000000000', now(), now())
+ON CONFLICT (email) DO NOTHING;
+
+INSERT INTO pricings (arena_id, time_slot, price, day_of_week, created_at, updated_at)
+VALUES
+  ((SELECT id FROM arenas WHERE slug = 'angle-futsal' LIMIT 1), '18:00-19:00', 5000, 1, now(), now()),
+  ((SELECT id FROM arenas WHERE slug = 'angle-futsal' LIMIT 1), '19:00-20:00', 6500, 2, now(), now())
+ON CONFLICT (arena_id, time_slot, day_of_week) DO NOTHING;
 
 INSERT INTO settings (key, value, created_at, updated_at)
-VALUES ('site.name','Futsal Demo', now(), now())
+VALUES ('site.name','Angle Futsal', now(), now())
 ON CONFLICT (key) DO NOTHING;
 
 COMMIT;
