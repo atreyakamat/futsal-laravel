@@ -27,7 +27,11 @@ COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/docker ./docker
+COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/entrypoint.sh ./
 
 USER nextjs
 EXPOSE 3000
-CMD ["node", "server.js"]
+RUN chmod +x ./entrypoint.sh || true
+ENTRYPOINT ["sh", "./entrypoint.sh"]
