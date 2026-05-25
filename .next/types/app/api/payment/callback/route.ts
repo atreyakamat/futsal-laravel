@@ -1,4 +1,4 @@
-// File: C:\Projects\futsal-laravel\app\api\payment\callback\route.ts
+// File: C:\22co06_project\futsal-laravel\app\api\payment\callback\route.ts
 import * as entry from '../../../../../../app/api/payment/callback/route.js'
 import type { NextRequest } from 'next/server.js'
 

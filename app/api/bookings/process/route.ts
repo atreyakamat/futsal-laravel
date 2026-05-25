@@ -67,6 +67,15 @@ export async function POST(request: Request) {
       })
     : NextResponse.redirect(new URL(`/payment/checkout/${result.bookingRef}`, request.url));
 
+  if (result.userId) {
+    response.cookies.set(AUTH_COOKIE, String(result.userId), {
+      httpOnly: true,
+      sameSite: 'lax',
+      path: '/',
+    });
+    response.cookies.delete('fg_guest_identifier');
+  }
+
   response.cookies.set('fg_last_booking_ref', result.bookingRef, {
     httpOnly: true,
     sameSite: 'lax',

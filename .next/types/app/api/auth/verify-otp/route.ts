@@ -1,4 +1,4 @@
-// File: C:\Projects\futsal-laravel\app\api\auth\verify-otp\route.ts
+// File: C:\22co06_project\futsal-laravel\app\api\auth\verify-otp\route.ts
 import * as entry from '../../../../../../app/api/auth/verify-otp/route.js'
 import type { NextRequest } from 'next/server.js'
 

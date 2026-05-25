@@ -8,7 +8,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5432:5432"
+      - "5434:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -32,15 +32,11 @@ services:
       PAYU_MERCHANT_KEY: ${PAYU_MERCHANT_KEY:-}
       PAYU_SALT: ${PAYU_SALT:-}
       PAYU_BASE_URL: ${PAYU_BASE_URL:-https://test.payu.in}
-      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3333}
     ports:
-      - "3000:3000"
+      - "3333:3000"
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "node --input-type=module -e \"const res = await fetch('http://127.0.0.1:3000/api/health'); process.exit(res.ok ? 0 : 1)\"",
-        ]
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:3000/api/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 12

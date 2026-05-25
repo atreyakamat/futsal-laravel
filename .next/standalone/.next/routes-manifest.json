@@ -88,6 +88,12 @@
       "namedRegex": "^/admin(?:/)?$"
     },
     {
+      "page": "/booking/checkout",
+      "regex": "^/booking/checkout(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/booking/checkout(?:/)?$"
+    },
+    {
       "page": "/dashboard",
       "regex": "^/dashboard(?:/)?$",
       "routeKeys": {},

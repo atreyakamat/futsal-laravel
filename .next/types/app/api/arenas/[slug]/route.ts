@@ -1,4 +1,4 @@
-// File: C:\Projects\futsal-laravel\app\api\arenas\[slug]\route.ts
+// File: C:\22co06_project\futsal-laravel\app\api\arenas\[slug]\route.ts
 import * as entry from '../../../../../../app/api/arenas/[slug]/route.js'
 import type { NextRequest } from 'next/server.js'
 

@@ -1,57 +1,67 @@
 import { getBookingsByRef } from '@/lib/domain';
-import { generatePayuHash, getPayuConfig } from '@/lib/payment';
+import { getPayuConfig, generatePayuHash } from '@/lib/payment';
+import { readRequestOrigin } from '@/lib/session';
+import { redirect } from 'next/navigation';
 
 type Props = {
   params: Promise<{ ref: string }>;
 };
 
-export const dynamic = 'force-dynamic';
-
 export default async function PaymentCheckoutPage({ params }: Props) {
-  const { ref } = await params;
-  const bookings = await getBookingsByRef(ref);
+  const { ref: bookingRef } = await params;
+  const bookings = await getBookingsByRef(bookingRef);
 
   if (bookings.length === 0) {
-    return <main className="arena-card">Booking not found.</main>;
+    redirect('/');
   }
 
   const firstBooking = bookings[0];
-  const totalAmount = bookings.reduce((sum, booking) => sum + Number(booking.amount), 0).toFixed(2);
-  const paramsForHash = {
-    txnid: ref,
-    amount: totalAmount,
-    productinfo: `Futsal Arena Booking: ${ref}`,
+  const totalAmount = bookings.reduce((sum, b) => sum + Number(b.amount), 0);
+  const origin = await readRequestOrigin();
+
+  const payuParams = {
+    txnid: bookingRef,
+    amount: totalAmount.toFixed(2),
+    productinfo: `Futsal Arena Booking: ${bookingRef}`,
     firstname: firstBooking.customer_name,
-    email: firstBooking.customer_email ?? 'no-email@futsalgoa.com',
+    email: firstBooking.customer_email || 'no-email@futsalgoa.com',
+    phone: firstBooking.customer_mobile,
+    surl: `${origin}/api/payment/callback`,
+    furl: `${origin}/api/payment/callback`,
   };
-  const { merchantKey, payuUrl } = getPayuConfig();
-  const hash = generatePayuHash(paramsForHash);
+
+  const hash = generatePayuHash(payuParams);
+  const { payuUrl, merchantKey } = getPayuConfig();
 
   return (
-    <main className="grid" style={{ maxWidth: 760, margin: '0 auto' }}>
-      <section className="hero-card">
-        <span className="pill">PayU checkout</span>
-        <h1 className="display">Confirm payment for {ref}</h1>
-        <p className="meta">Amount Rs. {totalAmount}</p>
-      </section>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-dark text-white px-6 text-center">
+      <div className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-8" />
+      <h1 className="text-3xl font-black uppercase tracking-tighter italic mb-4">
+        REDIRECTING TO <span className="text-primary">PAYMENT</span>
+      </h1>
+      <p className="text-gray-500 text-sm font-bold uppercase tracking-widest max-w-xs mx-auto">
+        Please wait while we connect you to our secure payment gateway. Do not refresh or close this window.
+      </p>
 
-      <section className="form-card">
-        <form action={payuUrl} method="post">
-          <input type="hidden" name="key" value={merchantKey} />
-          <input type="hidden" name="txnid" value={paramsForHash.txnid} />
-          <input type="hidden" name="amount" value={paramsForHash.amount} />
-          <input type="hidden" name="productinfo" value={paramsForHash.productinfo} />
-          <input type="hidden" name="firstname" value={paramsForHash.firstname} />
-          <input type="hidden" name="email" value={paramsForHash.email} />
-          <input type="hidden" name="hash" value={hash} />
-          <input type="hidden" name="surl" value={`${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}/api/payment/callback`} />
-          <input type="hidden" name="furl" value={`${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}/api/payment/callback`} />
+      <form action={payuUrl} method="post" id="payu-form" className="hidden">
+        <input type="hidden" name="key" value={merchantKey} />
+        <input type="hidden" name="hash" value={hash} />
+        <input type="hidden" name="txnid" value={payuParams.txnid} />
+        <input type="hidden" name="amount" value={payuParams.amount} />
+        <input type="hidden" name="firstname" value={payuParams.firstname} />
+        <input type="hidden" name="email" value={payuParams.email} />
+        <input type="hidden" name="phone" value={payuParams.phone} />
+        <input type="hidden" name="productinfo" value={payuParams.productinfo} />
+        <input type="hidden" name="surl" value={payuParams.surl} />
+        <input type="hidden" name="furl" value={payuParams.furl} />
+        <input type="hidden" name="service_provider" value="payu_paisa" />
+      </form>
 
-          <button className="button" type="submit">
-            Continue to PayU
-          </button>
-        </form>
-      </section>
-    </main>
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `document.getElementById('payu-form').submit();`,
+        }}
+      />
+    </div>
   );
 }

@@ -46,6 +46,7 @@ declare namespace __next_route_internal_types__ {
     | `/api/slots/lock`
     | `/api/slots/status`
     | `/api/slots/unlock`
+    | `/booking/checkout`
     | `/dashboard`
     | `/login`
     | `/security/scan`

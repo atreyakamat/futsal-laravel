@@ -1,47 +1,64 @@
 import type { Metadata } from 'next';
-import { Space_Grotesk, IBM_Plex_Sans } from 'next/font/google';
+import { Space_Grotesk } from 'next/font/google';
 import './globals.css';
+import Link from 'next/link';
+import { readAuthUserId } from '@/lib/session';
 
-const displayFont = Space_Grotesk({
+const spaceGrotesk = Space_Grotesk({
   subsets: ['latin'],
-  variable: '--font-display',
-});
-
-const bodyFont = IBM_Plex_Sans({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-body',
+  variable: '--font-sans',
 });
 
 export const metadata: Metadata = {
-  title: 'FutsalGoa',
-  description: 'Arena booking, payments, tickets, and security verification.',
+  title: 'FutsalGoa | Premium Booking',
+  description: 'Experience the future of futsal in Goa. Premium turfs, AI-powered booking.',
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const userId = await readAuthUserId();
+
   return (
-    <html lang="en" className={`${displayFont.variable} ${bodyFont.variable}`}>
-      <body>
-        <div className="shell">
-          <header className="topbar">
-            <a className="brand" href="/">
-              <strong>FutsalGoa</strong>
-              <span className="meta">Next.js migration on PostgreSQL</span>
-            </a>
-            <nav className="actions">
-              <a className="button-secondary" href="/login">
-                Login
-              </a>
-              <a className="button-secondary" href="/security/scan">
-                Security
-              </a>
-              <a className="button-secondary" href="/admin">
-                Admin
-              </a>
-            </nav>
-          </header>
-          {children}
-        </div>
+    <html lang="en" className={`${spaceGrotesk.variable} scroll-smooth`}>
+      <head>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+      </head>
+      <body className="antialiased">
+        <div className="noise" />
+        
+        <nav className="border-b border-white/5 py-4 sticky top-0 z-50 glass">
+          <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
+            <Link href="/" className="text-2xl font-black text-primary italic tracking-tighter">
+              FUTSAL<span className="text-white">GOA</span>
+            </Link>
+            
+            <div className="flex gap-4 md:gap-8 items-center">
+              {userId ? (
+                <>
+                  <Link href="/dashboard" className="text-[10px] font-bold tracking-widest text-gray-400 hover:text-primary transition-colors uppercase">
+                    MY BOOKINGS
+                  </Link>
+                  <form action="/api/auth/logout" method="POST" className="inline">
+                    <button type="submit" className="px-5 py-2 glass rounded-full text-[10px] font-bold tracking-widest hover:bg-red-500/20 hover:text-red-500 hover:border-red-500/50 transition-all uppercase cursor-pointer">
+                      LOGOUT
+                    </button>
+                  </form>
+                </>
+              ) : (
+                <Link href="/login" className="px-5 py-2 glass rounded-full text-[10px] font-bold tracking-widest hover:bg-primary hover:text-black transition-all uppercase">
+                  LOGIN
+                </Link>
+              )}
+            </div>
+          </div>
+        </nav>
+
+        <main>{children}</main>
+
+        <footer className="py-10 border-t border-white/10 mt-20 bg-black/50">
+          <div className="max-w-6xl mx-auto px-6 text-center">
+            <p className="text-gray-500 text-sm">© {new Date().getFullYear()} Futsal Booking Platform. All rights reserved.</p>
+          </div>
+        </footer>
       </body>
     </html>
   );

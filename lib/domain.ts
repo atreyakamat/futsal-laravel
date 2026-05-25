@@ -225,8 +225,30 @@ export async function createBookingBatch(params: {
   const bookings = await getArenaPricing(params.arenaId);
   const priceBySlot = new Map(bookings.map((row) => [row.time_slot, Number(row.price)]));
   const created: Array<{ booking_ref: string; ticket_number: string; time_slot: string; amount: number }> = [];
+  let effectiveUserId = params.userId;
 
   await transaction(async (connection) => {
+    // JIT User Creation: If no userId, find or create
+    if (!effectiveUserId) {
+      const [userRows] = await connection.execute(
+        `SELECT id FROM users WHERE customer_mobile = ? OR email = ? LIMIT 1`,
+        [params.customerMobile, params.customerEmail || 'no-email@futsalgoa.com']
+      );
+      
+      const existingUser = (userRows as any[])[0];
+      if (existingUser) {
+        effectiveUserId = existingUser.id;
+      } else {
+        const [newUserRows] = await connection.execute(
+          `INSERT INTO users (name, email, customer_mobile, role, created_at, updated_at)
+           VALUES (?, ?, ?, 'customer', NOW(), NOW())
+           RETURNING id`,
+          [params.customerName, params.customerEmail || `user-${crypto.randomUUID().slice(0, 8)}@futsalgoa.com`, params.customerMobile]
+        );
+        effectiveUserId = (newUserRows as any[])[0].id;
+      }
+    }
+
     for (const slot of params.slots) {
       const slotPrice = priceBySlot.get(slot);
       if (slotPrice == null) {
@@ -259,7 +281,7 @@ export async function createBookingBatch(params: {
           ticketNumber,
           bookingRef,
           params.arenaId,
-          params.userId,
+          effectiveUserId,
           params.bookingDate,
           slot,
           params.customerName,
@@ -284,7 +306,7 @@ export async function createBookingBatch(params: {
     ]);
   });
 
-  return { bookingRef, created };
+  return { bookingRef, created, userId: effectiveUserId };
 }
 
 export async function confirmPayment(bookingRef: string, mihpayid: string | null) {
