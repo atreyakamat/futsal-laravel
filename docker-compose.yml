@@ -11,12 +11,6 @@ services:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/futsal_laravel?schema=public
     depends_on:
       - postgres
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://127.0.0.1:3000/api/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 30s
 
   postgres:
     image: postgres:16-alpine
