@@ -1,4 +1,4 @@
-// File: C:\22co06_project\futsal-laravel\app\security\verify\page.tsx
+// File: C:\Projects\futsal-laravel\app\security\verify\page.tsx
 import * as entry from '../../../../../app/security/verify/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

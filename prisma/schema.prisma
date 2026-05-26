@@ -10,39 +10,133 @@ datasource db {
 }
 
 model User {
-  id              Int       @id @default(autoincrement())
-  name            String
-  email           String    @unique
+  id                Int       @id @default(autoincrement())
+  name              String
+  email             String    @unique
   email_verified_at DateTime?
-  password        String
-  remember_token  String?
-  created_at      DateTime  @default(now())
-  updated_at      DateTime  @updatedAt
+  password          String?
+  customer_mobile   String?
+  role              String    @default("customer")
+  remember_token    String?
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
 
   @@map("users")
+  @@index([role])
+  @@index([email])
 }
 
 model Arena {
-  id          Int      @id @default(autoincrement())
-  name        String
-  slug        String   @unique
-  location    String?
-  gmaps_link  String?
-  bot_enabled Boolean  @default(false)
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  id              Int       @id @default(autoincrement())
+  name            String
+  slug            String    @unique
+  address         String?
+  description     String?
+  cover_image     String?
+  logo_url        String?
+  contact_email   String?
+  contact_phone   String?
+  status          String    @default("active")
+  bot_enabled     Boolean   @default(false)
+  gmaps_link      String?
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
 
   @@map("arenas")
+  @@index([status])
 }
 
 model Booking {
-  id            Int      @id @default(autoincrement())
-  user_id       Int
-  arena_id      Int
-  status        String   @default("pending")
-  total_amount  Decimal  @db.Decimal(10, 2)
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  id                Int      @id @default(autoincrement())
+  ticket_number     String   @unique
+  booking_ref       String   @index
+  user_id           Int
+  arena_id          Int
+  booking_date      String
+  time_slot         String
+  customer_name     String
+  customer_mobile   String
+  customer_email    String?
+  amount            Decimal  @db.Decimal(10, 2)
+  payment_status    String   @default("pending")
+  payment_method    String?
+  payu_mihpayid     String?
+  notes             String?
+  checked_in        Boolean  @default(false)
+  checked_in_at     DateTime?
+  checked_in_by     Int?
+  is_free_booking   Boolean  @default(false)
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
 
   @@map("bookings")
+  @@index([booking_ref])
+  @@index([ticket_number])
+  @@index([user_id])
+  @@index([arena_id])
+  @@index([payment_status])
+}
+
+model Pricing {
+  id        Int      @id @default(autoincrement())
+  arena_id  Int
+  time_slot String
+  price     Decimal  @db.Decimal(10, 2)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("pricings")
+  @@unique([arena_id, time_slot])
+  @@index([arena_id])
+}
+
+model SlotLock {
+  id          Int      @id @default(autoincrement())
+  arena_id    Int
+  booking_date String
+  time_slot   String
+  session_id  String
+  locked_at   DateTime @default(now())
+  expires_at  DateTime
+  created_at  DateTime @default(now())
+
+  @@map("slot_locks")
+  @@index([arena_id])
+  @@index([session_id])
+  @@index([expires_at])
+}
+
+model UserOtp {
+  id          Int      @id @default(autoincrement())
+  identifier  String   @unique
+  otp         String
+  expires_at  DateTime
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@map("user_otps")
+  @@index([identifier])
+}
+
+model Setting {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique
+  value     String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("settings")
+}
+
+model ArenaManager {
+  id        Int      @id @default(autoincrement())
+  user_id   Int      @unique
+  arena_id  Int
+  role      String   @default("manager")
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("arena_managers")
+  @@index([user_id])
+  @@index([arena_id])
 }

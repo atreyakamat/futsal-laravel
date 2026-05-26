@@ -1,4 +1,4 @@
-// File: C:\22co06_project\futsal-laravel\app\api\security\confirm-entry\route.ts
+// File: C:\Projects\futsal-laravel\app\api\security\confirm-entry\route.ts
 import * as entry from '../../../../../../app/api/security/confirm-entry/route.js'
 import type { NextRequest } from 'next/server.js'
 

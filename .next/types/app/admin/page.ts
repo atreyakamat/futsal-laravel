@@ -1,4 +1,4 @@
-// File: C:\22co06_project\futsal-laravel\app\admin\page.tsx
+// File: C:\Projects\futsal-laravel\app\admin\page.tsx
 import * as entry from '../../../../app/admin/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

@@ -105,7 +105,7 @@
         "transform": "lodash/{{member}}"
       }
     },
-    "outputFileTracingRoot": "C:\\22co06_project\\futsal-laravel",
+    "outputFileTracingRoot": "C:\\Projects\\futsal-laravel",
     "experimental": {
       "useSkewCookie": false,
       "cacheLife": {
@@ -164,7 +164,7 @@
       "middlewarePrefetch": "flexible",
       "optimisticClientCache": true,
       "manualClientBasePath": false,
-      "cpus": 19,
+      "cpus": 15,
       "memoryBasedWorkersCount": false,
       "imgOptConcurrency": null,
       "imgOptTimeoutInSeconds": 7,
@@ -295,10 +295,10 @@
     "bundlePagesRouterDependencies": false,
     "configFileName": "next.config.mjs",
     "turbopack": {
-      "root": "C:\\22co06_project\\futsal-laravel"
+      "root": "C:\\Projects\\futsal-laravel"
     }
   },
-  "appDir": "C:\\22co06_project\\futsal-laravel",
+  "appDir": "C:\\Projects\\futsal-laravel",
   "relativeAppDir": "",
   "files": [
     ".next\\routes-manifest.json",

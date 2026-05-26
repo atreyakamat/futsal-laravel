@@ -1,4 +1,4 @@
-// File: C:\22co06_project\futsal-laravel\app\booking\success\[ref]\page.tsx
+// File: C:\Projects\futsal-laravel\app\booking\success\[ref]\page.tsx
 import * as entry from '../../../../../../app/booking/success/[ref]/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

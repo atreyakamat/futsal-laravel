@@ -1,4 +1,4 @@
-// File: C:\22co06_project\futsal-laravel\app\api\auth\logout\route.ts
+// File: C:\Projects\futsal-laravel\app\api\auth\logout\route.ts
 import * as entry from '../../../../../../app/api/auth/logout/route.js'
 import type { NextRequest } from 'next/server.js'
 

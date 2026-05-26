@@ -34,8 +34,19 @@ declare namespace __next_route_internal_types__ {
   type StaticRoutes = 
     | `/`
     | `/admin`
+    | `/admin/arenas`
+    | `/admin/arenas/create`
+    | `/admin/bookings`
+    | `/admin/dashboard`
+    | `/admin/login`
+    | `/admin/reports`
+    | `/admin/security`
+    | `/admin/settings`
+    | `/admin/users`
     | `/api/admin/arenas`
     | `/api/arenas`
+    | `/api/auth/admin/send-otp`
+    | `/api/auth/admin/verify-otp`
     | `/api/auth/logout`
     | `/api/auth/send-otp`
     | `/api/auth/verify-otp`

@@ -1,10 +1,14 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
-import { query, queryOne, transaction } from '@/lib/db';
+import { query as dbQuery, queryOne, transaction } from '@/lib/db';
 import type { ArenaSummary, BookingRow, PricingRow, SlotLockRow } from '@/lib/types';
 
+// Export query for use in other modules
+export const query = dbQuery;
+export { queryOne, transaction } from '@/lib/db';
+
 export async function getActiveArenas(): Promise<ArenaSummary[]> {
-  const rows = await query<{
+  const rows = await dbQuery<{
     id: number;
     name: string;
     slug: string;
@@ -67,15 +71,15 @@ export async function getArenaById(arenaId: number) {
 }
 
 export async function getArenaPricing(arenaId: number) {
-  return query<PricingRow>('SELECT * FROM pricings WHERE arena_id = ? ORDER BY time_slot ASC', [arenaId]);
+  return dbQuery<PricingRow>('SELECT * FROM pricings WHERE arena_id = ? ORDER BY time_slot ASC', [arenaId]);
 }
 
 export async function getBookingsByRef(bookingRef: string) {
-  return query<BookingRow>('SELECT * FROM bookings WHERE booking_ref = ? ORDER BY time_slot ASC', [bookingRef]);
+  return dbQuery<BookingRow>('SELECT * FROM bookings WHERE booking_ref = ? ORDER BY time_slot ASC', [bookingRef]);
 }
 
 export async function getBookingsForUser(userId: number) {
-  return query<BookingRow>('SELECT * FROM bookings WHERE user_id = ? ORDER BY created_at DESC', [userId]);
+  return dbQuery<BookingRow>('SELECT * FROM bookings WHERE user_id = ? ORDER BY created_at DESC', [userId]);
 }
 
 export async function getBookingByTicket(ticketNumber: string) {
@@ -83,7 +87,7 @@ export async function getBookingByTicket(ticketNumber: string) {
 }
 
 export async function getBookingsForDate(arenaId: number, bookingDate: string) {
-  return query<BookingRow>(
+  return dbQuery<BookingRow>(
     `SELECT * FROM bookings
       WHERE arena_id = ?
         AND booking_date = ?
@@ -93,7 +97,7 @@ export async function getBookingsForDate(arenaId: number, bookingDate: string) {
 }
 
 export async function getBookedSlots(arenaId: number, bookingDate: string) {
-  const rows = await query<{ time_slot: string }>(
+  const rows = await dbQuery<{ time_slot: string }>(
     `SELECT time_slot FROM bookings
       WHERE arena_id = ?
         AND booking_date = ?
@@ -105,7 +109,7 @@ export async function getBookedSlots(arenaId: number, bookingDate: string) {
 }
 
 export async function getLockedSlots(arenaId: number, bookingDate: string, sessionId?: string) {
-  const rows = await query<{ time_slot: string }>(
+  const rows = await dbQuery<{ time_slot: string }>(
     `SELECT time_slot FROM slot_locks
       WHERE arena_id = ?
         AND booking_date = ?
@@ -118,7 +122,7 @@ export async function getLockedSlots(arenaId: number, bookingDate: string, sessi
 }
 
 export async function getMyLockedSlots(arenaId: number, bookingDate: string, sessionId: string) {
-  const rows = await query<{ time_slot: string }>(
+  const rows = await dbQuery<{ time_slot: string }>(
     `SELECT time_slot FROM slot_locks
       WHERE arena_id = ?
         AND booking_date = ?
@@ -387,7 +391,7 @@ export async function findUserByIdentifier(identifier: string) {
 }
 
 export async function getSecurityBookings(ticketNumber: string) {
-  return query<BookingRow>(`SELECT * FROM bookings WHERE ticket_number = ? ORDER BY booking_date DESC`, [ticketNumber]);
+  return dbQuery<BookingRow>(`SELECT * FROM bookings WHERE ticket_number = ? ORDER BY booking_date DESC`, [ticketNumber]);
 }
 
 export async function confirmEntryByTicket(ticketNumber: string, checkedInByUserId: number | null) {

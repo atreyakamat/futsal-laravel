@@ -3,22 +3,53 @@
 
 BEGIN;
 
+-- Insert demo arena
 INSERT INTO arenas (name, slug, address, description, status, bot_enabled, created_at, updated_at)
-VALUES ('Angle Futsal', 'angle-futsal', 'Sample Address', 'Starter arena created for first-run environments.', 'active', FALSE, NOW(), NOW())
+VALUES ('Pilar Arena', 'pilar-arena', 'Pilar, Goa', 'Premium futsal arena in Pilar with professional standards.', 'active', FALSE, NOW(), NOW())
 ON CONFLICT (slug) DO NOTHING;
 
-INSERT INTO users (name, email, password, customer_mobile, created_at, updated_at)
-VALUES ('Angle Futsal Guest', 'demo@example.com', '$2a$10$NDRVkc0jgROSDrWdYjA8T.JX51bQVpnCxtjnhOSzsnp4sS5DHOEKu', '+10000000000', now(), now())
+-- Insert demo superadmin user
+INSERT INTO users (name, email, customer_mobile, role, created_at, updated_at)
+VALUES ('System Admin', 'admin@futsalgoa.com', '+919999999999', 'super_admin', NOW(), NOW())
 ON CONFLICT (email) DO NOTHING;
 
-INSERT INTO pricings (arena_id, time_slot, price, day_of_week, created_at, updated_at)
-VALUES
-  ((SELECT id FROM arenas WHERE slug = 'angle-futsal' LIMIT 1), '18:00-19:00', 5000, 1, now(), now()),
-  ((SELECT id FROM arenas WHERE slug = 'angle-futsal' LIMIT 1), '19:00-20:00', 6500, 2, now(), now())
-ON CONFLICT (arena_id, time_slot, day_of_week) DO NOTHING;
+-- Insert demo arena admin
+INSERT INTO users (name, email, customer_mobile, role, created_at, updated_at)
+VALUES ('Pilar Manager', 'manager@pilar.com', '+919888888888', 'arena_admin', NOW(), NOW())
+ON CONFLICT (email) DO NOTHING;
 
+-- Insert demo customer
+INSERT INTO users (name, email, customer_mobile, role, created_at, updated_at)
+VALUES ('Futsal Player', 'player@example.com', '+919777777777', 'customer', NOW(), NOW())
+ON CONFLICT (email) DO NOTHING;
+
+-- Link arena manager to arena
+INSERT INTO arena_managers (user_id, arena_id, role, created_at, updated_at)
+SELECT u.id, a.id, 'manager', NOW(), NOW()
+FROM users u, arenas a
+WHERE u.email = 'manager@pilar.com' AND a.slug = 'pilar-arena'
+ON CONFLICT (user_id) DO NOTHING;
+
+-- Insert pricing for demo arena
+INSERT INTO pricings (arena_id, time_slot, price, created_at, updated_at)
+SELECT a.id, time_slot, price, NOW(), NOW()
+FROM arenas a, (
+  VALUES ('06:00-07:00'::TEXT, 300::NUMERIC),
+         ('07:00-08:00'::TEXT, 300::NUMERIC),
+         ('18:00-19:00'::TEXT, 500::NUMERIC),
+         ('19:00-20:00'::TEXT, 500::NUMERIC),
+         ('20:00-21:00'::TEXT, 600::NUMERIC),
+         ('21:00-22:00'::TEXT, 600::NUMERIC)
+) AS prices(time_slot, price)
+WHERE a.slug = 'pilar-arena'
+ON CONFLICT (arena_id, time_slot) DO NOTHING;
+
+-- Insert settings
 INSERT INTO settings (key, value, created_at, updated_at)
-VALUES ('site.name','Angle Futsal', now(), now())
+VALUES 
+  ('site.name', 'FutsalGoa', NOW(), NOW()),
+  ('site.description', 'Premium Futsal Booking Platform for Goa', NOW(), NOW())
 ON CONFLICT (key) DO NOTHING;
 
 COMMIT;
+

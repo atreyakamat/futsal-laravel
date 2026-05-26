@@ -1,4 +1,4 @@
-// File: C:\22co06_project\futsal-laravel\app\payment\checkout\[ref]\page.tsx
+// File: C:\Projects\futsal-laravel\app\payment\checkout\[ref]\page.tsx
 import * as entry from '../../../../../../app/payment/checkout/[ref]/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 
