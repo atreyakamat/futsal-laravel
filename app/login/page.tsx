@@ -62,29 +62,29 @@ export default function LoginPage() {
 
   return (
     <div className="max-w-md mx-auto mt-20 px-6 py-20">
-      <div className="glass p-10 rounded-[2.5rem] border border-white/10 shadow-2xl shadow-black/50">
-        <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mx-auto mb-6">
-          <span className="material-symbols-outlined text-primary text-3xl">login</span>
+      <div className="glass-card">
+        <div className="flex items-center justify-center w-20 h-20 rounded-2xl bg-primary/10 border border-primary/20 mx-auto mb-8 shadow-inner">
+          <span className="material-symbols-outlined text-primary text-4xl">login</span>
         </div>
-        <h2 className="text-3xl font-black mb-2 text-center uppercase tracking-tighter italic">
-          WELCOME <span className="text-primary">BACK</span>
+        <h2 className="text-4xl font-black mb-2 text-center uppercase tracking-tighter italic">
+          WELCOME <span className="text-primary text-stroke">BACK</span>
         </h2>
-        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest text-center mb-8">
+        <p className="label-classic text-center mb-10">
           Login with OTP
         </p>
 
         {step === 1 ? (
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1" htmlFor="identifier">
+          <div className="space-y-8">
+            <div className="space-y-3">
+              <label className="label-classic" htmlFor="identifier">
                 Email or Mobile Number
               </label>
-              <div className="relative">
-                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 text-lg">
+              <div className="relative group">
+                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-primary transition-colors text-xl">
                   person
                 </span>
                 <input
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-primary transition-all placeholder:text-gray-800"
+                  className="input-field pl-12"
                   id="identifier"
                   type="text"
                   value={identifier}
@@ -96,31 +96,31 @@ export default function LoginPage() {
             <button
               onClick={handleSendOtp}
               disabled={loading}
-              className="w-full py-5 rounded-2xl font-black text-sm tracking-widest bg-primary text-black hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-2"
+              className="btn-primary w-full flex items-center justify-center gap-3"
               type="button"
             >
               {loading ? (
-                <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+                <div className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin" />
               ) : (
                 <>
                   SEND OTP
-                  <span className="material-symbols-outlined text-sm font-black">send</span>
+                  <span className="material-symbols-outlined text-lg font-black">send</span>
                 </>
               )}
             </button>
           </div>
         ) : (
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1" htmlFor="otp">
+          <div className="space-y-8">
+            <div className="space-y-3">
+              <label className="label-classic" htmlFor="otp">
                 Enter 6-digit OTP
               </label>
-              <div className="relative">
-                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 text-lg">
+              <div className="relative group">
+                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-primary transition-colors text-xl">
                   password
                 </span>
                 <input
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-primary transition-all placeholder:text-gray-800 tracking-[0.5em] font-black"
+                  className="input-field pl-12 tracking-[0.5em] font-black text-xl"
                   id="otp"
                   type="text"
                   value={otp}
@@ -133,24 +133,24 @@ export default function LoginPage() {
             <button
               onClick={handleVerifyOtp}
               disabled={loading}
-              className="w-full py-5 rounded-2xl font-black text-sm tracking-widest bg-primary text-black hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-2"
+              className="btn-primary w-full flex items-center justify-center gap-3"
               type="button"
             >
               {loading ? (
-                <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+                <div className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin" />
               ) : (
                 <>
                   VERIFY OTP
-                  <span className="material-symbols-outlined text-sm font-black">check_circle</span>
+                  <span className="material-symbols-outlined text-lg font-black">check_circle</span>
                 </>
               )}
             </button>
             <button
               onClick={() => setStep(1)}
-              className="w-full text-[10px] font-bold text-gray-500 uppercase tracking-widest hover:text-white transition-colors"
+              className="w-full text-[10px] font-bold text-white/20 hover:text-primary uppercase tracking-[0.2em] transition-colors"
               type="button"
             >
-              Back
+              Back to identifier
             </button>
           </div>
         )}

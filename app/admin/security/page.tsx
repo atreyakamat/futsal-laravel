@@ -15,10 +15,10 @@ export default async function AdminSecurityPage() {
         <span className="text-primary">Security</span> Management
       </h1>
 
-      <div className="glass p-10 rounded-[2.5rem] border border-white/10">
+      <div className="glass-card">
         <Link
           href="/security/scan"
-          className="inline-flex items-center gap-3 px-8 py-6 rounded-2xl bg-primary text-black font-black text-xs tracking-widest hover:scale-105 transition-all"
+          className="btn-primary inline-flex items-center gap-3 !py-6"
         >
           <span className="material-symbols-outlined">qr_code_scanner</span>
           GO TO SECURITY PORTAL

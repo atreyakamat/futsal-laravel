@@ -47,34 +47,34 @@ export default function VerifyOtpPage({ searchParams }: Props) {
 
   return (
     <div className="max-w-md mx-auto mt-20 px-6 py-20">
-      <div className="glass p-10 rounded-[2.5rem] border border-white/10 shadow-2xl shadow-black/50">
-        <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mx-auto mb-6">
-          <span className="material-symbols-outlined text-primary text-3xl">lock</span>
+      <div className="glass-card">
+        <div className="flex items-center justify-center w-20 h-20 rounded-2xl bg-primary/10 border border-primary/20 mx-auto mb-8">
+          <span className="material-symbols-outlined text-primary text-4xl">lock</span>
         </div>
-        <h2 className="text-3xl font-black mb-2 text-center uppercase tracking-tighter italic">
-          VERIFY <span className="text-primary">OTP</span>
+        <h2 className="text-4xl font-black mb-2 text-center uppercase tracking-tighter italic">
+          VERIFY <span className="text-primary text-stroke">OTP</span>
         </h2>
-        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest text-center mb-8">
+        <p className="label-classic text-center mb-10">
           Enter the 6-digit code
         </p>
 
         {error && (
-          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-bold uppercase tracking-widest">
+          <div className="mb-8 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-black uppercase tracking-[0.2em] text-center">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1" htmlFor="otp">
+        <form onSubmit={handleSubmit} className="space-y-8">
+          <div className="space-y-3">
+            <label className="label-classic" htmlFor="otp">
               Enter 6-digit OTP
             </label>
-            <div className="relative">
-              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 text-lg">
+            <div className="relative group">
+              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-primary transition-colors text-xl">
                 password
               </span>
               <input
-                className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-primary transition-all placeholder:text-gray-800 tracking-[0.5em] font-black text-center text-2xl"
+                className="input-field pl-12 tracking-[0.5em] font-black text-center text-3xl"
                 id="otp"
                 type="text"
                 value={otp}
@@ -91,23 +91,23 @@ export default function VerifyOtpPage({ searchParams }: Props) {
           <button
             type="submit"
             disabled={loading || otp.length !== 6}
-            className="w-full py-5 rounded-2xl font-black text-sm tracking-widest bg-primary text-black hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn-primary w-full flex items-center justify-center gap-3"
           >
             {loading ? (
-              <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+              <div className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin" />
             ) : (
               <>
                 VERIFY OTP
-                <span className="material-symbols-outlined text-sm font-black">check_circle</span>
+                <span className="material-symbols-outlined text-lg font-black">check_circle</span>
               </>
             )}
           </button>
         </form>
 
-        <div className="mt-8 pt-6 border-t border-white/10 text-center">
-          <p className="text-[10px] text-gray-500 uppercase tracking-widest">
+        <div className="mt-10 pt-8 border-t border-white/5 text-center">
+          <p className="text-[10px] text-white/20 uppercase tracking-[0.2em] font-bold">
             Didn't receive code?{' '}
-            <Link href="/login" className="text-primary hover:text-white transition-colors font-bold">
+            <Link href="/login" className="text-primary hover:text-white transition-colors">
               Try Again
             </Link>
           </p>

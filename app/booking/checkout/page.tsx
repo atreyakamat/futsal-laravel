@@ -43,15 +43,15 @@ export default async function CheckoutPage({ searchParams }: Props) {
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-20">
-      <div className="flex items-center gap-4 mb-12">
-        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-          <span className="material-symbols-outlined">shield_lock</span>
+      <div className="flex items-center gap-6 mb-16">
+        <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-inner">
+          <span className="material-symbols-outlined text-3xl">shield_lock</span>
         </div>
         <div>
-          <h1 className="text-3xl font-black uppercase tracking-tighter italic">
-            SECURE <span className="text-primary">CHECKOUT</span>
+          <h1 className="text-4xl font-black uppercase tracking-tighter italic">
+            SECURE <span className="text-primary text-stroke">CHECKOUT</span>
           </h1>
-          <p className="text-xs font-bold text-gray-600 uppercase tracking-widest">
+          <p className="label-classic">
             Complete your booking for {arena.name}
           </p>
         </div>
@@ -60,91 +60,86 @@ export default async function CheckoutPage({ searchParams }: Props) {
       <div className="grid lg:grid-cols-12 gap-16">
         {/* Booking Details */}
         <div className="lg:col-span-5 space-y-8">
-          <div className="glass p-8 rounded-[2.5rem] border border-white/10 relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-8 opacity-5">
-              <span className="material-symbols-outlined text-8xl">receipt_long</span>
+          <div className="glass-card relative overflow-hidden !p-10">
+            <div className="absolute top-0 right-0 p-10 opacity-[0.03]">
+              <span className="material-symbols-outlined text-[120px]">receipt_long</span>
             </div>
 
-            <h2 className="font-black text-sm mb-8 text-primary uppercase tracking-[0.2em]">Reservation Details</h2>
+            <h2 className="label-classic mb-10">Reservation Summary</h2>
 
-            <div className="space-y-6">
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-xl glass flex items-center justify-center text-gray-500">
-                  <span className="material-symbols-outlined text-lg">stadium</span>
+            <div className="space-y-8">
+              <div className="flex items-start gap-5">
+                <div className="w-12 h-12 rounded-2xl glass flex items-center justify-center text-white/20 border-white/5">
+                  <span className="material-symbols-outlined text-2xl">stadium</span>
                 </div>
                 <div>
-                  <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest block">Arena</span>
-                  <span className="text-lg font-bold text-white">{arena.name}</span>
+                  <span className="label-classic !ml-0 mb-1">Arena</span>
+                  <span className="text-xl font-black text-white uppercase italic tracking-tight">{arena.name}</span>
                 </div>
               </div>
 
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-xl glass flex items-center justify-center text-gray-500">
-                  <span className="material-symbols-outlined text-lg">calendar_today</span>
+              <div className="flex items-start gap-5">
+                <div className="w-12 h-12 rounded-2xl glass flex items-center justify-center text-white/20 border-white/5">
+                  <span className="material-symbols-outlined text-2xl">calendar_today</span>
                 </div>
                 <div>
-                  <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest block">Date</span>
-                  <span className="text-lg font-bold text-white">
+                  <span className="label-classic !ml-0 mb-1">Date</span>
+                  <span className="text-xl font-black text-white uppercase italic tracking-tight">
                     {new Date(date).toLocaleDateString('en-GB', {
                       weekday: 'long',
                       day: 'numeric',
                       month: 'long',
-                      year: 'numeric',
                     })}
                   </span>
                 </div>
               </div>
 
-              <div className="pt-6 border-t border-white/5">
-                <div className="flex justify-between items-center mb-4">
-                  <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest block">
-                    Selected Duration
-                  </span>
-                  <span className="text-[10px] font-bold text-primary uppercase tracking-widest block">
+              <div className="pt-8 border-t border-white/5">
+                <div className="flex justify-between items-center mb-6">
+                  <span className="label-classic !ml-0">Duration</span>
+                  <span className="pill-status">
                     {getDurationText(slots)}
                   </span>
                 </div>
-                <div className="space-y-3">
-                  <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
-                    <span className="text-xs font-bold text-gray-500 block mb-1 uppercase tracking-wider">Time Slots</span>
-                    <span className="text-lg font-black text-white italic tracking-tighter">
+                <div className="space-y-4">
+                  <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/5">
+                    <span className="label-classic !ml-0 mb-2">Time Slots</span>
+                    <span className="text-2xl font-black text-white italic tracking-tighter uppercase">
                       {mergeSlots(slots).join(', ')}
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div className="pt-6 border-t border-white/5 flex justify-between items-end">
-                <span className="text-xs font-bold text-gray-600 uppercase tracking-widest">Total to Pay</span>
-                <span className="text-4xl font-black text-white italic">₹{total}</span>
+              <div className="pt-8 border-t border-white/5 flex justify-between items-end">
+                <span className="label-classic !ml-0">Total Amount</span>
+                <span className="text-5xl font-black text-white italic tracking-tighter">₹{total}</span>
               </div>
             </div>
           </div>
 
-          <div className="flex items-start gap-3 p-4 glass rounded-2xl border-primary/20 bg-primary/5">
-            <span className="material-symbols-outlined text-primary text-lg">timer</span>
-            <p className="text-[10px] font-bold text-primary/80 uppercase tracking-widest leading-relaxed">
-              These slots are temporarily locked for your session. Complete the booking within{' '}
-              <span className="text-white">10 minutes</span> to avoid losing your selection.
+          <div className="flex items-start gap-4 p-6 glass rounded-[2rem] border-primary/20 bg-primary/5">
+            <span className="material-symbols-outlined text-primary text-2xl animate-pulse">timer</span>
+            <p className="text-[10px] font-black text-primary/80 uppercase tracking-[0.2em] leading-relaxed">
+              These slots are temporarily locked. Complete the booking within{' '}
+              <span className="text-white underline decoration-primary/50 underline-offset-4">10 minutes</span> to secure your pitch.
             </p>
           </div>
         </div>
 
         {/* Checkout Form */}
         <div className="lg:col-span-7">
-          <div className="glass p-10 rounded-[2.5rem] border border-white/10">
-            <form action="/api/bookings/process" method="POST" className="space-y-8">
+          <div className="glass-card !p-12">
+            <form action="/api/bookings/process" method="POST" className="space-y-10">
               <input type="hidden" name="arena_id" value={arena.id} />
               <input type="hidden" name="date" value={date} />
               <input type="hidden" name="slots" value={slotsJson} />
 
-              <div className="grid md:grid-cols-2 gap-8">
-                <div className="space-y-2">
-                  <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-widest ml-1">
-                    Full Name
-                  </label>
-                  <div className="relative">
-                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-700 text-lg">
+              <div className="grid md:grid-cols-2 gap-10">
+                <div className="space-y-3">
+                  <label className="label-classic">Full Name</label>
+                  <div className="relative group">
+                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-primary transition-colors text-xl">
                       person
                     </span>
                     <input
@@ -152,16 +147,14 @@ export default async function CheckoutPage({ searchParams }: Props) {
                       name="customer_name"
                       required
                       placeholder="John Doe"
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-primary transition-all placeholder:text-gray-800"
+                      className="input-field pl-12"
                     />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-widest ml-1">
-                    Mobile Number
-                  </label>
-                  <div className="relative">
-                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-700 text-lg">
+                <div className="space-y-3">
+                  <label className="label-classic">Mobile Number</label>
+                  <div className="relative group">
+                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-primary transition-colors text-xl">
                       phone_iphone
                     </span>
                     <input
@@ -170,57 +163,57 @@ export default async function CheckoutPage({ searchParams }: Props) {
                       required
                       defaultValue={guestIdentifier || ''}
                       placeholder="+91 98765 43210"
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-primary transition-all placeholder:text-gray-800"
+                      className="input-field pl-12"
                     />
                   </div>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-widest ml-1">
-                  Email Address <span className="text-gray-800 lowercase italic">(optional)</span>
+              <div className="space-y-3">
+                <label className="label-classic">
+                  Email Address <span className="text-white/10 italic lowercase">(optional)</span>
                 </label>
-                <div className="relative">
-                  <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-700 text-lg">
+                <div className="relative group">
+                  <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-primary transition-colors text-xl">
                     mail
                   </span>
                   <input
                     type="email"
                     name="customer_email"
                     placeholder="john@example.com"
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-primary transition-all placeholder:text-gray-800"
+                    className="input-field pl-12"
                   />
                 </div>
               </div>
 
-              <div className="pt-8 space-y-6">
+              <div className="pt-10 space-y-8">
                 <button
                   type="submit"
-                  className="w-full py-6 rounded-[2rem] font-black text-sm tracking-[0.2em] bg-primary text-black hover:scale-[1.02] active:scale-[0.98] transition-all shadow-2xl shadow-primary/20 flex items-center justify-center gap-3 cursor-pointer"
+                  className="btn-primary w-full py-6 text-sm flex items-center justify-center gap-4 scale-105"
                 >
-                  <span>CONFIRM & PAY ₹{total}</span>
+                  <span className="font-black italic">CONFIRM & PAY ₹{total}</span>
                   <span className="material-symbols-outlined font-black">arrow_forward</span>
                 </button>
 
-                <div className="flex items-center justify-center gap-6 opacity-30 grayscale">
+                <div className="flex items-center justify-center gap-8 opacity-20 grayscale hover:opacity-40 transition-opacity">
                   <img
                     src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Visa.svg/1200px-Visa.svg.png"
-                    className="h-4"
+                    className="h-5"
                     alt="Visa"
                   />
                   <img
                     src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Mastercard-logo.svg/1280px-Mastercard-logo.svg.png"
-                    className="h-6"
+                    className="h-8"
                     alt="Mastercard"
                   />
                   <img
                     src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/UPI-Logo-vector.svg/1200px-UPI-Logo-vector.svg.png"
-                    className="h-4"
+                    className="h-5"
                     alt="UPI"
                   />
                 </div>
 
-                <p className="text-center text-[9px] text-gray-700 uppercase tracking-[0.3em]">
+                <p className="text-center text-[9px] text-white/10 uppercase tracking-[0.4em] font-black">
                   End-to-End Encrypted Secure Checkout
                 </p>
               </div>

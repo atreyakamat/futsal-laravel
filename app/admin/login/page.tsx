@@ -10,6 +10,7 @@ export default function AdminLoginPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showDemo, setShowDemo] = useState(false);
   const router = useRouter();
 
   async function handleSendOtp() {
@@ -67,7 +68,7 @@ export default function AdminLoginPage() {
 
   return (
     <div className="max-w-md mx-auto mt-20 px-6 py-20">
-      <div className="glass p-10 rounded-[2.5rem] border border-white/10 shadow-2xl shadow-black/50">
+      <div className="glass-card">
         <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mx-auto mb-6">
           <span className="material-symbols-outlined text-primary text-3xl">admin_panel_settings</span>
         </div>
@@ -84,10 +85,19 @@ export default function AdminLoginPage() {
           </div>
         )}
 
+        {showDemo && (
+          <div className="mb-6 p-4 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-200 text-xs font-bold">
+            <p className="mb-2">📋 Default Demo Credentials:</p>
+            <p className="mb-1">Email: <span className="text-primary">admin@example.com</span></p>
+            <p className="mb-3">Password: <span className="text-primary">Admin@123456</span></p>
+            <p className="text-xs text-gray-400">Change these via environment variables before deploying to production.</p>
+          </div>
+        )}
+
         {step === 1 ? (
           <div className="space-y-6">
             <div className="space-y-2">
-              <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1" htmlFor="identifier">
+              <label className="label-classic" htmlFor="identifier">
                 Email or Mobile Number
               </label>
               <div className="relative">
@@ -95,7 +105,7 @@ export default function AdminLoginPage() {
                   person
                 </span>
                 <input
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-primary transition-all placeholder:text-gray-800"
+                  className="input-field pl-12"
                   id="identifier"
                   type="text"
                   value={identifier}
@@ -107,7 +117,7 @@ export default function AdminLoginPage() {
             <button
               onClick={handleSendOtp}
               disabled={loading}
-              className="w-full py-5 rounded-2xl font-black text-sm tracking-widest bg-primary text-black hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-primary w-full"
               type="button"
             >
               {loading ? (
@@ -119,11 +129,30 @@ export default function AdminLoginPage() {
                 </>
               )}
             </button>
+
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-white/10" />
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="px-2 bg-gradient-to-b from-gray-900 to-gray-950 text-gray-500 uppercase font-bold">
+                  OR
+                </span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowDemo(!showDemo)}
+              className="w-full px-4 py-3 rounded-xl border border-primary/30 text-primary hover:bg-primary/5 transition-colors font-bold text-xs uppercase tracking-widest"
+              type="button"
+            >
+              {showDemo ? '✓ Hide' : '📝 View'} Demo Credentials
+            </button>
           </div>
         ) : (
           <div className="space-y-6">
             <div className="space-y-2">
-              <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1" htmlFor="otp">
+              <label className="label-classic" htmlFor="otp">
                 Enter 6-digit OTP
               </label>
               <div className="relative">
@@ -131,7 +160,7 @@ export default function AdminLoginPage() {
                   password
                 </span>
                 <input
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-primary transition-all placeholder:text-gray-800 tracking-[0.5em] font-black"
+                  className="input-field pl-12 tracking-[0.5em] font-black"
                   id="otp"
                   type="text"
                   value={otp}
@@ -144,7 +173,7 @@ export default function AdminLoginPage() {
             <button
               onClick={handleVerifyOtp}
               disabled={loading}
-              className="w-full py-5 rounded-2xl font-black text-sm tracking-widest bg-primary text-black hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-primary w-full"
               type="button"
             >
               {loading ? (

@@ -39,37 +39,37 @@ export default function CreateArenaForm() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-10 glass rounded-[2.5rem] border border-white/10 shadow-2xl shadow-black/50">
-      <h2 className="text-3xl font-black mb-8 uppercase tracking-tighter italic">
-        Create <span className="text-primary">New Arena</span>
+    <div className="max-w-2xl mx-auto p-12 glass-card">
+      <h2 className="text-4xl font-black mb-10 uppercase tracking-tighter italic">
+        Create <span className="text-primary text-stroke">New Arena</span>
       </h2>
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="space-y-2">
-          <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Arena Name</label>
+      <form onSubmit={handleSubmit} className="space-y-8">
+        <div className="space-y-3">
+          <label className="label-classic">Arena Name</label>
           <input
             type="text"
             required
-            className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white focus:outline-none focus:border-primary transition-all"
+            className="input-field"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           />
         </div>
-        <div className="space-y-2">
-          <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Slug</label>
+        <div className="space-y-3">
+          <label className="label-classic">Slug</label>
           <input
             type="text"
             required
-            className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white focus:outline-none focus:border-primary transition-all"
+            className="input-field"
             value={formData.slug}
             onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
             placeholder="pilar-arena"
           />
         </div>
-        <div className="space-y-2">
-          <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Address</label>
+        <div className="space-y-3">
+          <label className="label-classic">Address</label>
           <input
             type="text"
-            className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white focus:outline-none focus:border-primary transition-all"
+            className="input-field"
             value={formData.address}
             onChange={(e) => setFormData({ ...formData, address: e.target.value })}
           />
@@ -77,7 +77,7 @@ export default function CreateArenaForm() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-5 rounded-2xl font-black text-sm tracking-widest bg-primary text-black hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-primary/20"
+          className="btn-primary w-full py-6 mt-4"
         >
           {loading ? 'Creating...' : 'CREATE ARENA'}
         </button>

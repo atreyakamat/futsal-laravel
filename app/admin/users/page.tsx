@@ -14,7 +14,7 @@ export default async function AdminUsersPage() {
         Manage <span className="text-primary">Users & Admins</span>
       </h1>
 
-      <div className="glass p-10 rounded-[2.5rem] border border-white/10 text-center py-20">
+      <div className="glass-card text-center py-20">
         <span className="material-symbols-outlined text-6xl text-gray-700 block mb-6">admin_panel_settings</span>
         <h2 className="text-2xl font-bold mb-4">Admin Management</h2>
         <p className="text-gray-400">Manage users and admin roles here.</p>

@@ -111,15 +111,15 @@ export default function BookingSystem({ arenaId, initialDate }: { arenaId: numbe
         <div className="lg:col-span-8 space-y-12">
           {/* Date Picker */}
           <div>
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-xl font-bold uppercase tracking-tight flex items-center gap-3">
-                <span className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                  <span className="material-symbols-outlined text-lg">calendar_month</span>
+            <div className="flex items-center justify-between mb-10">
+              <h2 className="text-2xl font-black uppercase tracking-tight flex items-center gap-4 italic">
+                <span className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-inner">
+                  <span className="material-symbols-outlined text-xl">calendar_month</span>
                 </span>
-                1. Choose Date
+                1. Choose <span className="text-primary text-stroke">Date</span>
               </h2>
             </div>
-            <div className="flex gap-4 overflow-x-auto pb-6 -mx-2 px-2 no-scrollbar">
+            <div className="flex gap-4 overflow-x-auto pb-8 -mx-4 px-4 no-scrollbar">
               {dates.map((d) => {
                 const dateObj = new Date(d);
                 const isActive = d === date;
@@ -130,15 +130,15 @@ export default function BookingSystem({ arenaId, initialDate }: { arenaId: numbe
                       setDate(d);
                       setSelectedSlots([]);
                     }}
-                    className={`date-card flex-shrink-0 flex flex-col items-center justify-center w-20 h-24 rounded-2xl border glass transition-all duration-300 ${
-                      isActive ? 'bg-primary text-black border-primary -translate-y-1' : 'border-white/5 hover:border-primary/30'
+                    className={`date-card flex-shrink-0 flex flex-col items-center justify-center w-24 h-28 rounded-[1.5rem] border glass transition-all duration-300 ${
+                      isActive ? 'bg-primary text-black border-primary -translate-y-2 shadow-[0_10px_30px_rgba(13,242,32,0.3)]' : 'border-white/5 hover:border-primary/30'
                     }`}
                   >
-                    <span className={`text-[10px] font-bold uppercase mb-1 ${isActive ? 'text-black' : 'opacity-60'}`}>
+                    <span className={`text-[10px] font-black uppercase mb-1 tracking-widest ${isActive ? 'text-black/60' : 'text-white/40'}`}>
                       {dateObj.toLocaleDateString('en-US', { weekday: 'short' })}
                     </span>
-                    <span className="text-2xl font-black mb-1">{dateObj.getDate()}</span>
-                    <span className={`text-[10px] font-bold uppercase ${isActive ? 'text-black' : 'opacity-60'}`}>
+                    <span className="text-3xl font-black mb-1 leading-none">{dateObj.getDate()}</span>
+                    <span className={`text-[10px] font-black uppercase tracking-widest ${isActive ? 'text-black/60' : 'text-white/40'}`}>
                       {dateObj.toLocaleDateString('en-US', { month: 'short' })}
                     </span>
                   </button>
@@ -149,30 +149,30 @@ export default function BookingSystem({ arenaId, initialDate }: { arenaId: numbe
 
           {/* Slots Grid */}
           <div>
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-xl font-bold uppercase tracking-tight flex items-center gap-3">
-                <span className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                  <span className="material-symbols-outlined text-lg">schedule</span>
+            <div className="flex items-center justify-between mb-10">
+              <h2 className="text-2xl font-black uppercase tracking-tight flex items-center gap-4 italic">
+                <span className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-inner">
+                  <span className="material-symbols-outlined text-xl">schedule</span>
                 </span>
-                2. Pick Slots
+                2. Pick <span className="text-primary text-stroke">Slots</span>
               </h2>
-              <div className="flex gap-4 text-[10px] font-bold uppercase tracking-widest text-gray-500">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-primary" /> Available
+              <div className="flex gap-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/20">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_10px_rgba(13,242,32,0.5)]" /> Available
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-white/10" /> Taken
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-white/10" /> Taken
                 </div>
               </div>
             </div>
 
             {loading ? (
-              <div className="py-20 flex flex-col items-center justify-center glass rounded-3xl border-dashed border-white/10">
-                <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-4" />
-                <span className="text-xs font-bold tracking-widest text-gray-700 uppercase">Fetching live availability...</span>
+              <div className="py-24 flex flex-col items-center justify-center glass-card border-dashed border-white/5">
+                <div className="w-14 h-14 border-4 border-primary/10 border-t-primary rounded-full animate-spin mb-6" />
+                <span className="label-classic">Syncing with real-time locks...</span>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
                 {slots.map((slot) => {
                   const isSelected = selectedSlots.some((s) => s.time_slot === slot.time_slot);
                   const isBooked = slot.status === 'booked';
@@ -183,19 +183,19 @@ export default function BookingSystem({ arenaId, initialDate }: { arenaId: numbe
                       key={slot.time_slot}
                       onClick={() => toggleSlot(slot)}
                       disabled={isBooked || isLocked}
-                      className={`slot-card p-6 rounded-2xl border border-white/5 glass text-center transition-all duration-300 group relative overflow-hidden ${
-                        isBooked ? 'opacity-30 grayscale cursor-not-allowed bg-white/5' : ''
-                      } ${isLocked ? 'opacity-50 cursor-not-allowed' : ''} ${
-                        isSelected ? 'bg-primary/10 border-primary text-primary' : 'hover:border-primary/50 hover:scale-[1.02]'
+                      className={`slot-card p-8 rounded-3xl border border-white/5 glass text-center transition-all duration-300 group relative overflow-hidden ${
+                        isBooked ? 'opacity-20 grayscale cursor-not-allowed bg-white/[0.02]' : ''
+                      } ${isLocked ? 'opacity-40 cursor-not-allowed' : ''} ${
+                        isSelected ? 'border-primary bg-primary/5 text-primary shadow-[0_0_30px_rgba(13,242,32,0.1)] scale-105' : 'hover:border-primary/50 hover:scale-[1.02]'
                       }`}
                     >
-                      <div className="text-lg font-black tracking-tight mb-1">{slot.time_slot}</div>
-                      <div className="text-[10px] font-bold uppercase tracking-widest opacity-60">
+                      <div className="text-xl font-black tracking-tight mb-2 uppercase italic">{slot.time_slot}</div>
+                      <div className={`text-[10px] font-black uppercase tracking-[0.2em] ${isSelected ? 'text-primary' : 'text-white/40'}`}>
                         {slot.status === 'available' || isSelected ? `₹${slot.price}` : slot.status}
                       </div>
                       {isSelected && (
-                        <div className="absolute top-2 right-2 text-primary">
-                          <span className="material-symbols-outlined text-sm">check_circle</span>
+                        <div className="absolute top-3 right-3 text-primary animate-pulse">
+                          <span className="material-symbols-outlined text-lg">check_circle</span>
                         </div>
                       )}
                     </button>
@@ -208,59 +208,64 @@ export default function BookingSystem({ arenaId, initialDate }: { arenaId: numbe
 
         {/* Sidebar Summary */}
         <div className="lg:col-span-4">
-          <div className="glass p-8 rounded-[2.5rem] border border-white/10 sticky top-28 shadow-2xl shadow-black/50">
-            <h3 className="text-xl font-black uppercase tracking-tighter mb-8 italic">
-              Booking <span className="text-primary">Summary</span>
+          <div className="glass-card sticky top-28 !p-10">
+            <h3 className="text-2xl font-black uppercase tracking-tighter mb-10 italic">
+              Booking <span className="text-primary text-stroke">Summary</span>
             </h3>
 
-            <div className="space-y-6 mb-8">
-              <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest text-gray-600">
+            <div className="space-y-8 mb-10">
+              <div className="flex justify-between items-center label-classic">
                 <span>Selected Slots</span>
-                <span className="text-white">{selectedSlots.length}</span>
+                <span className="text-white font-black text-lg italic">{selectedSlots.length}</span>
               </div>
 
-              <div className="space-y-3 max-h-48 overflow-y-auto pr-2 no-scrollbar">
+              <div className="space-y-4 max-h-60 overflow-y-auto pr-3 no-scrollbar">
                 {selectedSlots.length === 0 ? (
-                  <div className="py-8 text-center glass rounded-2xl border-dashed border-white/5">
-                    <p className="text-[10px] font-bold text-gray-700 uppercase tracking-widest">No slots selected yet</p>
+                  <div className="py-12 text-center glass rounded-3xl border-dashed border-white/5">
+                    <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">Select your time slots</p>
                   </div>
                 ) : (
                   selectedSlots.map((s) => (
                     <div
                       key={s.time_slot}
-                      className="flex justify-between items-center p-4 rounded-2xl bg-white/5 border border-white/5"
+                      className="flex justify-between items-center p-5 rounded-2xl bg-white/[0.03] border border-white/5 transition-all hover:border-white/10"
                     >
                       <div>
-                        <div className="font-bold text-sm">{s.time_slot}</div>
-                        <div className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+                        <div className="font-black text-lg uppercase italic">{s.time_slot}</div>
+                        <div className="text-[10px] text-white/40 font-black uppercase tracking-widest mt-1">
                           {new Date(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', weekday: 'short' })}
                         </div>
                       </div>
-                      <div className="text-primary font-black">₹{s.price}</div>
+                      <div className="text-primary font-black text-lg">₹{s.price}</div>
                     </div>
                   ))
                 )}
               </div>
             </div>
 
-            <div className="pt-6 border-t border-white/5 space-y-4">
+            <div className="pt-8 border-t border-white/5 space-y-6">
               <div className="flex justify-between items-end">
-                <span className="text-xs font-bold text-gray-600 uppercase tracking-widest">Total Amount</span>
-                <span className="text-3xl font-black text-white italic">₹{total}</span>
+                <span className="label-classic">Total Amount</span>
+                <span className="text-4xl font-black text-white italic tracking-tighter">₹{total}</span>
               </div>
 
               <button
                 onClick={handleProceed}
                 disabled={selectedSlots.length === 0 || processing}
-                className="w-full py-5 rounded-2xl font-black text-sm tracking-widest bg-primary text-black hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-20 disabled:grayscale shadow-xl shadow-primary/20 flex items-center justify-center gap-2 cursor-pointer"
+                className="btn-primary w-full py-6 flex items-center justify-center gap-3 scale-105"
               >
                 {processing ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" />
-                    LOCKING SLOTS...
+                    <div className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+                    LOCKING...
                   </>
                 ) : (
-                  selectedSlots.length > 0 ? 'PROCEED TO CHECKOUT' : 'SELECT YOUR SLOTS'
+                  selectedSlots.length > 0 ? (
+                    <>
+                      PROCEED TO CHECKOUT
+                      <span className="material-symbols-outlined font-black">arrow_forward</span>
+                    </>
+                  ) : 'PICK SLOTS TO START'
                 )}
               </button>
             </div>

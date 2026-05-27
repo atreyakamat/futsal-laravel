@@ -13,11 +13,11 @@ export default async function SecurityVerifyPage({ searchParams }: Props) {
   if (!ticketNumber) {
     return (
       <div className="max-w-md mx-auto mt-20 px-6 py-20">
-        <div className="glass p-10 rounded-[2.5rem] border border-white/10 text-center">
-          <div className="w-16 h-16 rounded-full bg-yellow-500/10 flex items-center justify-center mx-auto mb-6">
-            <span className="material-symbols-outlined text-yellow-500 text-3xl">warning</span>
+        <div className="glass-card text-center">
+          <div className="w-20 h-20 rounded-2xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center mx-auto mb-8">
+            <span className="material-symbols-outlined text-yellow-500 text-4xl">warning</span>
           </div>
-          <p className="text-lg font-bold text-gray-400">Provide a ticket number from the scan screen.</p>
+          <p className="text-xl font-black uppercase italic tracking-tight text-white/40 leading-tight">Provide a ticket number from the scan screen.</p>
         </div>
       </div>
     );
@@ -28,11 +28,11 @@ export default async function SecurityVerifyPage({ searchParams }: Props) {
   if (bookings.length === 0) {
     return (
       <div className="max-w-md mx-auto mt-20 px-6 py-20">
-        <div className="glass p-10 rounded-[2.5rem] border border-white/10 text-center">
-          <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-6">
-            <span className="material-symbols-outlined text-red-500 text-3xl">close</span>
+        <div className="glass-card text-center">
+          <div className="w-20 h-20 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-8">
+            <span className="material-symbols-outlined text-red-500 text-4xl">close</span>
           </div>
-          <p className="text-lg font-bold text-red-400">Invalid ticket number.</p>
+          <p className="text-xl font-black uppercase italic tracking-tight text-red-400 leading-tight">Invalid ticket number.</p>
         </div>
       </div>
     );
@@ -43,39 +43,41 @@ export default async function SecurityVerifyPage({ searchParams }: Props) {
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-20">
-      <div className="glass p-10 rounded-[2.5rem] border border-white/10 shadow-2xl shadow-black/50">
-        <div className="flex items-center justify-center gap-3 mb-8">
-          <span className={`material-symbols-outlined text-4xl ${isCheckedIn ? 'text-red-500' : 'text-primary'}`}>
-            {isCheckedIn ? 'check_circle' : 'verified'}
-          </span>
-          <h1 className="text-3xl font-black uppercase tracking-tighter">
-            {isCheckedIn ? <span className="text-red-500">Already Checked In</span> : <span className="text-primary">Ticket Verified</span>}
+      <div className="glass-card shadow-2xl shadow-black/50">
+        <div className="flex flex-col items-center gap-4 mb-12">
+          <div className={`w-20 h-20 rounded-2xl flex items-center justify-center border ${isCheckedIn ? 'bg-red-500/10 border-red-500/20 text-red-500' : 'bg-primary/10 border-primary/20 text-primary'} shadow-inner`}>
+            <span className="material-symbols-outlined text-4xl font-black">
+              {isCheckedIn ? 'block' : 'verified'}
+            </span>
+          </div>
+          <h1 className="text-4xl font-black uppercase tracking-tighter italic text-center leading-none">
+            {isCheckedIn ? <span className="text-red-500 text-stroke">STRIKE! ALREADY IN</span> : <span className="text-primary text-stroke">TICKET VERIFIED</span>}
           </h1>
         </div>
 
-        <div className="space-y-6 mb-10 p-6 bg-white/5 rounded-2xl border border-white/10">
+        <div className="space-y-8 mb-12 p-8 bg-white/[0.02] rounded-3xl border border-white/5">
           <div>
-            <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest block mb-2">Name</span>
-            <span className="text-2xl font-black text-white uppercase tracking-tighter">{booking.customer_name}</span>
+            <span className="label-classic !ml-0 mb-2">Player Name</span>
+            <span className="text-3xl font-black text-white uppercase tracking-tighter italic">{booking.customer_name}</span>
           </div>
 
-          <div className="grid grid-cols-2 gap-6 pt-6 border-t border-white/5">
+          <div className="grid grid-cols-2 gap-8 pt-8 border-t border-white/5">
             <div>
-              <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest block mb-2">Ticket</span>
-              <span className="text-sm font-bold text-primary">{booking.ticket_number}</span>
+              <span className="label-classic !ml-0 mb-2">Ticket #</span>
+              <span className="text-sm font-black text-primary uppercase italic">{booking.ticket_number}</span>
             </div>
             <div>
-              <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest block mb-2">Date</span>
-              <span className="text-sm font-bold text-white">{booking.booking_date}</span>
+              <span className="label-classic !ml-0 mb-2">Match Date</span>
+              <span className="text-sm font-black text-white uppercase italic">{booking.booking_date}</span>
             </div>
             <div>
-              <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest block mb-2">Time</span>
-              <span className="text-sm font-bold text-white">{booking.time_slot}</span>
+              <span className="label-classic !ml-0 mb-2">Time Slot</span>
+              <span className="text-sm font-black text-white uppercase italic">{booking.time_slot}</span>
             </div>
             <div>
-              <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest block mb-2">Status</span>
-              <span className={`text-sm font-bold ${isCheckedIn ? 'text-red-400' : 'text-primary'}`}>
-                {isCheckedIn ? 'CHECKED IN' : 'PENDING'}
+              <span className="label-classic !ml-0 mb-2">Check-in Status</span>
+              <span className={`pill-status ${isCheckedIn ? 'border-red-500/20 text-red-500' : 'border-primary/20 text-primary'}`}>
+                {isCheckedIn ? 'CHECKED IN' : 'ELIGIBLE'}
               </span>
             </div>
           </div>
@@ -85,19 +87,19 @@ export default async function SecurityVerifyPage({ searchParams }: Props) {
           <form className="space-y-4" action="/api/security/confirm-entry" method="post">
             <input type="hidden" name="ticket_number" value={ticketNumber} />
             <button
-              className="w-full py-6 rounded-2xl font-black text-sm tracking-widest bg-primary text-black hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-2 cursor-pointer"
+              className="btn-primary w-full py-6 flex items-center justify-center gap-4 scale-105"
               type="submit"
             >
-              <span className="material-symbols-outlined">check_circle</span>
-              CONFIRM ENTRY
+              <span className="material-symbols-outlined font-black">login</span>
+              CONFIRM PLAYER ENTRY
             </button>
           </form>
         )}
 
         {isCheckedIn && (
-          <div className="p-6 rounded-2xl bg-red-500/10 border border-red-500/30 text-center">
-            <p className="text-red-400 font-bold uppercase tracking-widest text-sm">
-              This ticket has already been checked in.
+          <div className="p-6 rounded-2xl bg-red-500/10 border border-red-500/20 text-center animate-pulse">
+            <p className="text-red-400 font-black uppercase tracking-[0.2em] text-xs">
+              This ticket has already been used for entry.
             </p>
           </div>
         )}

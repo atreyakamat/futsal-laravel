@@ -7,27 +7,27 @@ export default async function Home() {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative min-h-[85vh] flex items-center justify-center overflow-hidden border-b border-white/5">
+      <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
         <div 
-          className="absolute inset-0 z-0 bg-cover bg-center scale-105 transition-transform duration-1000" 
+          className="absolute inset-0 z-0 bg-cover bg-center scale-105 transition-transform duration-1000 opacity-60" 
           style={{ backgroundImage: "url('https://images.unsplash.com/photo-1574629810360-7efbbe195018?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=90')" }}
         />
-        <div className="absolute inset-0 z-10 hero-overlay" />
+        <div className="hero-gradient" />
 
         <div className="relative z-20 text-center px-6 max-w-5xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full glass mb-8 animate-bounce">
-            <span className="w-2 h-2 rounded-full bg-primary" />
-            <span className="text-[10px] font-bold tracking-widest text-primary uppercase">Now Open in Pilar</span>
+          <div className="pill-status mb-8 animate-float">
+            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+            <span>Now Open in Pilar</span>
           </div>
-          <h1 className="text-6xl md:text-8xl font-black leading-none mb-8 tracking-tighter">
+          <h1 className="text-7xl md:text-9xl font-black leading-none mb-8 tracking-tighter">
             <span className="block">BOOK. PLAY.</span>
-            <span className="text-primary block italic">DOMINATE.</span>
+            <span className="text-primary block italic text-stroke">DOMINATE.</span>
           </h1>
-          <p className="text-gray-400 text-lg md:text-xl mb-12 max-w-2xl mx-auto font-light leading-relaxed">
+          <p className="text-white/60 text-lg md:text-2xl mb-12 max-w-2xl mx-auto font-light leading-relaxed">
             Experience the future of futsal in Goa. Premium turfs, AI-powered booking, and a professional atmosphere for true ballers.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="#arenas" className="px-10 py-5 bg-primary text-black rounded-full font-black text-sm tracking-widest shadow-2xl shadow-primary/40 hover:scale-105 transition-all active:scale-95">
+          <div className="flex flex-col sm:flex-row gap-6 justify-center">
+            <a href="#arenas" className="btn-primary scale-110">
               BOOK A TURF
             </a>
           </div>

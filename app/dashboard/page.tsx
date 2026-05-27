@@ -42,40 +42,39 @@ export default async function DashboardPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-20">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-16">
         <div>
-          <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter italic mb-4">
-            MY <span className="text-primary">BOOKINGS</span>
+          <h1 className="text-5xl md:text-6xl font-black uppercase tracking-tighter italic mb-4">
+            MY <span className="text-primary text-stroke">BOOKINGS</span>
           </h1>
-          <p className="text-xs font-bold text-gray-600 uppercase tracking-widest">
+          <p className="label-classic">
             History of your arena reservations
           </p>
         </div>
-        <div className="glass px-6 py-4 rounded-3xl">
-          <span className="text-[10px] font-bold text-gray-600 uppercase tracking-[0.2em] block mb-1">
-            Total Groups
+        <div className="glass px-8 py-5 rounded-[2rem] border border-white/5">
+          <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] block mb-2">
+            Total Reservations
           </span>
-          <span className="text-2xl font-black text-white italic">{bookingRefs.length}</span>
+          <span className="text-3xl font-black text-white italic">{bookingRefs.length}</span>
         </div>
       </div>
 
       {bookingRefs.length === 0 ? (
-        <div className="py-32 text-center glass rounded-[3rem] border-dashed border-white/10">
-          <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-6">
-            <span className="material-symbols-outlined text-4xl text-gray-700">history</span>
+        <div className="py-32 text-center glass-card border-dashed border-white/5">
+          <div className="w-24 h-24 rounded-3xl bg-white/[0.03] flex items-center justify-center mx-auto mb-8 shadow-inner">
+            <span className="material-symbols-outlined text-5xl text-white/10">history</span>
           </div>
-          <h2 className="text-xl font-bold uppercase mb-2 tracking-tight">No bookings found</h2>
-          <p className="text-gray-500 text-sm mb-8">You haven't made any reservations yet. Ready to play?</p>
+          <h2 className="text-2xl font-black uppercase mb-3 tracking-tight italic">No bookings found</h2>
+          <p className="text-white/40 text-sm mb-10 max-w-xs mx-auto font-medium">You haven't made any reservations yet. Ready to hit the pitch?</p>
           <Link
             href="/"
-            className="inline-flex items-center gap-2 px-8 py-4 bg-primary text-black rounded-full font-black text-xs tracking-widest hover:scale-105 transition-all"
+            className="btn-primary px-10"
           >
             BROWSE ARENAS
-            <span className="material-symbols-outlined text-sm font-black">arrow_forward</span>
           </Link>
         </div>
       ) : (
-        <div className="space-y-8">
+        <div className="space-y-10">
           {bookingRefs.map((ref) => {
             const group = groups[ref];
             const slots = group.map((b) => b.time_slot);
@@ -88,65 +87,56 @@ export default async function DashboardPage() {
             return (
               <div
                 key={ref}
-                className="glass rounded-[2.5rem] border border-white/10 overflow-hidden group hover:border-primary/30 transition-all duration-500"
+                className="glass-card !p-0 overflow-hidden group hover:border-primary/30 transition-all duration-500"
               >
-                <div className="p-8 md:p-10">
-                  <div className="flex flex-col md:flex-row justify-between gap-8">
-                    <div className="space-y-6 flex-1">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
-                          <span className="material-symbols-outlined text-2xl">stadium</span>
+                <div className="p-10">
+                  <div className="flex flex-col md:flex-row justify-between gap-10">
+                    <div className="space-y-8 flex-1">
+                      <div className="flex items-center gap-6">
+                        <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-inner">
+                          <span className="material-symbols-outlined text-3xl">stadium</span>
                         </div>
                         <div>
-                          <h3 className="text-2xl font-black uppercase tracking-tight group-hover:text-primary transition-colors">
+                          <h3 className="text-3xl font-black uppercase tracking-tight group-hover:text-primary transition-colors italic">
                             {arenaName}
                           </h3>
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">
-                              Reference
+                          <div className="flex items-center gap-3 mt-1">
+                            <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">
+                              REF:
                             </span>
-                            <span className="text-[10px] font-black text-white px-2 py-0.5 rounded bg-white/5 border border-white/5">
+                            <span className="text-[10px] font-black text-primary px-3 py-1 rounded-full bg-primary/10 border border-primary/20 uppercase tracking-widest">
                               {ref}
                             </span>
                           </div>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 pt-6 border-t border-white/5">
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 pt-10 border-t border-white/5">
                         <div>
-                          <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest block mb-1">
-                            Date
-                          </span>
-                          <span className="text-sm font-bold text-white">
+                          <span className="label-classic !ml-0">Date</span>
+                          <span className="text-sm font-black text-white uppercase italic">
                             {new Date(firstBooking.booking_date).toLocaleDateString('en-GB', {
                               weekday: 'short',
                               day: '2-digit',
                               month: 'short',
-                              year: 'numeric',
                             })}
                           </span>
                         </div>
                         <div>
-                          <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest block mb-1">
-                            Time Slots
-                          </span>
-                          <span className="text-sm font-bold text-primary">{mergedSlots}</span>
+                          <span className="label-classic !ml-0">Slots</span>
+                          <span className="text-sm font-black text-primary uppercase italic">{mergedSlots}</span>
                         </div>
                         <div>
-                          <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest block mb-1">
-                            Duration
-                          </span>
-                          <span className="text-sm font-bold text-white">{duration}</span>
+                          <span className="label-classic !ml-0">Duration</span>
+                          <span className="text-sm font-black text-white uppercase italic">{duration}</span>
                         </div>
                         <div>
-                          <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest block mb-1">
-                            Status
-                          </span>
+                          <span className="label-classic !ml-0">Status</span>
                           <span
-                            className={`inline-flex px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${
+                            className={`pill-status ${
                               firstBooking.payment_status === 'confirmed'
-                                ? 'bg-primary/20 text-primary border border-primary/20'
-                                : 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/20'
+                                ? 'border-primary/20 text-primary'
+                                : 'border-yellow-500/20 text-yellow-500'
                             }`}
                           >
                             {firstBooking.payment_status}
@@ -155,24 +145,20 @@ export default async function DashboardPage() {
                       </div>
                     </div>
 
-                    <div className="flex flex-col justify-between items-end border-t md:border-t-0 md:border-l border-white/5 pt-8 md:pt-0 md:pl-10">
+                    <div className="flex flex-col justify-between items-end border-t md:border-t-0 md:border-l border-white/5 pt-10 md:pt-0 md:pl-10">
                       <div className="text-right">
-                        <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest block mb-1">
-                          Total Paid
-                        </span>
-                        <span className="text-3xl font-black text-white italic tracking-tighter">
+                        <span className="label-classic !ml-0">Total Paid</span>
+                        <span className="text-4xl font-black text-white italic tracking-tighter">
                           ₹{totalAmount}
                         </span>
                       </div>
 
                       <Link
                         href={`/booking/success/${ref}`}
-                        className="mt-6 inline-flex items-center gap-3 px-6 py-4 rounded-2xl bg-white/5 border border-white/10 font-bold text-[10px] tracking-[0.2em] hover:bg-primary hover:text-black hover:border-primary transition-all group/btn"
+                        className="btn-secondary w-full md:w-auto mt-8 flex items-center justify-center gap-3 !py-3 hover:scale-105 active:scale-95"
                       >
                         VIEW TICKET
-                        <span className="material-symbols-outlined text-lg group-hover/btn:translate-y-0.5 transition-transform">
-                          confirmation_number
-                        </span>
+                        <span className="material-symbols-outlined text-xl">confirmation_number</span>
                       </Link>
                     </div>
                   </div>

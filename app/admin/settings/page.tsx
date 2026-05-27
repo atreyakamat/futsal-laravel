@@ -25,7 +25,7 @@ export default async function AdminSettingsPage() {
         System <span className="text-primary">Settings</span>
       </h1>
 
-      <div className="glass p-10 rounded-[2.5rem] border border-white/10 text-center py-20">
+      <div className="glass-card text-center py-20">
         <span className="material-symbols-outlined text-6xl text-gray-700 block mb-6">settings</span>
         <h2 className="text-2xl font-bold mb-4">Settings Management</h2>
         <p className="text-gray-400">System settings will be displayed here.</p>

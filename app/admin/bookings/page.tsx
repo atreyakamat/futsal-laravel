@@ -14,7 +14,7 @@ export default async function AdminBookingsPage() {
         All <span className="text-primary">Bookings</span>
       </h1>
 
-      <div className="glass p-10 rounded-[2.5rem] border border-white/10 text-center py-20">
+      <div className="glass-card text-center py-20">
         <span className="material-symbols-outlined text-6xl text-gray-700 block mb-6">book_online</span>
         <h2 className="text-2xl font-bold mb-4">Bookings Management</h2>
         <p className="text-gray-400">Bookings will be displayed here.</p>

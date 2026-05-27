@@ -57,10 +57,10 @@ export default async function AdminDashboardPage() {
 
       {/* Stats Grid */}
       <div className="grid md:grid-cols-3 gap-8 mb-16">
-        <div className="glass p-8 rounded-[2.5rem] border border-white/10">
+        <div className="glass-card">
           <div className="flex items-start justify-between mb-6">
             <div>
-              <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest block mb-2">
+              <span className="label-classic !ml-0">
                 Active Arenas
               </span>
               <span className="text-5xl font-black text-white italic">{activeArenas}</span>
@@ -77,10 +77,10 @@ export default async function AdminDashboardPage() {
           </Link>
         </div>
 
-        <div className="glass p-8 rounded-[2.5rem] border border-white/10">
+        <div className="glass-card">
           <div className="flex items-start justify-between mb-6">
             <div>
-              <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest block mb-2">
+              <span className="label-classic !ml-0">
                 Confirmed Bookings
               </span>
               <span className="text-5xl font-black text-white italic">{totalBookings}</span>
@@ -97,10 +97,10 @@ export default async function AdminDashboardPage() {
           </Link>
         </div>
 
-        <div className="glass p-8 rounded-[2.5rem] border border-white/10">
+        <div className="glass-card">
           <div className="flex items-start justify-between mb-6">
             <div>
-              <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest block mb-2">
+              <span className="label-classic !ml-0">
                 Total Users
               </span>
               <span className="text-5xl font-black text-white italic">{totalUsers}</span>
@@ -119,7 +119,7 @@ export default async function AdminDashboardPage() {
       </div>
 
       {/* Admin Actions */}
-      <div className="glass p-10 rounded-[2.5rem] border border-white/10">
+      <div className="glass-card">
         <h2 className="text-2xl font-black mb-8 uppercase tracking-tighter">
           Quick <span className="text-primary">Actions</span>
         </h2>

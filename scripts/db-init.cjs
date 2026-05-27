@@ -69,12 +69,24 @@ async function seedDemoData(client) {
   const bookingTwo = new Date(today);
   bookingTwo.setDate(bookingTwo.getDate() + 2);
 
+  // Create initial admin user from environment variables or defaults
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@example.com';
+  const adminMobile = process.env.ADMIN_MOBILE || '+919999999999';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@123456';
+  const adminPasswordHash = await bcrypt.hash(adminPassword, 12);
+
+  // Upsert initial admin user
   await client.query(
-    `INSERT INTO admins (name, email, password, created_at, updated_at)
-     VALUES ($1, $2, $3, NOW(), NOW())
-     ON CONFLICT (email) DO NOTHING`,
-    ['Angle Futsal Admin', 'admin@anglefutsal.test', demoPassword]
+    `INSERT INTO users (email, customer_mobile, password, role, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, NOW(), NOW())
+     ON CONFLICT (email) DO UPDATE SET
+       password = EXCLUDED.password,
+       role = EXCLUDED.role,
+       updated_at = NOW()`,
+    [adminEmail, adminMobile, adminPasswordHash, 'super_admin']
   );
+
+  console.log(`✓ Admin user created/updated: ${adminEmail}`);
 
   await client.query(
     `INSERT INTO bookings (

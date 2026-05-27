@@ -24,27 +24,28 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
       </head>
       <body className="antialiased">
         <div className="noise" />
+        <div className="mesh-bg" />
         
-        <nav className="border-b border-white/5 py-4 sticky top-0 z-50 glass">
+        <nav className="border-b border-white/5 py-6 sticky top-0 z-50 glass">
           <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
-            <Link href="/" className="text-2xl font-black text-primary italic tracking-tighter">
+            <Link href="/" className="text-2xl font-black text-primary italic tracking-tighter hover:scale-105 transition-transform">
               FUTSAL<span className="text-white">GOA</span>
             </Link>
             
             <div className="flex gap-4 md:gap-8 items-center">
               {userId ? (
                 <>
-                  <Link href="/dashboard" className="text-[10px] font-bold tracking-widest text-gray-400 hover:text-primary transition-colors uppercase">
+                  <Link href="/dashboard" className="text-[10px] font-bold tracking-[0.2em] text-white/40 hover:text-primary transition-colors uppercase">
                     MY BOOKINGS
                   </Link>
                   <form action="/api/auth/logout" method="POST" className="inline">
-                    <button type="submit" className="px-5 py-2 glass rounded-full text-[10px] font-bold tracking-widest hover:bg-red-500/20 hover:text-red-500 hover:border-red-500/50 transition-all uppercase cursor-pointer">
+                    <button type="submit" className="px-6 py-2 glass rounded-full text-[10px] font-bold tracking-[0.2em] hover:bg-red-500/20 hover:text-red-500 hover:border-red-500/50 transition-all uppercase cursor-pointer">
                       LOGOUT
                     </button>
                   </form>
                 </>
               ) : (
-                <Link href="/login" className="px-5 py-2 glass rounded-full text-[10px] font-bold tracking-widest hover:bg-primary hover:text-black transition-all uppercase">
+                <Link href="/login" className="px-6 py-2 btn-primary rounded-full">
                   LOGIN
                 </Link>
               )}

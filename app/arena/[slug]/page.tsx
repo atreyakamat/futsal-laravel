@@ -30,46 +30,47 @@ export default async function ArenaPage({ params, searchParams }: Props) {
   return (
     <div className="min-h-screen">
       {/* Hero Header */}
-      <section className="relative h-[40vh] min-h-[300px] flex items-end pb-12 overflow-hidden border-b border-white/5">
-        <div className="absolute inset-0 z-0 scale-110">
+      <section className="relative h-[50vh] min-h-[400px] flex items-end pb-16 overflow-hidden">
+        <div className="absolute inset-0 z-0">
           <img
             src={arena.cover_image || 'https://images.unsplash.com/photo-1575361204480-aadea25e6e68?w=1920'}
-            className="w-full h-full object-cover blur-[2px] opacity-40"
+            className="w-full h-full object-cover scale-105"
             alt={arena.name}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-dark via-dark/80 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-dark via-dark/60 to-transparent" />
+          <div className="absolute inset-0 hero-gradient opacity-80" />
         </div>
 
         <div className="max-w-7xl mx-auto px-6 relative z-10 w-full">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-10">
             <div>
               <Link
                 href="/"
-                className="inline-flex items-center gap-2 text-gray-500 text-xs font-bold tracking-widest uppercase hover:text-primary transition-colors mb-6 group"
+                className="btn-secondary !py-2 !px-4 !rounded-full mb-8 inline-flex items-center gap-2 group"
               >
                 <span className="material-symbols-outlined text-sm group-hover:-translate-x-1 transition-transform">
                   arrow_back
                 </span>
-                Back to Arenas
+                BACK TO EXPLORE
               </Link>
-              <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase mb-4">{arena.name}</h1>
-              <div className="flex flex-wrap items-center gap-4 text-sm">
-                <span className="flex items-center gap-1.5 text-gray-400 font-medium">
-                  <span className="material-symbols-outlined text-primary text-lg">location_on</span>
+              <h1 className="text-5xl md:text-7xl font-black tracking-tighter uppercase mb-6 italic">{arena.name}</h1>
+              <div className="flex flex-wrap items-center gap-6">
+                <span className="flex items-center gap-2.5 text-white/60 font-black uppercase tracking-widest text-xs">
+                  <span className="material-symbols-outlined text-primary text-xl">location_on</span>
                   {arena.address}
                 </span>
-                <span className="w-1.5 h-1.5 rounded-full bg-white/20" />
-                <span className="flex items-center gap-1.5 text-gray-400 font-medium uppercase tracking-wider text-[10px]">
-                  <span className="material-symbols-outlined text-primary text-lg">verified</span>
-                  FIFA Approved Turf
+                <span className="w-1.5 h-1.5 rounded-full bg-primary/40 shadow-[0_0_10px_rgba(13,242,32,0.5)]" />
+                <span className="pill-status">
+                  <span className="material-symbols-outlined text-lg">verified</span>
+                  Premium Grade Turf
                 </span>
               </div>
             </div>
-            <div className="glass p-6 rounded-3xl text-right md:min-w-[200px]">
-              <span className="text-gray-500 text-[10px] uppercase font-bold block mb-1">Current Pricing</span>
-              <span className="text-3xl font-black text-primary italic">
+            <div className="glass-card !p-8 text-right md:min-w-[240px] scale-110 origin-bottom-right">
+              <span className="label-classic !ml-0 mb-2">Starts From</span>
+              <span className="text-4xl font-black text-primary italic text-stroke">
                 ₹{new Intl.NumberFormat().format(minPrice)}
-                <small className="text-white text-xs font-normal not-italic ml-1">/HR</small>
+                <small className="text-white text-xs font-normal not-italic ml-2 tracking-tighter">/HR</small>
               </span>
             </div>
           </div>
@@ -77,7 +78,9 @@ export default async function ArenaPage({ params, searchParams }: Props) {
       </section>
 
       {/* Main Booking UI */}
-      <BookingSystem arenaId={arena.id} initialDate={selectedDate} />
+      <div className="relative z-10 -mt-8">
+        <BookingSystem arenaId={arena.id} initialDate={selectedDate} />
+      </div>
     </div>
   );
 }
