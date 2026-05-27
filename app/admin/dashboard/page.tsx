@@ -127,50 +127,50 @@ export default async function AdminDashboardPage() {
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           <Link
             href="/admin/arenas/create"
-            className="glass p-6 rounded-2xl border border-white/10 hover:border-primary/30 transition-all group"
+            className="glass-card !p-8 group hover:border-primary/50 transition-all"
           >
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-all">
-                <span className="material-symbols-outlined text-primary">add_location</span>
+            <div className="flex items-center gap-6">
+              <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <span className="material-symbols-outlined text-primary text-2xl">add_location</span>
               </div>
-              <span className="font-bold text-sm uppercase tracking-wider">Create Arena</span>
+              <span className="font-black text-sm uppercase tracking-widest italic group-hover:text-primary transition-colors">Create Arena</span>
             </div>
           </Link>
 
           <Link
             href="/admin/security"
-            className="glass p-6 rounded-2xl border border-white/10 hover:border-primary/30 transition-all group"
+            className="glass-card !p-8 group hover:border-primary/50 transition-all"
           >
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-all">
-                <span className="material-symbols-outlined text-primary">security</span>
+            <div className="flex items-center gap-6">
+              <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <span className="material-symbols-outlined text-primary text-2xl">security</span>
               </div>
-              <span className="font-bold text-sm uppercase tracking-wider">Security Portal</span>
+              <span className="font-black text-sm uppercase tracking-widest italic group-hover:text-primary transition-colors">Security Portal</span>
             </div>
           </Link>
 
           <Link
             href="/admin/reports"
-            className="glass p-6 rounded-2xl border border-white/10 hover:border-primary/30 transition-all group"
+            className="glass-card !p-8 group hover:border-primary/50 transition-all"
           >
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-all">
-                <span className="material-symbols-outlined text-primary">analytics</span>
+            <div className="flex items-center gap-6">
+              <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <span className="material-symbols-outlined text-primary text-2xl">analytics</span>
               </div>
-              <span className="font-bold text-sm uppercase tracking-wider">Reports</span>
+              <span className="font-black text-sm uppercase tracking-widest italic group-hover:text-primary transition-colors">Reports</span>
             </div>
           </Link>
 
           {adminRole === 'super_admin' && (
             <Link
               href="/admin/settings"
-              className="glass p-6 rounded-2xl border border-white/10 hover:border-primary/30 transition-all group"
+              className="glass-card !p-8 group hover:border-primary/50 transition-all"
             >
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-all">
-                  <span className="material-symbols-outlined text-primary">settings</span>
+              <div className="flex items-center gap-6">
+                <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <span className="material-symbols-outlined text-primary text-2xl">settings</span>
                 </div>
-                <span className="font-bold text-sm uppercase tracking-wider">Settings</span>
+                <span className="font-black text-sm uppercase tracking-widest italic group-hover:text-primary transition-colors">Settings</span>
               </div>
             </Link>
           )}
@@ -178,36 +178,30 @@ export default async function AdminDashboardPage() {
           {adminRole === 'super_admin' && (
             <Link
               href="/admin/users"
-              className="glass p-6 rounded-2xl border border-white/10 hover:border-primary/30 transition-all group"
+              className="glass-card !p-8 group hover:border-primary/50 transition-all"
             >
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-all">
-                  <span className="material-symbols-outlined text-primary">admin_panel_settings</span>
+              <div className="flex items-center gap-6">
+                <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <span className="material-symbols-outlined text-primary text-2xl">admin_panel_settings</span>
                 </div>
-                <span className="font-bold text-sm uppercase tracking-wider">Admin Management</span>
+                <span className="font-black text-sm uppercase tracking-widest italic group-hover:text-primary transition-colors">Admin Mgmt</span>
               </div>
             </Link>
           )}
 
-          <Link
-            href="/api/auth/logout"
-            className="glass p-6 rounded-2xl border border-red-500/20 hover:border-red-500/50 hover:bg-red-500/10 transition-all group"
-            onClick={(e) => {
-              e.preventDefault();
-              const form = document.createElement('form');
-              form.method = 'POST';
-              form.action = '/api/auth/logout';
-              document.body.appendChild(form);
-              form.submit();
-            }}
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center group-hover:bg-red-500/20 transition-all">
-                <span className="material-symbols-outlined text-red-500">logout</span>
+          <form action="/api/auth/logout" method="POST" className="group">
+            <button
+              type="submit"
+              className="w-full glass-card !p-8 group hover:border-red-500/50 hover:bg-red-500/5 transition-all text-left cursor-pointer"
+            >
+              <div className="flex items-center gap-6">
+                <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <span className="material-symbols-outlined text-red-500 text-2xl">logout</span>
+                </div>
+                <span className="font-black text-sm uppercase tracking-widest italic text-red-500">Logout</span>
               </div>
-              <span className="font-bold text-sm uppercase tracking-wider text-red-500">Logout</span>
-            </div>
-          </Link>
+            </button>
+          </form>
         </div>
       </div>
     </div>
