@@ -1,12 +1,14 @@
 import { readAuthUserId } from '@/lib/session';
+import { getAdminContext } from '@/lib/admin';
 import { query } from '@/lib/domain';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 
 export default async function AdminBookingsPage() {
   const userId = await readAuthUserId();
+  const context = await getAdminContext(userId);
 
-  if (!userId) {
+  if (!context || !['super_admin', 'admin'].includes(context.role)) {
     redirect('/admin/login');
   }
 
@@ -30,6 +32,9 @@ export default async function AdminBookingsPage() {
           Manage <span className="text-primary text-stroke">Bookings</span>
         </h1>
         <p className="label-classic !ml-0">Recent 50 reservations</p>
+        <div className="mt-6">
+          <Link href="/admin/bookings/create" className="btn-primary">CREATE BOOKING</Link>
+        </div>
       </div>
 
       {bookings.length === 0 ? (

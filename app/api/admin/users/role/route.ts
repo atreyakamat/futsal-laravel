@@ -5,7 +5,7 @@ import { readAuthUserId } from '@/lib/session';
 
 const bodySchema = z.object({
   user_id: z.coerce.number().int().positive(),
-  role: z.enum(['super_admin', 'admin', 'arena_admin', 'security', 'customer']),
+  role: z.enum(['super_admin', 'admin', 'security', 'customer']),
   arena_id: z.preprocess(
     (value) => (value === '' ? null : value),
     z.coerce.number().int().positive().optional().nullable()
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
   }
 
-  if ((payload.role === 'arena_admin' || payload.role === 'security') && !payload.arena_id) {
+  if (payload.role === 'security' && !payload.arena_id) {
     return NextResponse.json({ success: false, message: 'Arena is required for scoped admin roles.' }, { status: 400 });
   }
 

@@ -5,7 +5,7 @@ import { readAuthUserId } from '@/lib/session';
 
 const bodySchema = z.object({
   arena_id: z.coerce.number().int().positive(),
-  request_type: z.enum(['slot_template_update', 'entry_mode_update']),
+  request_type: z.enum(['slot_template_update', 'entry_mode_update', 'admin_free_booking']),
   payload_json: z.string().min(2),
   notes: z.string().max(500).optional().nullable(),
 });
@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   const userId = await readAuthUserId();
   const context = await getAdminContext(userId);
 
-  if (!context) {
+  if (!context || context.role !== 'super_admin') {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
   }
 
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   const userId = await readAuthUserId();
   const context = await getAdminContext(userId);
 
-  if (!context) {
+  if (!context || !['super_admin', 'admin'].includes(context.role)) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
   }
 

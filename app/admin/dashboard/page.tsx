@@ -182,6 +182,20 @@ export default async function AdminDashboardPage() {
 
           {(adminRole === 'super_admin' || adminRole === 'admin') && (
             <Link
+              href="/admin/bookings/create"
+              className="glass-card !p-8 group hover:border-primary/50 transition-all"
+            >
+              <div className="flex items-center gap-6">
+                <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <span className="material-symbols-outlined text-primary text-2xl">add_card</span>
+                </div>
+                <span className="font-black text-sm uppercase tracking-widest italic group-hover:text-primary transition-colors">Create Booking</span>
+              </div>
+            </Link>
+          )}
+
+          {(adminRole === 'super_admin' || adminRole === 'admin') && (
+            <Link
               href="/admin/slots"
               className="glass-card !p-8 group hover:border-primary/50 transition-all"
             >

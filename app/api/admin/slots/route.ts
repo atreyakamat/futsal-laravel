@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
   const userId = await readAuthUserId();
   const context = await getAdminContext(userId);
 
-  if (!context) {
+  if (!context || !['super_admin', 'admin'].includes(context.role)) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
   }
 
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
   const userId = await readAuthUserId();
   const context = await getAdminContext(userId);
 
-  if (!context) {
+  if (!context || !['super_admin', 'admin'].includes(context.role)) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
   }
 

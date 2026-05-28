@@ -2,6 +2,7 @@ import { getBookingsByRef, getArenaById } from '@/lib/domain';
 import { mergeSlots, getDurationText } from '@/lib/slot-merge';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { getTicketQrUrl } from '@/lib/ticket';
 
 type Props = {
   params: Promise<{ ref: string }>;
@@ -77,7 +78,7 @@ export default async function BookingSuccessPage({ params }: Props) {
 
           <div className="bg-white p-8 rounded-[2.5rem] mb-10 shadow-[0_0_50px_rgba(13,242,32,0.1)] scale-110">
             <img
-              src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${firstBooking.ticket_number}`}
+              src={getTicketQrUrl(firstBooking.ticket_number ?? bookingRef)}
               alt="Ticket QR"
               className="w-40 h-40"
             />
@@ -88,10 +89,10 @@ export default async function BookingSuccessPage({ params }: Props) {
             <h2 className="text-4xl font-black tracking-tighter text-white uppercase italic">{firstBooking.ticket_number}</h2>
             <div className="pt-6 flex justify-center">
               <a
-                href={`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${firstBooking.ticket_number}`}
+                href={`/booking/ticket/${bookingRef}?download=1`}
                 className="btn-secondary !py-3 !px-6 !rounded-full !text-[10px] flex items-center gap-3"
               >
-                <span className="material-symbols-outlined text-lg">download</span> DOWNLOAD PDF
+                <span className="material-symbols-outlined text-lg">download</span> DOWNLOAD TICKET
               </a>
             </div>
           </div>
@@ -111,7 +112,7 @@ export default async function BookingSuccessPage({ params }: Props) {
                 <div>
                   <p className="font-black text-sm mb-2 text-white uppercase tracking-tight">Check Your Messages</p>
                   <p className="text-xs text-white/40 leading-relaxed font-medium">
-                    We've sent your digital ticket via WhatsApp and Email. Ensure you have it ready on your phone.
+                    Your digital ticket is ready to download and email delivery will use the configured mail gateway.
                   </p>
                 </div>
               </li>
@@ -122,7 +123,7 @@ export default async function BookingSuccessPage({ params }: Props) {
                 <div>
                   <p className="font-black text-sm mb-2 text-white uppercase tracking-tight">Show QR at Entry</p>
                   <p className="text-xs text-white/40 leading-relaxed font-medium">
-                    Present the QR code above or the one in your WhatsApp message at the arena security desk.
+                    Present the QR code above or the downloaded ticket at the arena security desk.
                   </p>
                 </div>
               </li>

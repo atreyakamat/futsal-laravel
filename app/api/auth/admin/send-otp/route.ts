@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     [payload.identifier, payload.identifier]
   );
 
-  if (user.length === 0 || !['admin', 'super_admin', 'arena_admin', 'security'].includes(user[0].role)) {
+  if (user.length === 0 || !['admin', 'super_admin', 'security'].includes(user[0].role)) {
     return NextResponse.json(
       { success: false, message: 'Unauthorized. Admin access required.' },
       { status: 403 }

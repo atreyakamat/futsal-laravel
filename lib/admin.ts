@@ -1,9 +1,10 @@
 import bcrypt from 'bcryptjs';
-import { query, queryOne, transaction, getSetting } from '@/lib/domain';
+import { query, queryOne, transaction, getSetting, createBookingBatch } from '@/lib/domain';
+import { sendTicketEmail } from '@/lib/ticket';
 
-export type AdminRole = 'super_admin' | 'admin' | 'arena_admin' | 'security' | 'customer';
+export type AdminRole = 'super_admin' | 'admin' | 'security' | 'customer';
 export type EntryMode = 'open' | 'blocked' | 'free';
-export type ApprovalRequestType = 'slot_template_update' | 'entry_mode_update';
+export type ApprovalRequestType = 'slot_template_update' | 'entry_mode_update' | 'admin_free_booking';
 
 export type SlotPricingInput = {
   time_slot: string;
@@ -22,7 +23,7 @@ export type AdminContext = {
 };
 
 export function isAdminRole(role: string | null | undefined): role is AdminRole {
-  return ['super_admin', 'admin', 'arena_admin', 'security'].includes(String(role));
+  return ['super_admin', 'admin', 'security'].includes(String(role));
 }
 
 export async function getAdminContext(userId: number | null): Promise<AdminContext | null> {
@@ -63,7 +64,7 @@ export async function isSuperAdmin(userId: number | null) {
 
 export async function isArenaScopedAdmin(userId: number | null) {
   const role = await getUserRole(userId);
-  return role === 'arena_admin' || role === 'security';
+  return role === 'security';
 }
 
 export async function getManagedArenaId(userId: number | null) {
@@ -79,9 +80,9 @@ export async function updateUserPassword(userId: number, password: string) {
 export async function setArenaAssignment(userId: number, role: AdminRole, arenaId: number | null) {
   await query('UPDATE users SET role = ?, updated_at = NOW() WHERE id = ?', [role, userId]);
 
-  if (role === 'arena_admin' || role === 'security') {
+  if (role === 'security') {
     if (!arenaId) {
-      throw new Error('Arena assignment is required for arena_admin and security roles.');
+      throw new Error('Arena assignment is required for security role.');
     }
 
     await query(
@@ -310,6 +311,38 @@ export async function resolveApprovalRequest(input: {
         action: 'entry_mode_update_approved',
         actorUserId: input.decisionBy,
         arenaId: request.arena_id,
+        entityType: 'approval_request',
+        entityId: request.id,
+        afterData: payload,
+      });
+    }
+
+    if (request.request_type === 'admin_free_booking') {
+      const arenaId = Number(payload.arenaId ?? request.arena_id ?? 0);
+      const bookingDate = String(payload.bookingDate ?? '');
+      const slots = Array.isArray(payload.slots) ? (payload.slots as string[]) : [];
+      if (!arenaId || !bookingDate || slots.length === 0) {
+        throw new Error('Approval request is missing booking details.');
+      }
+
+      const booking = await createBookingBatch({
+        arenaId,
+        bookingDate,
+        slots,
+        customerName: String(payload.customerName ?? 'Guest'),
+        customerMobile: String(payload.customerMobile ?? ''),
+        customerEmail: payload.customerEmail ? String(payload.customerEmail) : null,
+        userId: null,
+        sessionId: `approval-${request.id}`,
+        freeBooking: true,
+      });
+
+      await sendTicketEmail(booking.bookingRef);
+
+      await createAdminAuditLog({
+        action: 'admin_free_booking_approved',
+        actorUserId: input.decisionBy,
+        arenaId,
         entityType: 'approval_request',
         entityId: request.id,
         afterData: payload,

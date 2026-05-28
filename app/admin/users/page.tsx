@@ -54,7 +54,6 @@ export default async function AdminUsersPage() {
                 <select name="role" defaultValue={user.role} className="input-field !min-h-0 !py-3">
                   <option value="customer">customer</option>
                   <option value="admin">admin</option>
-                  <option value="arena_admin">arena_admin</option>
                   <option value="security">security</option>
                   <option value="super_admin">super_admin</option>
                 </select>

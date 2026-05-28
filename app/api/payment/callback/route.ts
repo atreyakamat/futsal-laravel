@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { confirmPayment, markPaymentFailed } from '@/lib/domain';
 import { verifyPayuResponseHash } from '@/lib/payment';
+import { sendTicketEmail } from '@/lib/ticket';
 
 async function readFormValue(request: Request, key: string) {
   const formData = await request.formData();
@@ -40,6 +41,8 @@ export async function POST(request: Request) {
     if (!booking) {
       return NextResponse.json({ success: false, message: 'Booking not found.' }, { status: 404 });
     }
+
+    await sendTicketEmail(bookingRef);
 
     return NextResponse.redirect(new URL(`/booking/success/${bookingRef}`, request.url));
   }

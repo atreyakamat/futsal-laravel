@@ -34,16 +34,25 @@ declare namespace __next_route_internal_types__ {
   type StaticRoutes = 
     | `/`
     | `/admin`
+    | `/admin/approvals`
     | `/admin/arenas`
     | `/admin/arenas/create`
     | `/admin/bookings`
+    | `/admin/bookings/create`
+    | `/admin/credentials`
     | `/admin/dashboard`
     | `/admin/login`
     | `/admin/reports`
     | `/admin/security`
     | `/admin/settings`
+    | `/admin/slots`
     | `/admin/users`
+    | `/api/admin/approvals`
     | `/api/admin/arenas`
+    | `/api/admin/bookings`
+    | `/api/admin/credentials`
+    | `/api/admin/slots`
+    | `/api/admin/users/role`
     | `/api/arenas`
     | `/api/auth/admin/send-otp`
     | `/api/auth/admin/verify-otp`
@@ -65,6 +74,7 @@ declare namespace __next_route_internal_types__ {
     | `/security/verify`
     | `/verify-otp`
   type DynamicRoutes<T extends string = string> = 
+    | `/api/admin/approvals/${SafeSlug<T>}`
     | `/api/arenas/${SafeSlug<T>}`
     | `/api/security/verify/${SafeSlug<T>}`
     | `/arena/${SafeSlug<T>}`

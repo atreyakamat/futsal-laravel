@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { createBookingBatch, releaseLocks } from '@/lib/domain';
 import { getCookieValueFromRequest, getWritableSessionId, persistSessionCookie, AUTH_COOKIE } from '@/lib/session';
 import { getArenaEntryMode } from '@/lib/admin';
+import { sendTicketEmail } from '@/lib/ticket';
 
 const bodySchema = z.object({
   arena_id: z.number().int().positive(),
@@ -65,6 +66,10 @@ export async function POST(request: Request) {
   });
 
   await releaseLocks(sessionId, payload.arena_id, payload.date, payload.slots);
+
+  if (entryMode === 'free') {
+    await sendTicketEmail(result.bookingRef);
+  }
 
   const redirectTarget = entryMode === 'free'
     ? `/booking/success/${result.bookingRef}`

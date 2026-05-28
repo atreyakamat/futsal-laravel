@@ -6,7 +6,7 @@ export default async function AdminCredentialsPage() {
   const userId = await readAuthUserId();
   const context = await getAdminContext(userId);
 
-  if (!context || !['super_admin', 'arena_admin', 'security'].includes(context.role)) {
+  if (!context || !['super_admin', 'security'].includes(context.role)) {
     redirect('/admin/dashboard');
   }
 
