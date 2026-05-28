@@ -1,6 +1,8 @@
 import { getArenaById, getArenaPricing, findUserByIdentifier } from '@/lib/domain';
 import { readAuthUserId, readGuestIdentifier } from '@/lib/session';
 import { mergeSlots, getDurationText } from '@/lib/slot-merge';
+import { getPayuConfig } from '@/lib/payment';
+import { getArenaEntryMode } from '@/lib/admin';
 import Link from 'next/link';
 
 type Props = {
@@ -29,6 +31,19 @@ export default async function CheckoutPage({ searchParams }: Props) {
   const pricing = await getArenaPricing(arenaId);
   const selectedPricing = pricing.filter((p) => slots.includes(p.time_slot));
   const total = selectedPricing.reduce((sum, p) => sum + Number(p.price), 0);
+  const entryMode = await getArenaEntryMode(arenaId);
+  if (entryMode === 'blocked') {
+    return (
+      <div className="max-w-7xl mx-auto px-6 py-20 text-center">
+        <h1 className="text-4xl font-black uppercase">Bookings are temporarily blocked for this arena.</h1>
+        <Link href="/" className="text-primary mt-4 inline-block font-bold">Back to Home</Link>
+      </div>
+    );
+  }
+
+  const checkoutTotal = entryMode === 'free' ? 0 : total;
+  const { merchantKey, merchantSalt } = getPayuConfig();
+  const payuReady = Boolean(merchantKey && merchantSalt);
 
   const userId = await readAuthUserId();
   const guestIdentifier = await readGuestIdentifier();
@@ -113,7 +128,7 @@ export default async function CheckoutPage({ searchParams }: Props) {
 
               <div className="pt-8 border-t border-white/5 flex justify-between items-end">
                 <span className="label-classic !ml-0">Total Amount</span>
-                <span className="text-5xl font-black text-white italic tracking-tighter">₹{total}</span>
+                <span className="text-5xl font-black text-white italic tracking-tighter">₹{checkoutTotal}</span>
               </div>
             </div>
           </div>
@@ -191,9 +206,15 @@ export default async function CheckoutPage({ searchParams }: Props) {
                   type="submit"
                   className="btn-primary w-full py-6 text-sm flex items-center justify-center gap-4 scale-105"
                 >
-                  <span className="font-black italic">CONFIRM & PAY ₹{total}</span>
+                  <span className="font-black italic">{checkoutTotal === 0 ? 'CONFIRM BOOKING' : `CONFIRM & PAY ₹${checkoutTotal}`}</span>
                   <span className="material-symbols-outlined font-black">arrow_forward</span>
                 </button>
+
+                {!payuReady && checkoutTotal > 0 && (
+                  <div className="p-4 rounded-2xl border border-yellow-500/20 bg-yellow-500/5 text-yellow-300 text-[10px] font-black uppercase tracking-widest">
+                    PayU is not configured. Set PAYU_MERCHANT_KEY and PAYU_SALT to enable payments.
+                  </div>
+                )}
 
                 <div className="flex items-center justify-center gap-8 opacity-20 grayscale hover:opacity-40 transition-opacity">
                   <img

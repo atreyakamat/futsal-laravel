@@ -13,13 +13,12 @@ export async function POST(request: Request) {
     isJson ? await request.json() : Object.fromEntries((await request.formData()).entries())
   );
 
-  // Check if identifier belongs to admin or super_admin
   const user = await query<{ id: number; role: string }>(
     'SELECT id, role FROM users WHERE (email = ? OR customer_mobile = ?) LIMIT 1',
     [payload.identifier, payload.identifier]
   );
 
-  if (user.length === 0 || !['admin', 'super_admin', 'arena_admin'].includes(user[0].role)) {
+  if (user.length === 0 || !['admin', 'super_admin', 'arena_admin', 'security'].includes(user[0].role)) {
     return NextResponse.json(
       { success: false, message: 'Unauthorized. Admin access required.' },
       { status: 403 }

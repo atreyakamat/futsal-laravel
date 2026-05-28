@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createBookingBatch, releaseLocks } from '@/lib/domain';
 import { getCookieValueFromRequest, getWritableSessionId, persistSessionCookie, AUTH_COOKIE } from '@/lib/session';
+import { getArenaEntryMode } from '@/lib/admin';
 
 const bodySchema = z.object({
   arena_id: z.number().int().positive(),
@@ -45,6 +46,11 @@ export async function POST(request: Request) {
 
   const sessionId = getWritableSessionId(request);
   const authUserId = getCookieValueFromRequest(request, AUTH_COOKIE);
+  const entryMode = await getArenaEntryMode(payload.arena_id);
+
+  if (entryMode === 'blocked') {
+    return NextResponse.json({ success: false, message: 'This arena is temporarily blocked for bookings.' }, { status: 403 });
+  }
 
   const result = await createBookingBatch({
     arenaId: payload.arena_id,
@@ -55,17 +61,22 @@ export async function POST(request: Request) {
     customerEmail: payload.customer_email ?? null,
     userId: authUserId ? Number(authUserId) : null,
     sessionId,
+    freeBooking: entryMode === 'free',
   });
 
   await releaseLocks(sessionId, payload.arena_id, payload.date, payload.slots);
+
+  const redirectTarget = entryMode === 'free'
+    ? `/booking/success/${result.bookingRef}`
+    : `/payment/checkout/${result.bookingRef}`;
 
   const response = isJson
     ? NextResponse.json({
         success: true,
         bookingRef: result.bookingRef,
-        redirectTo: `/payment/checkout/${result.bookingRef}`,
+        redirectTo: redirectTarget,
       })
-    : NextResponse.redirect(new URL(`/payment/checkout/${result.bookingRef}`, request.url));
+    : NextResponse.redirect(new URL(redirectTarget, request.url));
 
   if (result.userId) {
     response.cookies.set(AUTH_COOKIE, String(result.userId), {

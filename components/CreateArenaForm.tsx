@@ -26,7 +26,7 @@ export default function CreateArenaForm() {
 
       if (response.ok) {
         alert('Arena created successfully!');
-        router.push('/dashboard'); // Or a dedicated admin arena list
+        router.push('/admin/arenas');
         router.refresh();
       } else {
         alert('Failed to create arena.');

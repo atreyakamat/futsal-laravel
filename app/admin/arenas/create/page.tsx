@@ -1,11 +1,13 @@
 import CreateArenaForm from '@/components/CreateArenaForm';
 import { readAuthUserId } from '@/lib/session';
+import { getAdminContext } from '@/lib/admin';
 import { redirect } from 'next/navigation';
 
 export default async function CreateArenaPage() {
   const userId = await readAuthUserId();
+  const context = await getAdminContext(userId);
 
-  if (!userId) {
+  if (!context || context.role !== 'super_admin') {
     redirect('/admin/login');
   }
 

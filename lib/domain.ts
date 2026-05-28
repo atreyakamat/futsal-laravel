@@ -224,6 +224,7 @@ export async function createBookingBatch(params: {
   customerEmail: string | null;
   userId: number | null;
   sessionId: string;
+  freeBooking?: boolean;
 }) {
   const bookingRef = `REF-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
   const bookings = await getArenaPricing(params.arenaId);
@@ -254,7 +255,7 @@ export async function createBookingBatch(params: {
     }
 
     for (const slot of params.slots) {
-      const slotPrice = priceBySlot.get(slot);
+      const slotPrice = params.freeBooking ? 0 : priceBySlot.get(slot);
       if (slotPrice == null) {
         throw new Error(`Pricing not found for slot ${slot}`);
       }
@@ -280,7 +281,7 @@ export async function createBookingBatch(params: {
           ticket_number, booking_ref, arena_id, user_id, booking_date, time_slot,
           customer_name, customer_mobile, customer_email, amount, payment_status,
           payment_method, notes, checked_in, is_free_booking, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'online', NULL, FALSE, FALSE, NOW(), NOW())`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, FALSE, ?, NOW(), NOW())`,
         [
           ticketNumber,
           bookingRef,
@@ -292,6 +293,9 @@ export async function createBookingBatch(params: {
           params.customerMobile,
           params.customerEmail,
           slotPrice,
+          params.freeBooking ? 'confirmed' : 'pending',
+          params.freeBooking ? 'free' : 'online',
+          params.freeBooking ? true : false,
         ]
       );
 

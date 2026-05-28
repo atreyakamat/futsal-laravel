@@ -1,24 +1,13 @@
 import { readAuthUserId } from '@/lib/session';
+import { getAdminContext } from '@/lib/admin';
 import { query } from '@/lib/domain';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 
-async function getAdminRole(userId: number | null): Promise<string | null> {
-  if (!userId) return null;
-  
-  const user = await query<{ role: string }>(
-    'SELECT role FROM users WHERE id = ? LIMIT 1',
-    [userId]
-  );
-  
-  if (user.length === 0) return null;
-  const role = user[0].role;
-  return ['admin', 'super_admin', 'arena_admin'].includes(role) ? role : null;
-}
-
 export default async function AdminDashboardPage() {
   const userId = await readAuthUserId();
-  const adminRole = await getAdminRole(userId);
+  const context = await getAdminContext(userId);
+  const adminRole = context?.role ?? null;
 
   if (!adminRole) {
     redirect('/admin/login');
@@ -125,17 +114,19 @@ export default async function AdminDashboardPage() {
         </h2>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <Link
-            href="/admin/arenas/create"
-            className="glass-card !p-8 group hover:border-primary/50 transition-all"
-          >
-            <div className="flex items-center gap-6">
-              <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <span className="material-symbols-outlined text-primary text-2xl">add_location</span>
+          {adminRole === 'super_admin' && (
+            <Link
+              href="/admin/arenas/create"
+              className="glass-card !p-8 group hover:border-primary/50 transition-all"
+            >
+              <div className="flex items-center gap-6">
+                <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <span className="material-symbols-outlined text-primary text-2xl">add_location</span>
+                </div>
+                <span className="font-black text-sm uppercase tracking-widest italic group-hover:text-primary transition-colors">Create Arena</span>
               </div>
-              <span className="font-black text-sm uppercase tracking-widest italic group-hover:text-primary transition-colors">Create Arena</span>
-            </div>
-          </Link>
+            </Link>
+          )}
 
           <Link
             href="/admin/security"
@@ -185,6 +176,48 @@ export default async function AdminDashboardPage() {
                   <span className="material-symbols-outlined text-primary text-2xl">admin_panel_settings</span>
                 </div>
                 <span className="font-black text-sm uppercase tracking-widest italic group-hover:text-primary transition-colors">Admin Mgmt</span>
+              </div>
+            </Link>
+          )}
+
+          {(adminRole === 'super_admin' || adminRole === 'admin') && (
+            <Link
+              href="/admin/slots"
+              className="glass-card !p-8 group hover:border-primary/50 transition-all"
+            >
+              <div className="flex items-center gap-6">
+                <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <span className="material-symbols-outlined text-primary text-2xl">schedule</span>
+                </div>
+                <span className="font-black text-sm uppercase tracking-widest italic group-hover:text-primary transition-colors">Slots</span>
+              </div>
+            </Link>
+          )}
+
+          {adminRole !== 'admin' && (
+            <Link
+              href="/admin/credentials"
+              className="glass-card !p-8 group hover:border-primary/50 transition-all"
+            >
+              <div className="flex items-center gap-6">
+                <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <span className="material-symbols-outlined text-primary text-2xl">vpn_key</span>
+                </div>
+                <span className="font-black text-sm uppercase tracking-widest italic group-hover:text-primary transition-colors">Credentials</span>
+              </div>
+            </Link>
+          )}
+
+          {adminRole === 'super_admin' && (
+            <Link
+              href="/admin/approvals"
+              className="glass-card !p-8 group hover:border-primary/50 transition-all"
+            >
+              <div className="flex items-center gap-6">
+                <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <span className="material-symbols-outlined text-primary text-2xl">fact_check</span>
+                </div>
+                <span className="font-black text-sm uppercase tracking-widest italic group-hover:text-primary transition-colors">Approvals</span>
               </div>
             </Link>
           )}

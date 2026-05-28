@@ -1,23 +1,17 @@
 import { readAuthUserId } from '@/lib/session';
-import { query } from '@/lib/domain';
+import { getAdminContext, listArenas } from '@/lib/admin';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 
 export default async function AdminArenasPage() {
   const userId = await readAuthUserId();
+  const context = await getAdminContext(userId);
 
-  if (!userId) {
+  if (!context) {
     redirect('/admin/login');
   }
 
-  const arenas = await query<{
-    id: number;
-    name: string;
-    slug: string;
-    address: string | null;
-    status: string;
-    created_at: string;
-  }>('SELECT id, name, slug, address, status, created_at FROM arenas ORDER BY created_at DESC');
+  const arenas = await listArenas();
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-20">
@@ -28,13 +22,12 @@ export default async function AdminArenasPage() {
           </h1>
           <p className="label-classic !ml-0">Total Arenas: {arenas.length}</p>
         </div>
-        <Link
-          href="/admin/arenas/create"
-          className="btn-primary flex items-center gap-2"
-        >
-          <span className="material-symbols-outlined">add</span>
-          CREATE NEW ARENA
-        </Link>
+        {context.role === 'super_admin' && (
+          <Link href="/admin/arenas/create" className="btn-primary flex items-center gap-2">
+            <span className="material-symbols-outlined">add</span>
+            CREATE NEW ARENA
+          </Link>
+        )}
       </div>
 
       {arenas.length === 0 ? (
@@ -85,13 +78,10 @@ export default async function AdminArenasPage() {
                   >
                     <span className="material-symbols-outlined">visibility</span>
                   </Link>
-                  <Link
-                    href={`/admin/arenas/edit/${arena.id}`}
-                    className="btn-secondary !py-3 !px-4 !rounded-xl"
-                  >
+                  <Link href="/admin/slots" className="btn-secondary !py-3 !px-4 !rounded-xl">
                     <div className="flex items-center gap-2">
-                      <span className="material-symbols-outlined">edit</span>
-                      <span className="font-black text-[10px] tracking-widest uppercase">Edit</span>
+                      <span className="material-symbols-outlined">schedule</span>
+                      <span className="font-black text-[10px] tracking-widest uppercase">Slots</span>
                     </div>
                   </Link>
                 </div>
