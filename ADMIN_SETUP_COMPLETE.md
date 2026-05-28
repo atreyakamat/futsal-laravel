@@ -11,7 +11,7 @@ I have successfully completed the admin login system and created a comprehensive
 - Displays default credentials (ADMIN_EMAIL, ADMIN_MOBILE, ADMIN_PASSWORD)
 - Professional UI with admin-specific branding
 - OTP-based authentication (secure, stateless)
-- Role-based access control (super_admin, admin, arena_admin)
+- Role-based access control (super_admin, admin, security)
 
 ### ✅ Configurable Admin Credentials
 

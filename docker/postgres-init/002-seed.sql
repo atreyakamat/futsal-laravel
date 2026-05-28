@@ -13,22 +13,15 @@ INSERT INTO users (name, email, customer_mobile, role, created_at, updated_at)
 VALUES ('System Admin', 'admin@futsalgoa.com', '+919999999999', 'super_admin', NOW(), NOW())
 ON CONFLICT (email) DO NOTHING;
 
--- Insert demo arena admin
+-- Insert demo admin user
 INSERT INTO users (name, email, customer_mobile, role, created_at, updated_at)
-VALUES ('Pilar Manager', 'manager@pilar.com', '+919888888888', 'arena_admin', NOW(), NOW())
+VALUES ('Pilar Manager', 'manager@pilar.com', '+919888888888', 'admin', NOW(), NOW())
 ON CONFLICT (email) DO NOTHING;
 
 -- Insert demo customer
 INSERT INTO users (name, email, customer_mobile, role, created_at, updated_at)
 VALUES ('Futsal Player', 'player@example.com', '+919777777777', 'customer', NOW(), NOW())
 ON CONFLICT (email) DO NOTHING;
-
--- Link arena manager to arena
-INSERT INTO arena_managers (user_id, arena_id, role, created_at, updated_at)
-SELECT u.id, a.id, 'manager', NOW(), NOW()
-FROM users u, arenas a
-WHERE u.email = 'manager@pilar.com' AND a.slug = 'pilar-arena'
-ON CONFLICT (user_id) DO NOTHING;
 
 -- Insert pricing for demo arena
 INSERT INTO pricings (arena_id, time_slot, price, created_at, updated_at)
@@ -52,4 +45,3 @@ VALUES
 ON CONFLICT (key) DO NOTHING;
 
 COMMIT;
-

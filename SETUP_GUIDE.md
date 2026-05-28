@@ -149,7 +149,7 @@ The platform supports three admin roles:
 |------|-------------|
 | **super_admin** | Full system access, manage all arenas, view all bookings, system settings |
 | **admin** | Manage multiple arenas, view bookings, manage users |
-| **arena_admin** | Manage specific arena only, view arena bookings |
+| **security** | Verify tickets, confirm entry, validate bookings |
 
 ### Admin Dashboard
 
@@ -208,7 +208,7 @@ The platform uses the following tables:
 - **slot_locks** - Time slot locking for concurrent bookings
 - **user_otps** - OTP storage for authentication
 - **settings** - System configuration
-- **arena_managers** - Arena manager assignments
+- **arena_managers** - Legacy arena manager assignments
 
 ## Environment Variables Reference
 

@@ -40,7 +40,7 @@ FutsalGoa is a complete, modern futsal arena booking platform with enterprise-gr
 
 ### 3. **Admin Authentication System** ✅
 - ✅ OTP-based passwordless admin login
-- ✅ Role-based access control (super_admin, admin, arena_admin)
+- ✅ Role-based access control (super_admin, admin, security)
 - ✅ Admin-specific API endpoints
 - ✅ Secure authentication with bcrypt hashing
 - ✅ HTTP-only secure cookies
@@ -72,13 +72,13 @@ FutsalGoa is a complete, modern futsal arena booking platform with enterprise-gr
 - `app/admin/reports/page.tsx`
 - `app/admin/settings/page.tsx`
 
-### 5. **Arena Admin Functionality** ✅
-- ✅ Arena-specific admin role (arena_admin)
-- ✅ Arena managers linked via `arena_managers` table
+### 5. **Security Role Functionality** ✅
+- ✅ Security role for ticket verification and entry check-in
+- ✅ Security portal linked to ticket lookup flows
 - ✅ Role-based dashboard access
-- ✅ Arena-specific permissions
+- ✅ Entry confirmation tracking
 
-**Database**: `arena_managers` table with user_id ↔ arena_id relationship
+**Database**: `arena_managers` table retained only for legacy mapping
 
 ### 6. **Security & Verification System** ✅
 - ✅ Completely revamped security portal pages
@@ -174,7 +174,7 @@ FutsalGoa Platform
 4. **pricings** - Time slot pricing
 5. **slot_locks** - Temporary slot reservations
 6. **user_otps** - One-time passwords
-7. **arena_managers** - Arena ↔ Manager relationships
+7. **arena_managers** - Legacy arena ↔ manager relationships
 8. **settings** - System configuration
 
 ### Key Features:

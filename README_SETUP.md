@@ -5,7 +5,7 @@ A modern, full-stack futsal arena booking platform built with Next.js, Tailwind 
 ## Features
 
 - ✅ **User Authentication** - OTP-based login for customers
-- ✅ **Admin Portal** - Role-based admin dashboard (super_admin, admin, arena_admin)
+- ✅ **Admin Portal** - Role-based admin dashboard (super_admin, admin, security)
 - ✅ **Arena Management** - Create and manage futsal arenas
 - ✅ **Real-time Booking** - Slot locking with expiration, atomic transactions
 - ✅ **Security Portal** - QR code ticket verification and check-in system
@@ -154,10 +154,10 @@ futsal-laravel/
 - View and process bookings
 - Check in customers at security portal
 
-### Arena Admin (Manager)
-- Manage specific arena(s)
-- View arena-specific bookings
-- Security check-in for their arena
+### Security
+- Verify tickets by ticket number
+- Confirm entry/check-in
+- Use the security portal for validation
 
 ### Customer
 - Browse available arenas
@@ -189,7 +189,7 @@ futsal-laravel/
 
 **users**
 - id, name, email, customer_mobile, password, role, created_at, updated_at
-- Roles: customer, admin, super_admin, arena_admin
+- Roles: customer, admin, super_admin, security
 
 **arenas**
 - id, name, slug, address, description, cover_image, status, bot_enabled, gmaps_link, created_at, updated_at
@@ -211,7 +211,7 @@ futsal-laravel/
 
 **arena_managers**
 - id, user_id, arena_id, role (manager), created_at, updated_at
-- Links arena managers to their arenas
+- Legacy arena manager mapping retained for backwards compatibility
 
 **settings**
 - id, key (unique), value, created_at, updated_at

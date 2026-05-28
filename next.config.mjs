@@ -2,6 +2,10 @@
 const nextConfig = {
   output: 'standalone',
   typedRoutes: true,
+  webpack: (config) => {
+    config.output.hashFunction = 'md4';
+    return config;
+  },
   images: {
     remotePatterns: [
       {
