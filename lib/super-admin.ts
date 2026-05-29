@@ -377,8 +377,18 @@ export async function logAuditAction(
   userAgent?: string
 ) {
   await query(
-    'INSERT INTO system_audit_logs (super_admin_id, action_type, entity_type, entity_id, changes, ip_address, user_agent, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())',
+    'INSERT INTO system_audit_logs (super_admin_id, action, entity_type, entity_id, changes, ip_address, user_agent, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())',
     [superAdminId, action, entityType, entityId || null, JSON.stringify(changes || {}), ipAddress || null, userAgent || null]
+  );
+}
+
+/**
+ * Get all system audit logs
+ */
+export async function getSystemAuditLogs(limit: number = 100) {
+  return query(
+    'SELECT * FROM system_audit_logs ORDER BY created_at DESC LIMIT ?',
+    [limit]
   );
 }
 
