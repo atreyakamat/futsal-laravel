@@ -19,7 +19,7 @@ export default async function DashboardPage() {
     );
   }
 
-  const allBookings = await getBookingsForUser(userId);
+  const allBookings = (await getBookingsForUser(userId)) || [];
   
   // Group by booking_ref
   const groups: Record<string, typeof allBookings> = {};
@@ -55,11 +55,11 @@ export default async function DashboardPage() {
           <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] block mb-2">
             Total Reservations
           </span>
-          <span className="text-3xl font-black text-white italic">{bookingRefs.length}</span>
+          <span className="text-3xl font-black text-white italic">{bookingRefs?.length || 0}</span>
         </div>
       </div>
 
-      {bookingRefs.length === 0 ? (
+      {(bookingRefs?.length === 0) ? (
         <div className="py-32 text-center glass-card border-dashed border-white/5">
           <div className="w-24 h-24 rounded-3xl bg-white/[0.03] flex items-center justify-center mx-auto mb-8 shadow-inner">
             <span className="material-symbols-outlined text-5xl text-white/10">history</span>
@@ -77,6 +77,7 @@ export default async function DashboardPage() {
         <div className="space-y-10">
           {bookingRefs.map((ref) => {
             const group = groups[ref];
+            if (!group || group.length === 0) return null;
             const slots = group.map((b) => b.time_slot);
             const mergedSlots = mergeSlots(slots).join(', ');
             const duration = getDurationText(slots);

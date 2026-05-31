@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { AUTH_COOKIE, getCookieValueFromRequest } from '@/lib/session';
-import { confirmEntryByTicket } from '@/lib/domain';
+import { confirmEntryByTicket, getBookingByTicket } from '@/lib/domain';
+import { getAdminContext, userHasSecurityPermission } from '@/lib/admin';
 
 const bodySchema = z.object({
   ticket_number: z.string().min(1),
@@ -13,7 +14,29 @@ export async function POST(request: Request) {
     isJson ? await request.json() : Object.fromEntries((await request.formData()).entries())
   );
   const checkedInBy = getCookieValueFromRequest(request, AUTH_COOKIE);
-  const result = await confirmEntryByTicket(payload.ticket_number, checkedInBy ? Number(checkedInBy) : null);
+  const actorId = checkedInBy ? Number(checkedInBy) : null;
+  const admin = await getAdminContext(actorId);
+
+  if (!admin) {
+    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
+  }
+
+  if (admin.role === 'security') {
+    const allowed = await userHasSecurityPermission(admin.id, 'canConfirmEntry');
+    if (!allowed) {
+      return NextResponse.json({ success: false, message: 'Security access denied for entry confirmation.' }, { status: 403 });
+    }
+
+    const booking = await getBookingByTicket(payload.ticket_number);
+    if (!booking) {
+      return NextResponse.json({ success: false, message: 'Ticket not found.' }, { status: 404 });
+    }
+    if (admin.arenaId && booking.arena_id !== admin.arenaId) {
+      return NextResponse.json({ success: false, message: 'This ticket belongs to a different arena.' }, { status: 403 });
+    }
+  }
+
+  const result = await confirmEntryByTicket(payload.ticket_number, actorId);
 
   if (!isJson) {
     return NextResponse.redirect(new URL(`/security/scan?ticket_number=${encodeURIComponent(payload.ticket_number)}&result=${result.success ? 'success' : 'error'}`, request.url));

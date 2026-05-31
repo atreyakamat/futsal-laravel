@@ -1,16 +1,19 @@
 import { readAuthUserId } from '@/lib/session';
 import { getAdminContext, listArenas } from '@/lib/admin';
+import { getArenaById } from '@/lib/domain';
 import { redirect } from 'next/navigation';
 
 export default async function AdminBookingCreatePage() {
   const userId = await readAuthUserId();
   const context = await getAdminContext(userId);
 
-  if (!context || !['super_admin', 'admin'].includes(context.role)) {
+  if (!context || !['super_admin', 'admin', 'arena_admin'].includes(context.role)) {
     redirect('/admin/bookings');
   }
 
-  const arenas = await listArenas();
+  const arenas = context.role === 'arena_admin' ? [] : await listArenas();
+  const scopedArenaId = context.role === 'arena_admin' ? context.arenaId : null;
+  const scopedArena = scopedArenaId ? await getArenaById(scopedArenaId) : null;
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-20">
@@ -25,11 +28,18 @@ export default async function AdminBookingCreatePage() {
         <div className="grid md:grid-cols-2 gap-6">
           <div className="space-y-2">
             <label className="label-classic">Arena</label>
-            <select name="arena_id" className="input-field" defaultValue={arenas[0]?.id ?? ''}>
-              {arenas.map((arena) => (
-                <option key={arena.id} value={arena.id}>{arena.name}</option>
-              ))}
-            </select>
+            {context.role !== 'arena_admin' ? (
+              <select name="arena_id" className="input-field" defaultValue={arenas[0]?.id ?? ''}>
+                {arenas.map((arena) => (
+                  <option key={arena.id} value={arena.id}>{arena.name}</option>
+                ))}
+              </select>
+            ) : (
+              <>
+                <input type="hidden" name="arena_id" value={scopedArenaId ?? ''} />
+                <input className="input-field" value={scopedArena?.name ?? 'No arena assigned'} readOnly />
+              </>
+            )}
           </div>
           <div className="space-y-2">
             <label className="label-classic">Booking Date</label>
@@ -60,7 +70,7 @@ export default async function AdminBookingCreatePage() {
 
         <label className="inline-flex items-center gap-3 text-xs font-black uppercase tracking-widest">
           <input type="checkbox" name="free_booking" value="true" className="w-4 h-4 accent-primary" />
-          Free booking (requires super admin approval if created by admin)
+          Free booking (requires super admin approval if not created by super admin)
         </label>
 
         <div className="space-y-2">

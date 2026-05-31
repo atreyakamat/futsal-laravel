@@ -1,12 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function SecurityScanPage() {
   const [ticketNumber, setTicketNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const deniedMessage = searchParams?.get('denied');
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -64,6 +66,12 @@ export default function SecurityScanPage() {
             )}
           </button>
         </form>
+
+        {deniedMessage && (
+          <div className="mt-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-black uppercase tracking-widest text-center">
+            Access denied for this security action.
+          </div>
+        )}
 
         <div className="mt-8 pt-6 border-t border-white/10">
           <p className="text-[10px] text-gray-600 text-center uppercase tracking-widest">

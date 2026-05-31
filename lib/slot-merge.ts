@@ -15,16 +15,21 @@ function toTime(minutes: number) {
 }
 
 export function mergeSlots(slots: string[]) {
+  if (!slots || !Array.isArray(slots) || slots?.length === 0) return [];
   const sorted = [...slots].sort((a, b) => toMinutes(parseSlot(a)) - toMinutes(parseSlot(b)));
   const merged: string[] = [];
 
   for (const slot of sorted) {
-    if (merged.length === 0) {
+    if (!merged || merged?.length === 0) {
       merged.push(slot);
       continue;
     }
 
-    const last = merged[merged.length - 1];
+    const last = merged.at(-1);
+    if (!last) {
+      merged.push(slot);
+      continue;
+    }
     const [lastStart, lastEnd] = last.split('-');
     const [currentStart, currentEnd] = slot.split('-');
 
@@ -43,12 +48,13 @@ export function formatSlot(slot: string) {
 }
 
 export function getDurationText(slots: string[]) {
-  if (slots.length === 0) {
+  if (!slots || !Array.isArray(slots) || slots.length === 0) {
     return '0 hrs';
   }
 
-  const first = slots[0].split('-')[0];
-  const last = slots[slots.length - 1].split('-')[1];
+  const first = slots[0]?.split('-')[0];
+  const last = slots.at(-1)?.split('-')[1];
+  if (!first || !last) return '0 hrs';
   const durationMinutes = toMinutes(last) - toMinutes(first);
   const hours = durationMinutes / 60;
 

@@ -1,0 +1,237 @@
+/**
+ * Comprehensive Unit Tests for Super Admin Features
+ * 
+ * Tests:
+ * - Arena CRUD operations
+ * - Admin management
+ * - Security staff management
+ * - Timing/slot management
+ * - Booking blocking
+ * - Approval workflows
+ * 
+ * Run with: npm test (requires vitest configured)
+ */
+
+import { describe, it, expect, beforeAll } from 'vitest';
+
+const BASE_URL = 'http://localhost:3002';
+const SUPER_ADMIN_COOKIE = 'fg_auth_role=super_admin; fg_auth_user=1';
+const ARENA_ADMIN_COOKIE = (adminId = 1, arenaId = 1) => 
+  `fg_auth_role=arena_admin; fg_auth_user=${adminId}; fg_arena_id=${arenaId}`;
+
+class TestClient {
+  async request(method, path, body = null, cookies = '') {
+    const options = {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(cookies && { 'Cookie': cookies }),
+      },
+    };
+    if (body) options.body = JSON.stringify(body);
+
+    const response = await fetch(`${BASE_URL}${path}`, options);
+    const data = await response.json();
+    return { ok: response.ok, status: response.status, data };
+  }
+}
+
+let testClient;
+let testArenaId;
+let testAdminId;
+
+beforeAll(() => {
+  testClient = new TestClient();
+});
+
+// Arena Management Tests
+describe('Arena Management', () => {
+  it('should create an arena', async () => {
+    const res = await testClient.request(
+      'POST',
+      '/api/super-admin/arenas',
+      {
+        name: `Test Arena ${Date.now()}`,
+        slug: `test-${Date.now()}`,
+        address: '123 Test St',
+      },
+      SUPER_ADMIN_COOKIE
+    );
+
+    expect(res.ok).toBe(true);
+    expect(res.data.success).toBe(true);
+    testArenaId = res.data.data?.id;
+  });
+
+  it('should fetch arenas', async () => {
+    const res = await testClient.request(
+      'GET',
+      '/api/super-admin/arenas',
+      null,
+      SUPER_ADMIN_COOKIE
+    );
+
+    expect(res.ok).toBe(true);
+    expect(Array.isArray(res.data.data)).toBe(true);
+  });
+
+  it('should require auth for arena creation', async () => {
+    const res = await testClient.request(
+      'POST',
+      '/api/super-admin/arenas',
+      { name: 'Test', slug: 'test' },
+      ''
+    );
+
+    expect(res.status).toBe(401);
+  });
+});
+
+// Admin Management Tests
+describe('Admin Management', () => {
+  it('should create an arena admin', async () => {
+    if (!testArenaId) return;
+
+    const res = await testClient.request(
+      'POST',
+      '/api/super-admin/admins',
+      {
+        arena_id: testArenaId,
+        email: `admin-${Date.now()}@test.local`,
+        name: 'Test Admin',
+      },
+      SUPER_ADMIN_COOKIE
+    );
+
+    expect(res.ok).toBe(true);
+    testAdminId = res.data.data?.id;
+  });
+
+  it('should fetch arena admins', async () => {
+    const res = await testClient.request(
+      'GET',
+      `/api/super-admin/admins?arena_id=${testArenaId || 1}`,
+      null,
+      SUPER_ADMIN_COOKIE
+    );
+
+    expect(res.ok).toBe(true);
+    expect(Array.isArray(res.data.data)).toBe(true);
+  });
+});
+
+// Security Management Tests
+describe('Security Management', () => {
+  it('should create security staff', async () => {
+    if (!testArenaId) return;
+
+    const res = await testClient.request(
+      'POST',
+      '/api/super-admin/security',
+      {
+        arena_id: testArenaId,
+        email: `security-${Date.now()}@test.local`,
+        name: 'Test Security',
+        phone: '9876543210',
+        permissions: ['verify_ticket'],
+      },
+      SUPER_ADMIN_COOKIE
+    );
+
+    expect(res.ok).toBe(true);
+  });
+
+  it('should fetch security staff', async () => {
+    const res = await testClient.request(
+      'GET',
+      `/api/super-admin/security?arena_id=${testArenaId || 1}`,
+      null,
+      SUPER_ADMIN_COOKIE
+    );
+
+    expect(res.ok).toBe(true);
+    expect(Array.isArray(res.data.data)).toBe(true);
+  });
+});
+
+// Timing/Slot Management Tests
+describe('Timing Management', () => {
+  it('should create a time slot', async () => {
+    if (!testArenaId) return;
+
+    const res = await testClient.request(
+      'POST',
+      '/api/super-admin/arenas/timings',
+      {
+        arena_id: testArenaId,
+        time_slot: 'Morning 09:00-10:00',
+        start_time: '09:00',
+        end_time: '10:00',
+      },
+      SUPER_ADMIN_COOKIE
+    );
+
+    expect(res.ok).toBe(true);
+  });
+
+  it('should fetch time slots', async () => {
+    const res = await testClient.request(
+      'GET',
+      `/api/super-admin/arenas/timings?arena_id=${testArenaId || 1}`,
+      null,
+      SUPER_ADMIN_COOKIE
+    );
+
+    expect(res.ok).toBe(true);
+    expect(Array.isArray(res.data.data)).toBe(true);
+  });
+});
+
+// Approval Workflow Tests
+describe('Approval Workflow', () => {
+  it('arena admin should request approval', async () => {
+    if (!testAdminId) return;
+
+    const res = await testClient.request(
+      'POST',
+      '/api/arena-admin/bookings/request-approval',
+      {
+        date: new Date(Date.now() + 172800000).toISOString().split('T')[0],
+        time_slot: 'Evening 18:00-19:00',
+        number_of_rounds: 1,
+        reason: 'Free event',
+      },
+      ARENA_ADMIN_COOKIE(testAdminId, testArenaId || 1)
+    );
+
+    expect(res.ok).toBe(true);
+  });
+
+  it('arena admin should view approval requests', async () => {
+    if (!testAdminId) return;
+
+    const res = await testClient.request(
+      'GET',
+      '/api/arena-admin/bookings/request-approval',
+      null,
+      ARENA_ADMIN_COOKIE(testAdminId, testArenaId || 1)
+    );
+
+    expect(res.ok).toBe(true);
+    expect(Array.isArray(res.data.data)).toBe(true);
+  });
+});
+
+// Authorization Tests
+describe('Authorization', () => {
+  it('should deny unauthorized requests', async () => {
+    const res = await testClient.request(
+      'GET',
+      '/api/super-admin/arenas',
+      null,
+      ''
+    );
+
+    expect(res.status).toBe(401);
+  });
+});

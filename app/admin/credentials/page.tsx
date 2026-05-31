@@ -6,7 +6,7 @@ export default async function AdminCredentialsPage() {
   const userId = await readAuthUserId();
   const context = await getAdminContext(userId);
 
-  if (!context || !['super_admin', 'security'].includes(context.role)) {
+  if (!context) {
     redirect('/admin/dashboard');
   }
 
@@ -28,18 +28,20 @@ export default async function AdminCredentialsPage() {
         <button className="btn-primary" type="submit">Update Password</button>
       </form>
 
-      <form action="/api/admin/credentials" method="POST" className="glass-card space-y-6">
-        <h2 className="text-2xl font-black uppercase italic">Security Passcode</h2>
-        {context.role === 'super_admin' && arenas.length > 0 && (
-          <select name="arena_id" className="input-field" defaultValue={context.arenaId ?? arenas[0].id}>
-            {arenas.map((arena) => (
-              <option key={arena.id} value={arena.id}>{arena.name}</option>
-            ))}
-          </select>
-        )}
-        <input name="security_passcode" type="password" className="input-field" placeholder="New security passcode" />
-        <button className="btn-primary" type="submit">Update Passcode</button>
-      </form>
+      {(context.role === 'super_admin' || context.role === 'arena_admin') && (
+        <form action="/api/admin/credentials" method="POST" className="glass-card space-y-6">
+          <h2 className="text-2xl font-black uppercase italic">Security Passcode</h2>
+          {context.role === 'super_admin' && arenas?.length > 0 && (
+            <select name="arena_id" className="input-field" defaultValue={context.arenaId ?? arenas[0]?.id}>
+              {arenas.map((arena) => (
+                <option key={arena.id} value={arena.id}>{arena.name}</option>
+              ))}
+            </select>
+          )}
+          <input name="security_passcode" type="password" className="input-field" placeholder="New security passcode" />
+          <button className="btn-primary" type="submit">Update Passcode</button>
+        </form>
+      )}
     </div>
   );
 }

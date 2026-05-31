@@ -15,7 +15,7 @@ export async function POST(request: Request) {
   const result = await lockSlots(payload.arena_id, payload.date, payload.slots, sessionId);
 
   const response = NextResponse.json({
-    success: result.failed.length === 0,
+    success: result?.failed?.length === 0,
     locked: result.locked,
     failed: result.failed,
   });

@@ -1,10 +1,15 @@
 import bcrypt from 'bcryptjs';
+import { cookies } from 'next/headers';
 import { query, queryOne, transaction, getSetting, createBookingBatch } from '@/lib/domain';
 import { sendTicketEmail } from '@/lib/ticket';
 
-export type AdminRole = 'super_admin' | 'admin' | 'security' | 'customer';
+export type AdminRole = 'super_admin' | 'arena_admin' | 'security' | 'customer';
 export type EntryMode = 'open' | 'blocked' | 'free';
-export type ApprovalRequestType = 'slot_template_update' | 'entry_mode_update' | 'admin_free_booking';
+export type ApprovalRequestType = 'slot_template_update' | 'entry_mode_update' | 'admin_free_booking' | 'timing_update' | 'image_update';
+export type SecurityPermissions = {
+  canVerifyTicket: boolean;
+  canConfirmEntry: boolean;
+};
 
 export type SlotPricingInput = {
   time_slot: string;
@@ -23,12 +28,96 @@ export type AdminContext = {
 };
 
 export function isAdminRole(role: string | null | undefined): role is AdminRole {
-  return ['super_admin', 'admin', 'security'].includes(String(role));
+  return ['super_admin', 'arena_admin', 'security'].includes(String(role));
 }
 
 export async function getAdminContext(userId: number | null): Promise<AdminContext | null> {
   if (!userId) return null;
 
+  const cookieStore = await cookies();
+  const roleCookie = cookieStore.get('fg_auth_role')?.value ?? null;
+
+  // 1. Check Super Admin Table if role is super_admin OR if checking as fallback
+  if (roleCookie === 'super_admin' || !roleCookie) {
+    const superAdmin = await queryOne<{
+      id: number;
+      email: string;
+      first_name: string | null;
+      last_name: string | null;
+      is_active: boolean;
+    }>(
+      'SELECT id, email, first_name, last_name, is_active FROM super_admins WHERE id = ? LIMIT 1',
+      [userId]
+    );
+
+    if (superAdmin && superAdmin.is_active) {
+      return {
+        id: superAdmin.id,
+        name: [superAdmin.first_name, superAdmin.last_name].filter(Boolean).join(' ') || superAdmin.email,
+        email: superAdmin.email,
+        role: 'super_admin',
+        customer_mobile: null,
+        arenaId: null,
+        arenaRole: null,
+      };
+    }
+  }
+
+  // 2. Check Arena Admin / Security Staff specifically if role cookie suggests it
+  if (roleCookie === 'arena_admin') {
+    const arenaAdmin = await queryOne<{
+      id: number;
+      email: string;
+      arena_id: number;
+      first_name: string | null;
+      last_name: string | null;
+      is_active: boolean;
+    }>(
+      'SELECT id, email, arena_id, first_name, last_name, is_active FROM arena_admins WHERE id = ? LIMIT 1',
+      [userId]
+    );
+
+    if (arenaAdmin && arenaAdmin.is_active) {
+      return {
+        id: arenaAdmin.id,
+        name: [arenaAdmin.first_name, arenaAdmin.last_name].filter(Boolean).join(' ') || arenaAdmin.email,
+        email: arenaAdmin.email,
+        role: 'arena_admin',
+        customer_mobile: null,
+        arenaId: arenaAdmin.arena_id,
+        arenaRole: 'arena_admin',
+      };
+    }
+  }
+
+  if (roleCookie === 'security') {
+    const securityStaff = await queryOne<{
+      id: number;
+      email: string;
+      arena_id: number;
+      first_name: string | null;
+      last_name: string | null;
+      phone: string | null;
+      is_active: boolean;
+    }>(
+      'SELECT id, email, arena_id, first_name, last_name, phone, is_active FROM security_staff WHERE id = ? LIMIT 1',
+      [userId]
+    );
+
+    if (securityStaff && securityStaff.is_active) {
+      return {
+        id: securityStaff.id,
+        name: [securityStaff.first_name, securityStaff.last_name].filter(Boolean).join(' ') || securityStaff.email,
+        email: securityStaff.email,
+        role: 'security',
+        customer_mobile: securityStaff.phone,
+        arenaId: securityStaff.arena_id,
+        arenaRole: 'security',
+      };
+    }
+  }
+
+  // 3. Fallback to unified users table (legacy or standard accounts)
   const user = await queryOne<{
     id: number;
     name: string;
@@ -64,7 +153,7 @@ export async function isSuperAdmin(userId: number | null) {
 
 export async function isArenaScopedAdmin(userId: number | null) {
   const role = await getUserRole(userId);
-  return role === 'security';
+  return role === 'arena_admin' || role === 'security';
 }
 
 export async function getManagedArenaId(userId: number | null) {
@@ -80,9 +169,9 @@ export async function updateUserPassword(userId: number, password: string) {
 export async function setArenaAssignment(userId: number, role: AdminRole, arenaId: number | null) {
   await query('UPDATE users SET role = ?, updated_at = NOW() WHERE id = ?', [role, userId]);
 
-  if (role === 'security') {
+  if (role === 'arena_admin' || role === 'security') {
     if (!arenaId) {
-      throw new Error('Arena assignment is required for security role.');
+      throw new Error('Arena assignment is required for arena admins and security staff.');
     }
 
     await query(
@@ -96,6 +185,70 @@ export async function setArenaAssignment(userId: number, role: AdminRole, arenaI
   }
 
   await query('DELETE FROM arena_managers WHERE user_id = ?', [userId]);
+}
+
+function securityPermissionSettingKey(userId: number) {
+  return `security:${userId}:permissions`;
+}
+
+function normalizeSecurityPermissions(input?: Partial<SecurityPermissions> | null): SecurityPermissions {
+  return {
+    canVerifyTicket: input?.canVerifyTicket ?? true,
+    canConfirmEntry: input?.canConfirmEntry ?? true,
+  };
+}
+
+export async function getSecurityPermissions(userId: number): Promise<SecurityPermissions> {
+  const raw = await getSetting(securityPermissionSettingKey(userId));
+  if (!raw?.value) {
+    return normalizeSecurityPermissions();
+  }
+
+  try {
+    return normalizeSecurityPermissions(JSON.parse(raw.value) as Partial<SecurityPermissions>);
+  } catch {
+    return normalizeSecurityPermissions();
+  }
+}
+
+export async function setSecurityPermissions(userId: number, permissions: Partial<SecurityPermissions>) {
+  const normalized = normalizeSecurityPermissions(permissions);
+  await query(
+    `INSERT INTO settings ("key", value, created_at, updated_at)
+     VALUES (?, ?, NOW(), NOW())
+     ON CONFLICT ("key")
+     DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+    [securityPermissionSettingKey(userId), JSON.stringify(normalized)]
+  );
+}
+
+export async function clearSecurityPermissions(userId: number) {
+  await query('DELETE FROM settings WHERE "key" = ?', [securityPermissionSettingKey(userId)]);
+}
+
+export async function listSecurityPermissions() {
+  const rows = await query<{ key: string; value: string | null }>(
+    'SELECT "key", value FROM settings WHERE "key" LIKE ?',
+    ['security:%:permissions']
+  );
+
+  const permissions = new Map<number, SecurityPermissions>();
+  for (const row of rows) {
+    const match = row.key.match(/^security:(\d+):permissions$/);
+    if (!match) continue;
+    const userId = Number(match[1]);
+    try {
+      permissions.set(userId, normalizeSecurityPermissions(row.value ? JSON.parse(row.value) as Partial<SecurityPermissions> : null));
+    } catch {
+      permissions.set(userId, normalizeSecurityPermissions());
+    }
+  }
+  return permissions;
+}
+
+export async function userHasSecurityPermission(userId: number, action: keyof SecurityPermissions) {
+  const permissions = await getSecurityPermissions(userId);
+  return permissions[action];
 }
 
 export async function listArenas() {
@@ -127,6 +280,38 @@ export async function listUsersWithArena() {
      ORDER BY u.created_at DESC
      LIMIT 200
   `);
+}
+
+export async function createAdminUser(input: {
+  name: string;
+  email: string;
+  mobile?: string | null;
+  password: string;
+  role: Exclude<AdminRole, 'super_admin' | 'customer'>;
+  arenaId?: number | null;
+  securityPermissions?: Partial<SecurityPermissions>;
+}) {
+  const passwordHash = await bcrypt.hash(input.password, 12);
+  const created = await queryOne<{ id: number }>(
+    `INSERT INTO users (name, email, customer_mobile, password, role, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, NOW(), NOW())
+     RETURNING id`,
+    [input.name, input.email, input.mobile ?? null, passwordHash, input.role]
+  );
+
+  if (!created) {
+    throw new Error('Failed to create user.');
+  }
+
+  await setArenaAssignment(created.id, input.role, input.arenaId ?? null);
+
+  if (input.role === 'security') {
+    await setSecurityPermissions(created.id, input.securityPermissions ?? {});
+  } else {
+    await clearSecurityPermissions(created.id);
+  }
+
+  return created.id;
 }
 
 export async function getArenaSetting(arenaId: number, suffix: string) {
@@ -317,11 +502,60 @@ export async function resolveApprovalRequest(input: {
       });
     }
 
+    if (request.request_type === 'timing_update') {
+      const timing = payload as { arena_id: number; time_slot: string; start_time: string; end_time: string; day_of_week?: number };
+      await query(
+        `INSERT INTO slot_timings (arena_id, time_slot, start_time, end_time, day_of_week, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
+        [timing.arena_id, timing.time_slot, timing.start_time, timing.end_time, timing.day_of_week ?? null]
+      );
+      await createAdminAuditLog({
+        action: 'timing_update_approved',
+        actorUserId: input.decisionBy,
+        arenaId: request.arena_id,
+        entityType: 'approval_request',
+        entityId: request.id,
+        afterData: payload,
+      });
+    }
+
+    if (request.request_type === 'image_update') {
+      const imagePayload = payload as { arena_id: number; cover_image?: string; logo_url?: string };
+      const updates = [];
+      const values = [];
+      
+      if (imagePayload.cover_image) {
+        updates.push('cover_image = ?');
+        values.push(imagePayload.cover_image);
+      }
+      if (imagePayload.logo_url) {
+        updates.push('logo_url = ?');
+        values.push(imagePayload.logo_url);
+      }
+
+      if (updates?.length > 0) {
+        values.push(imagePayload.arena_id || request.arena_id);
+        await query(
+          `UPDATE arenas SET ${updates.join(', ')}, updated_at = NOW() WHERE id = ?`,
+          values
+        );
+      }
+
+      await createAdminAuditLog({
+        action: 'image_update_approved',
+        actorUserId: input.decisionBy,
+        arenaId: request.arena_id,
+        entityType: 'approval_request',
+        entityId: request.id,
+        afterData: payload,
+      });
+    }
+
     if (request.request_type === 'admin_free_booking') {
       const arenaId = Number(payload.arenaId ?? request.arena_id ?? 0);
       const bookingDate = String(payload.bookingDate ?? '');
       const slots = Array.isArray(payload.slots) ? (payload.slots as string[]) : [];
-      if (!arenaId || !bookingDate || slots.length === 0) {
+      if (!arenaId || !bookingDate || slots?.length === 0) {
         throw new Error('Approval request is missing booking details.');
       }
 

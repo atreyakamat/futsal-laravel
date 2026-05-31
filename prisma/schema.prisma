@@ -140,3 +140,135 @@ model ArenaManager {
   @@index([user_id])
   @@index([arena_id])
 }
+
+model SuperAdmin {
+  id                Int       @id @default(autoincrement())
+  user_id           Int       @unique
+  email             String    @unique
+  password_hash     String
+  permissions       String[]  @default([])
+  is_active         Boolean   @default(true)
+  last_login        DateTime?
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  @@map("super_admins")
+  @@index([email])
+  @@index([is_active])
+}
+
+model ArenaAdmin {
+  id                Int       @id @default(autoincrement())
+  arena_id          Int
+  email             String    @unique
+  password_hash     String
+  name              String
+  phone             String?
+  is_active         Boolean   @default(true)
+  created_by        Int
+  last_login        DateTime?
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  @@map("arena_admins")
+  @@index([arena_id])
+  @@index([email])
+  @@index([is_active])
+}
+
+model SecurityStaff {
+  id                Int       @id @default(autoincrement())
+  arena_id          Int
+  email             String    @unique
+  password_hash     String
+  name              String
+  phone             String?
+  permissions       String[]  @default([])
+  is_active         Boolean   @default(true)
+  created_by        Int
+  last_login        DateTime?
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  @@map("security_staff")
+  @@index([arena_id])
+  @@index([email])
+  @@index([is_active])
+}
+
+model SlotApprovalRequest {
+  id                Int       @id @default(autoincrement())
+  arena_id          Int
+  requested_by      Int
+  request_type      String    @default("block_slot")
+  booking_date      String
+  time_slot         String
+  reason            String?
+  status            String    @default("pending")
+  approved_by       Int?
+  approved_at       DateTime?
+  rejection_reason  String?
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  @@map("slot_approval_requests")
+  @@index([arena_id])
+  @@index([status])
+  @@index([requested_by])
+}
+
+model Report {
+  id                Int       @id @default(autoincrement())
+  arena_id          Int
+  report_type       String
+  report_date       String
+  date_range_start  String
+  date_range_end    String
+  total_bookings    Int       @default(0)
+  total_revenue     Decimal   @db.Decimal(12, 2) @default(0)
+  total_attendance  Int       @default(0)
+  avg_duration      Int       @default(0)
+  slot_utilization  Decimal   @db.Decimal(5, 2) @default(0)
+  data              Json?
+  generated_by      Int
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  @@map("reports")
+  @@index([arena_id])
+  @@index([report_type])
+  @@index([report_date])
+}
+
+model AdminCredential {
+  id                Int       @id @default(autoincrement())
+  admin_id          Int
+  admin_type        String
+  credential_token  String    @unique
+  is_used           Boolean   @default(false)
+  used_at           DateTime?
+  expires_at        DateTime
+  created_at        DateTime  @default(now())
+
+  @@map("admin_credentials")
+  @@index([admin_id])
+  @@index([is_used])
+  @@index([expires_at])
+}
+
+model SystemAuditLog {
+  id                Int       @id @default(autoincrement())
+  super_admin_id    Int
+  action            String
+  entity_type       String
+  entity_id         Int?
+  changes           Json?
+  ip_address        String?
+  user_agent        String?
+  created_at        DateTime  @default(now())
+
+  @@map("system_audit_logs")
+  @@index([super_admin_id])
+  @@index([action])
+  @@index([created_at])
+}

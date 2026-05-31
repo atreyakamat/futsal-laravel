@@ -24,7 +24,8 @@ export default async function ArenaPage({ params, searchParams }: Props) {
   }
 
   const pricing = await getArenaPricing(arena.id);
-  const minPrice = pricing.length > 0 ? Math.min(...pricing.map(p => Number(p.price))) : 500;
+  const safePricing = pricing || [];
+  const minPrice = safePricing?.length > 0 ? Math.min(...safePricing.map(p => Number(p.price))) : 500;
   const selectedDate = typeof resolvedSearchParams.date === 'string' ? resolvedSearchParams.date : new Date().toISOString().split('T')[0];
 
   return (

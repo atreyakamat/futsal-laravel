@@ -1,8 +1,10 @@
-import { Pool } from 'pg';
+import pkg from 'pg';
+import type { Pool as PoolType } from 'pg';
+const { Pool } = pkg;
 
 declare global {
   // eslint-disable-next-line no-var
-  var pgPool: Pool | undefined;
+  var pgPool: PoolType | undefined;
 }
 
 type TransactionExecutor = {
@@ -13,6 +15,7 @@ type TransactionExecutor = {
 };
 
 function toPgPlaceholders(sql: string) {
+  if (!sql) return '';
   let index = 0;
   return sql.replace(/\?/g, () => `$${++index}`);
 }
@@ -46,8 +49,9 @@ export function getPool() {
 }
 
 export async function query<T>(sql: string, params: any[] = []) {
-  const result = await getPool().query(toPgPlaceholders(sql), params);
-  return result.rows as T[];
+  const pool = getPool();
+  const result = await pool.query(toPgPlaceholders(sql), params);
+  return (result?.rows || []) as T[];
 }
 
 export async function queryOne<T>(sql: string, params: any[] = []) {
@@ -60,7 +64,7 @@ export async function transaction<T>(callback: (connection: TransactionExecutor)
   const runner: TransactionExecutor = {
     async execute<R extends Record<string, unknown> = Record<string, unknown>>(sql: string, params: unknown[] = []) {
       const result = await connection.query(toPgPlaceholders(sql), params);
-      return [result.rows as R[]];
+      return [(result?.rows || []) as R[]];
     },
   };
 

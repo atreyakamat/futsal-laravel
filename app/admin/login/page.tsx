@@ -54,7 +54,11 @@ export default function AdminLoginPage() {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        router.push('/admin/dashboard');
+        if (data.role === 'super_admin') {
+          router.push('/admin/super-admin');
+        } else {
+          router.push('/admin/dashboard');
+        }
         router.refresh();
       } else {
         setError(data.message || 'Invalid OTP');

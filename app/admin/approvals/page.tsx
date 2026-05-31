@@ -2,6 +2,8 @@ import { readAuthUserId } from '@/lib/session';
 import { getAdminContext, listApprovalRequests } from '@/lib/admin';
 import { redirect } from 'next/navigation';
 
+export const dynamic = 'force-dynamic';
+
 export default async function AdminApprovalsPage() {
   const userId = await readAuthUserId();
   const context = await getAdminContext(userId);
@@ -22,7 +24,7 @@ export default async function AdminApprovalsPage() {
       </div>
 
       <div className="grid gap-6">
-        {requests.map((request) => (
+        {(requests || []).map((request) => (
           <div key={request.id} className="glass-card !p-8">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
               <div>
@@ -51,7 +53,7 @@ export default async function AdminApprovalsPage() {
           </div>
         ))}
 
-        {requests.length === 0 && (
+        {(!requests || requests?.length === 0) && (
           <div className="glass-card text-center py-20">
             <p className="text-white/20 font-black uppercase tracking-widest italic">No pending approvals.</p>
           </div>

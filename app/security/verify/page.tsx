@@ -1,4 +1,7 @@
 import { getSecurityBookings } from '@/lib/domain';
+import { readAuthUserId } from '@/lib/session';
+import { getAdminContext, userHasSecurityPermission } from '@/lib/admin';
+import { redirect } from 'next/navigation';
 
 type Props = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -7,6 +10,19 @@ type Props = {
 export const dynamic = 'force-dynamic';
 
 export default async function SecurityVerifyPage({ searchParams }: Props) {
+  const userId = await readAuthUserId();
+  const context = await getAdminContext(userId);
+  if (!context) {
+    redirect('/admin/login');
+  }
+
+  if (context.role === 'security') {
+    const canVerify = await userHasSecurityPermission(context.id, 'canVerifyTicket');
+    if (!canVerify) {
+      redirect('/security/scan?denied=verify');
+    }
+  }
+
   const resolvedSearchParams = await searchParams;
   const ticketNumber = typeof resolvedSearchParams.ticket_number === 'string' ? resolvedSearchParams.ticket_number : '';
 
@@ -25,7 +41,7 @@ export default async function SecurityVerifyPage({ searchParams }: Props) {
 
   const bookings = await getSecurityBookings(ticketNumber);
 
-  if (bookings.length === 0) {
+  if (!bookings || bookings?.length === 0) {
     return (
       <div className="max-w-md mx-auto mt-20 px-6 py-20">
         <div className="glass-card text-center">
@@ -39,6 +55,9 @@ export default async function SecurityVerifyPage({ searchParams }: Props) {
   }
 
   const booking = bookings[0];
+  if (context.role === 'security' && context.arenaId && booking.arena_id !== context.arenaId) {
+    redirect('/security/scan?denied=arena');
+  }
   const isCheckedIn = booking.checked_in;
 
   return (

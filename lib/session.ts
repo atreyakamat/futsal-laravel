@@ -45,7 +45,9 @@ export function persistSessionCookie(response: NextResponse, sessionId: string) 
 
 export async function readAuthUserId() {
   const value = (await cookies()).get(AUTH_COOKIE)?.value;
-  return value ? Number(value) : null;
+  if (!value) return null;
+  const num = Number(value);
+  return isNaN(num) ? null : num;
 }
 
 export async function readGuestIdentifier() {

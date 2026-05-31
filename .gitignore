@@ -12,6 +12,8 @@
 /.vscode
 /.zed
 /auth.json
+.next/
+/bootstrap/cache/*
 /node_modules
 /public/build
 /public/hot

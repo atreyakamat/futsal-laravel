@@ -1,0 +1,19 @@
+'use client';
+
+export default function GlobalError({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
+  return (
+    <div className="bg-dark text-white flex items-center justify-center min-h-screen font-sans">
+      <div className="glass-card text-center">
+        <h2 className="text-4xl font-black mb-4 uppercase italic">Something went wrong!</h2>
+        <p className="text-white/40 mb-10">{error.message || 'An unexpected error occurred.'}</p>
+        <button onClick={() => reset()} className="btn-primary px-8 py-3 rounded-full">Try again</button>
+      </div>
+    </div>
+  );
+}

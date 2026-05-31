@@ -1,8 +1,5 @@
 @import "tailwindcss";
 
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800;900&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
-
 @theme {
   --font-sans: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
   
@@ -46,11 +43,13 @@
   }
 
   html {
-    @apply scroll-smooth bg-dark selection:bg-primary/30 selection:text-white;
+    @apply scroll-smooth selection:bg-primary/30 selection:text-white;
+    background-color: var(--color-dark);
   }
 
   body {
-    @apply font-sans bg-dark text-white antialiased overflow-x-hidden;
+    @apply font-sans text-white antialiased overflow-x-hidden;
+    background-color: var(--color-dark);
     background-image: 
       radial-gradient(circle at 0% 0%, rgba(13, 242, 32, 0.03) 0%, transparent 50%),
       radial-gradient(circle at 100% 100%, rgba(0, 242, 255, 0.02) 0%, transparent 50%);

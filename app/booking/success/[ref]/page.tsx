@@ -8,11 +8,13 @@ type Props = {
   params: Promise<{ ref: string }>;
 };
 
+export const dynamic = 'force-dynamic';
+
 export default async function BookingSuccessPage({ params }: Props) {
   const { ref: bookingRef } = await params;
   const bookings = await getBookingsByRef(bookingRef);
 
-  if (bookings.length === 0) {
+  if (!bookings || bookings?.length === 0) {
     redirect('/');
   }
 

@@ -3,6 +3,8 @@ import { getAdminContext, listArenas } from '@/lib/admin';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+
 export default async function AdminArenasPage() {
   const userId = await readAuthUserId();
   const context = await getAdminContext(userId);
@@ -11,7 +13,15 @@ export default async function AdminArenasPage() {
     redirect('/admin/login');
   }
 
-  const arenas = await listArenas();
+  let arenas = await listArenas();
+  
+  // Filter arenas based on context
+  if (context.role !== 'super_admin' && context.arenaId) {
+    arenas = arenas.filter(a => a.id === context.arenaId);
+  } else if (context.role !== 'super_admin') {
+    // Non-super admin without an arena assignment
+    arenas = [];
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-20">
@@ -20,7 +30,7 @@ export default async function AdminArenasPage() {
           <h1 className="text-4xl font-black uppercase tracking-tighter italic mb-2">
             Manage <span className="text-primary text-stroke">Arenas</span>
           </h1>
-          <p className="label-classic !ml-0">Total Arenas: {arenas.length}</p>
+          <p className="label-classic !ml-0">Total Arenas: {arenas?.length || 0}</p>
         </div>
         {context.role === 'super_admin' && (
           <Link href="/admin/arenas/create" className="btn-primary flex items-center gap-2">
@@ -30,7 +40,7 @@ export default async function AdminArenasPage() {
         )}
       </div>
 
-      {arenas.length === 0 ? (
+      {!arenas || arenas?.length === 0 ? (
         <div className="glass-card text-center py-32">
           <div className="w-20 h-20 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-6">
             <span className="material-symbols-outlined text-5xl text-white/10">stadium</span>
@@ -46,7 +56,7 @@ export default async function AdminArenasPage() {
         </div>
       ) : (
         <div className="grid gap-6">
-          {arenas.map((arena) => (
+          {(arenas || []).map((arena) => (
             <div key={arena.id} className="glass-card !p-0 overflow-hidden group hover:border-primary/30 transition-all duration-500">
               <div className="p-8 flex flex-col md:flex-row justify-between items-center gap-8">
                 <div className="flex items-center gap-6 flex-1">

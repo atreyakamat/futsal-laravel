@@ -51,23 +51,32 @@ export async function POST(request: Request) {
   const userId = await readAuthUserId();
   const context = await getAdminContext(userId);
 
-  if (!context || !['super_admin', 'admin'].includes(context.role)) {
+  if (!context || !['super_admin', 'admin', 'arena_admin'].includes(context.role)) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
   }
 
-  if (payload.free_booking && context.role === 'admin') {
+  const arenaId = context.role === 'arena_admin'
+    ? context.arenaId
+    : payload.arena_id;
+
+  if (!arenaId) {
+    return NextResponse.json({ success: false, message: 'No arena assigned for this account.' }, { status: 400 });
+  }
+
+  if (payload.free_booking && context.role !== 'super_admin') {
     const requestRecord = await createApprovalRequest({
-      arenaId: payload.arena_id,
+      arenaId,
       requestedBy: context.id,
       requestType: 'admin_free_booking',
       payload: {
-        arenaId: payload.arena_id,
+        arenaId,
         bookingDate: payload.date,
         slots: payload.slots,
         customerName: payload.customer_name,
         customerMobile: payload.customer_mobile,
         customerEmail: payload.customer_email ?? null,
         freeBooking: true,
+        requestedByRole: context.role,
       },
       notes: payload.notes ?? null,
     });
@@ -77,14 +86,14 @@ export async function POST(request: Request) {
     }
 
     if (!isJson) {
-      return NextResponse.redirect(new URL('/admin/approvals?requested=1', request.url));
+      return NextResponse.redirect(new URL('/admin/bookings?requested=1', request.url));
     }
 
     return NextResponse.json({ success: true, approvalRequestId: requestRecord.id });
   }
 
   const booking = await createBookingBatch({
-    arenaId: payload.arena_id,
+    arenaId,
     bookingDate: payload.date,
     slots: payload.slots,
     customerName: payload.customer_name,

@@ -8,7 +8,7 @@ import {
   replaceArenaPricing,
   setArenaEntryMode,
 } from '@/lib/admin';
-import { getArenaPricing } from '@/lib/domain';
+import { getArenaPricing, query } from '@/lib/domain';
 import { readAuthUserId } from '@/lib/session';
 
 function parseSlotRows(value: string) {
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
   const userId = await readAuthUserId();
   const context = await getAdminContext(userId);
 
-  if (!context || !['super_admin', 'admin'].includes(context.role)) {
+  if (!context || !['super_admin', 'arena_admin'].includes(context.role)) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
   }
 
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
   const userId = await readAuthUserId();
   const context = await getAdminContext(userId);
 
-  if (!context || !['super_admin', 'admin'].includes(context.role)) {
+  if (!context || !['super_admin', 'arena_admin'].includes(context.role)) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
   }
 
@@ -134,6 +134,75 @@ export async function POST(request: Request) {
         requestedBy: context.id,
         requestType: 'slot_template_update',
         payload: { slots },
+        notes,
+      });
+    }
+  }
+
+  if (action === 'image_update') {
+    const coverImage = String((form as Record<string, string>).cover_image ?? '');
+    const logoUrl = String((form as Record<string, string>).logo_url ?? '');
+    const notes = String((form as Record<string, string>).notes ?? 'Update arena images');
+
+    if (context.role === 'super_admin') {
+      const updates = [];
+      const values = [];
+      if (coverImage) { updates.push('cover_image = ?'); values.push(coverImage); }
+      if (logoUrl) { updates.push('logo_url = ?'); values.push(logoUrl); }
+      
+      if (updates?.length > 0) {
+        values.push(arenaId);
+        await query(`UPDATE arenas SET ${updates.join(', ')}, updated_at = NOW() WHERE id = ?`, values);
+        await createAdminAuditLog({
+          action: 'image_updated',
+          actorUserId: context.id,
+          arenaId,
+          entityType: 'arena',
+          entityId: arenaId,
+          afterData: { cover_image: coverImage, logo_url: logoUrl, notes },
+        });
+      }
+    } else {
+      await createApprovalRequest({
+        arenaId,
+        requestedBy: context.id,
+        requestType: 'image_update',
+        payload: { arena_id: arenaId, cover_image: coverImage, logo_url: logoUrl },
+        notes,
+      });
+    }
+  }
+
+  if (action === 'timing_update') {
+    const timeSlot = String((form as Record<string, string>).time_slot ?? '');
+    const startTime = String((form as Record<string, string>).start_time ?? '');
+    const endTime = String((form as Record<string, string>).end_time ?? '');
+    const notes = String((form as Record<string, string>).notes ?? '');
+
+    if (!timeSlot || !startTime || !endTime) {
+      return NextResponse.json({ success: false, message: 'Time slot, start and end times are required.' }, { status: 400 });
+    }
+
+    if (context.role === 'super_admin') {
+      await query(
+        `INSERT INTO slot_timings (arena_id, time_slot, start_time, end_time, created_at, updated_at)
+         VALUES (?, ?, ?, ?, NOW(), NOW())`,
+        [arenaId, timeSlot, startTime, endTime]
+      );
+      await createAdminAuditLog({
+        action: 'timing_added',
+        actorUserId: context.id,
+        arenaId,
+        entityType: 'arena',
+        entityId: arenaId,
+        afterData: { timeSlot, startTime, endTime, notes },
+      });
+    } else {
+      await createApprovalRequest({
+        arenaId,
+        requestedBy: context.id,
+        requestType: 'timing_update',
+        payload: { arena_id: arenaId, time_slot: timeSlot, start_time: startTime, end_time: endTime },
         notes,
       });
     }

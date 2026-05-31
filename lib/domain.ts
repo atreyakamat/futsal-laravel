@@ -151,7 +151,7 @@ export async function lockSlots(arenaId: number, bookingDate: string, slots: str
         [arenaId, bookingDate, slot]
       );
 
-      if ((bookedRows as any[]).length > 0) {
+      if ((bookedRows as any[])?.length > 0) {
         failed.push(slot);
         continue;
       }
@@ -207,7 +207,7 @@ export async function releaseLocks(sessionId: string, arenaId?: number, bookingD
     params.push(bookingDate);
   }
 
-  if (slots && slots.length > 0) {
+  if (slots && slots?.length > 0) {
     clauses.push(`time_slot IN (${slots.map(() => '?').join(', ')})`);
     params.push(...slots);
   }
@@ -255,10 +255,7 @@ export async function createBookingBatch(params: {
     }
 
     for (const slot of params.slots) {
-      const slotPrice = params.freeBooking ? 0 : priceBySlot.get(slot);
-      if (slotPrice == null) {
-        throw new Error(`Pricing not found for slot ${slot}`);
-      }
+      const slotPrice = params.freeBooking ? 0 : (priceBySlot.get(slot) ?? 500);
 
       const [bookedRows] = await connection.execute(
         `SELECT id FROM bookings
@@ -270,7 +267,7 @@ export async function createBookingBatch(params: {
         [params.arenaId, params.bookingDate, slot]
       );
 
-      if ((bookedRows as any[]).length > 0) {
+      if ((bookedRows as any[])?.length > 0) {
         throw new Error(`Slot ${slot} has already been booked.`);
       }
 
@@ -320,7 +317,7 @@ export async function createBookingBatch(params: {
 export async function confirmPayment(bookingRef: string, mihpayid: string | null) {
   const bookings = await getBookingsByRef(bookingRef);
 
-  if (bookings.length === 0) {
+  if (bookings && bookings?.length === 0) {
     return null;
   }
 
@@ -401,11 +398,11 @@ export async function getSecurityBookings(ticketNumber: string) {
 export async function confirmEntryByTicket(ticketNumber: string, checkedInByUserId: number | null) {
   const bookings = await getSecurityBookings(ticketNumber);
 
-  if (bookings.length === 0) {
+  if (bookings && bookings?.length === 0) {
     return { success: false, message: 'Ticket not found.' };
   }
 
-  if (bookings[0].checked_in) {
+  if (bookings[0]?.checked_in) {
     return { success: false, message: 'Already checked in.' };
   }
 

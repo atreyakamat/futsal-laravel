@@ -70,7 +70,7 @@ async function seedDemoData(client) {
   bookingTwo.setDate(bookingTwo.getDate() + 2);
 
   // Create initial admin user from environment variables or defaults
-  const adminEmail = process.env.ADMIN_EMAIL || 'admin@example.com';
+  const adminEmail = process.env.ADMIN_EMAIL || 'superadmin@example.com';
   const adminMobile = process.env.ADMIN_MOBILE || '+919999999999';
   const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@123456';
   const adminPasswordHash = await bcrypt.hash(adminPassword, 12);

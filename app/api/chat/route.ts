@@ -35,11 +35,14 @@ export async function POST(request: Request) {
   const arenas = await getActiveArenas();
   const reply = makeReply(payload.message, arenas.map((arena) => arena.name));
 
-  if (arenas.length > 0 && /pricing|price|cost/.test(payload.message.toLowerCase())) {
-    const pricing = await getArenaPricing(arenas[0].id);
-    return NextResponse.json({
-      reply: `${reply} First arena pricing starts at Rs. ${pricing[0]?.price ?? arenas[0].min_price}.`,
-    });
+  if (arenas?.length > 0 && /pricing|price|cost/.test(payload.message.toLowerCase())) {
+    const firstArena = arenas[0];
+    if (firstArena) {
+      const pricing = await getArenaPricing(firstArena.id);
+      return NextResponse.json({
+        reply: `${reply} First arena pricing starts at Rs. ${pricing?.[0]?.price ?? firstArena.min_price}.`,
+      });
+    }
   }
 
   return NextResponse.json({ reply });

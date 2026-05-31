@@ -1,0 +1,122 @@
+import { NextResponse, NextRequest } from 'next/server';
+import { cookies } from 'next/headers';
+import { query, queryOne } from '@/lib/db';
+import * as bcrypt from 'bcryptjs';
+
+export async function GET(request: NextRequest) {
+  try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('fg_auth_user')?.value;
+    const role = cookieStore.get('fg_auth_role')?.value;
+    const arenaId = cookieStore.get('fg_arena_id')?.value;
+
+    if (!userId || role !== 'arena_admin' || !arenaId) {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const admin = await queryOne<{
+      id: number;
+      email: string;
+      arena_id: number;
+      first_name: string | null;
+      last_name: string | null;
+    }>(
+      'SELECT id, email, arena_id, first_name, last_name FROM arena_admins WHERE id = ? AND is_active = true',
+      [parseInt(userId)]
+    );
+
+    if (!admin) {
+      return NextResponse.json(
+        { success: false, message: 'Admin not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        id: admin.id,
+        email: admin.email,
+        arena_id: admin.arena_id,
+        first_name: admin.first_name,
+        last_name: admin.last_name,
+        role: 'arena_admin',
+      },
+    });
+  } catch (error) {
+    console.error('Arena admin settings GET error:', error);
+    return NextResponse.json(
+      { success: false, message: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('fg_auth_user')?.value;
+    const role = cookieStore.get('fg_auth_role')?.value;
+
+    if (!userId || role !== 'arena_admin') {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+    const { currentPassword, newPassword } = body;
+
+    if (!currentPassword || !newPassword) {
+      return NextResponse.json(
+        { success: false, message: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
+
+    const admin = await queryOne<{ id: number; password_hash: string }>(
+      'SELECT id, password_hash FROM arena_admins WHERE id = ? AND is_active = true',
+      [parseInt(userId)]
+    );
+
+    if (!admin) {
+      return NextResponse.json(
+        { success: false, message: 'Admin not found' },
+        { status: 404 }
+      );
+    }
+
+    // Verify current password
+    const isValidPassword = await bcrypt.compare(currentPassword, admin.password_hash);
+    if (!isValidPassword) {
+      return NextResponse.json(
+        { success: false, message: 'Current password is incorrect' },
+        { status: 401 }
+      );
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password
+    await query(
+      'UPDATE arena_admins SET password_hash = ?, updated_at = NOW() WHERE id = ?',
+      [hashedPassword, admin.id]
+    );
+
+    return NextResponse.json({
+      success: true,
+      message: 'Password changed successfully',
+    });
+  } catch (error) {
+    console.error('Arena admin settings PUT error:', error);
+    return NextResponse.json(
+      { success: false, message: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}

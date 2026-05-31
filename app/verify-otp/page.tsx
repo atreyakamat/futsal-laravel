@@ -90,7 +90,7 @@ export default function VerifyOtpPage({ searchParams }: Props) {
 
           <button
             type="submit"
-            disabled={loading || otp.length !== 6}
+            disabled={loading || otp?.length !== 6}
             className="btn-primary w-full flex items-center justify-center gap-3"
           >
             {loading ? (

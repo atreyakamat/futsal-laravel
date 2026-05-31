@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import {
   getAdminContext,
+  isAdminRole,
   setArenaSecurityPasscode,
   updateUserPassword,
 } from '@/lib/admin';
@@ -27,7 +28,7 @@ export async function POST(request: Request) {
   const userId = await readAuthUserId();
   const context = await getAdminContext(userId);
 
-  if (!context || !['super_admin', 'security'].includes(context.role)) {
+  if (!context || !isAdminRole(context.role)) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
   }
 
@@ -46,6 +47,11 @@ export async function POST(request: Request) {
   }
 
   if (payload.security_passcode) {
+    const canManageSecurityPasscode = context.role === 'super_admin' || context.role === 'arena_admin';
+    if (!canManageSecurityPasscode) {
+      return NextResponse.json({ success: false, message: 'Only super admins and arena admins can update arena security passcodes.' }, { status: 403 });
+    }
+
     const arenaId = context.role === 'super_admin'
       ? payload.arena_id ?? null
       : context.arenaId ?? null;

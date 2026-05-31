@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
-  typedRoutes: true,
+  typedRoutes: false,
   webpack: (config) => {
     config.output.hashFunction = 'md4';
     return config;

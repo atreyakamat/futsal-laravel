@@ -1,6 +1,9 @@
 import { readAuthUserId } from '@/lib/session';
 import { query } from '@/lib/domain';
+import { getAdminContext } from '@/lib/admin';
 import { redirect } from 'next/navigation';
+
+export const dynamic = 'force-dynamic';
 
 export default async function AdminSettingsPage() {
   const userId = await readAuthUserId();
@@ -9,13 +12,8 @@ export default async function AdminSettingsPage() {
     redirect('/admin/login');
   }
 
-  // Check if superadmin
-  const adminUser = await query<{ role: string }>(
-    'SELECT role FROM users WHERE id = ? LIMIT 1',
-    [userId]
-  );
-
-  if (adminUser.length === 0 || adminUser[0].role !== 'super_admin') {
+  const context = await getAdminContext(userId);
+  if (!context || context.role !== 'super_admin') {
     redirect('/admin/dashboard');
   }
 
@@ -35,8 +33,18 @@ export default async function AdminSettingsPage() {
       </div>
 
       <div className="glass-card !p-0 overflow-hidden">
+        <form action="/api/admin/credentials" method="POST" className="p-8 border-b border-white/5 space-y-4">
+          <h2 className="text-2xl font-black uppercase italic">Super Admin Password</h2>
+          <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest">
+            Change your super admin password without leaving settings.
+          </p>
+          <input name="current_password" type="password" className="input-field" placeholder="Current password" />
+          <input name="new_password" type="password" className="input-field" placeholder="New password" />
+          <button className="btn-primary" type="submit">Update Super Admin Password</button>
+        </form>
+
         <div className="grid divide-y divide-white/5">
-          {settings.map((setting) => (
+          {(settings || []).map((setting) => (
             <div key={setting.key} className="p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 hover:bg-white/[0.01] transition-colors">
               <div className="flex items-center gap-6">
                 <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/20">
@@ -56,7 +64,7 @@ export default async function AdminSettingsPage() {
             </div>
           ))}
 
-          {settings.length === 0 && (
+          {(!settings || settings?.length === 0) && (
             <div className="p-20 text-center">
               <p className="text-white/20 font-black uppercase tracking-widest italic">No configuration keys found in database.</p>
             </div>
@@ -67,7 +75,7 @@ export default async function AdminSettingsPage() {
       <div className="mt-8 flex items-start gap-4 p-6 glass rounded-2xl border-white/5 bg-white/[0.01]">
         <span className="material-symbols-outlined text-white/20">info</span>
         <p className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] leading-relaxed">
-          Settings are currently read-only in this view. To modify system-level configurations, please use the database CLI or request an interface update.
+          Settings values remain read-only in this view. Use credentials above for password updates and DB tooling for key-value changes.
         </p>
       </div>
     </div>

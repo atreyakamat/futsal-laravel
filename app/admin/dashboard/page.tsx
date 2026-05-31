@@ -8,30 +8,35 @@ export default async function AdminDashboardPage() {
   const userId = await readAuthUserId();
   const context = await getAdminContext(userId);
   const adminRole = context?.role ?? null;
+  const arenaId = context?.arenaId ?? null;
 
-  if (!adminRole) {
+  if (!context || !['super_admin', 'arena_admin', 'security'].includes(context.role)) {
     redirect('/admin/login');
   }
 
-  // Fetch stats
+  if (context.role === 'super_admin') {
+    redirect('/admin/super-admin');
+  }
+
+  // Fetch stats - scoped to arena if not super_admin
   const stats = await Promise.all([
     query<{ count: number }>(
-      'SELECT COUNT(*) as count FROM arenas WHERE status = ?',
-      ['active']
+      `SELECT COUNT(*) as count FROM arenas WHERE status = ? ${adminRole === 'super_admin' ? '' : 'AND id = ?'}`,
+      adminRole === 'super_admin' ? ['active'] : ['active', arenaId]
     ),
     query<{ count: number }>(
-      'SELECT COUNT(*) as count FROM bookings WHERE payment_status = ?',
-      ['confirmed']
+      `SELECT COUNT(*) as count FROM bookings WHERE payment_status = ? ${adminRole === 'super_admin' ? '' : 'AND arena_id = ?'}`,
+      adminRole === 'super_admin' ? ['confirmed'] : ['confirmed', arenaId]
     ),
     query<{ count: number }>(
-      'SELECT COUNT(*) as count FROM users WHERE role = ?',
-      ['customer']
+      `SELECT COUNT(*) as count FROM users WHERE role = ? ${adminRole === 'super_admin' ? '' : 'AND id IN (SELECT user_id FROM bookings WHERE arena_id = ?)'}`,
+      adminRole === 'super_admin' ? ['customer'] : ['customer', arenaId]
     ),
   ]);
 
-  const activeArenas = stats[0][0]?.count || 0;
-  const totalBookings = stats[1][0]?.count || 0;
-  const totalUsers = stats[2][0]?.count || 0;
+  const activeArenas = (stats[0] && stats[0][0]?.count) || 0;
+  const totalBookings = (stats[1] && stats[1][0]?.count) || 0;
+  const totalUsers = (stats[2] && stats[2][0]?.count) || 0;
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-20">
@@ -180,7 +185,7 @@ export default async function AdminDashboardPage() {
             </Link>
           )}
 
-          {(adminRole === 'super_admin' || adminRole === 'admin') && (
+          {(adminRole === 'super_admin' || adminRole === 'arena_admin') && (
             <Link
               href="/admin/bookings/create"
               className="glass-card !p-8 group hover:border-primary/50 transition-all"
@@ -194,7 +199,7 @@ export default async function AdminDashboardPage() {
             </Link>
           )}
 
-          {(adminRole === 'super_admin' || adminRole === 'admin') && (
+          {(adminRole === 'super_admin' || adminRole === 'arena_admin') && (
             <Link
               href="/admin/slots"
               className="glass-card !p-8 group hover:border-primary/50 transition-all"
@@ -208,7 +213,7 @@ export default async function AdminDashboardPage() {
             </Link>
           )}
 
-          {adminRole !== 'admin' && (
+          {adminRole && (
             <Link
               href="/admin/credentials"
               className="glass-card !p-8 group hover:border-primary/50 transition-all"

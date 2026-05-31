@@ -9,14 +9,21 @@ type Props = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
+export const dynamic = 'force-dynamic';
+
 export default async function CheckoutPage({ searchParams }: Props) {
   const resolvedSearchParams = await searchParams;
   const arenaId = Number(resolvedSearchParams.arena_id);
   const date = typeof resolvedSearchParams.date === 'string' ? resolvedSearchParams.date : '';
   const slotsJson = typeof resolvedSearchParams.slots === 'string' ? resolvedSearchParams.slots : '[]';
-  const slots: string[] = JSON.parse(slotsJson);
+  let slots: string[] = [];
+  try {
+    slots = JSON.parse(slotsJson);
+  } catch (e) {
+    console.error('Failed to parse slots JSON', e);
+  }
 
-  if (!arenaId || !date || slots.length === 0) {
+  if (!arenaId || !date || (slots || []).length === 0) {
     return (
       <div className="max-w-7xl mx-auto px-6 py-20 text-center">
         <h1 className="text-4xl font-black uppercase">Invalid checkout session.</h1>
@@ -29,8 +36,9 @@ export default async function CheckoutPage({ searchParams }: Props) {
   if (!arena) return <div>Arena not found.</div>;
 
   const pricing = await getArenaPricing(arenaId);
-  const selectedPricing = pricing.filter((p) => slots.includes(p.time_slot));
-  const total = selectedPricing.reduce((sum, p) => sum + Number(p.price), 0);
+  const safePricing = pricing || [];
+  const selectedPricing = safePricing.filter((p) => slots.includes(p?.time_slot));
+  const total = selectedPricing.reduce((sum, p) => sum + Number(p?.price || 0), 0);
   const entryMode = await getArenaEntryMode(arenaId);
   if (entryMode === 'blocked') {
     return (

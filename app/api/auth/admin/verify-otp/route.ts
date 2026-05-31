@@ -24,11 +24,11 @@ export async function POST(request: Request) {
     [payload.identifier, payload.identifier]
   );
 
-  if (user.length === 0) {
+  if (!user || user?.length === 0 || !user[0]) {
     return NextResponse.json({ success: false, message: 'User not found.' }, { status: 404 });
   }
 
-  if (!['admin', 'super_admin', 'security'].includes(user[0].role)) {
+  if (!['super_admin', 'arena_admin', 'security'].includes(user[0].role)) {
     return NextResponse.json({ success: false, message: 'Unauthorized. Admin access required.' }, { status: 403 });
   }
 
