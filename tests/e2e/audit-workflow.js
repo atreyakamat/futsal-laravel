@@ -19,6 +19,9 @@
 import http from 'http';
 
 const BASE_URL = 'http://localhost:3001';
+let superAdminCookies = '';
+let arenaAdminCookies = '';
+let currentCookies = '';
 
 // Utility for making HTTP requests
 function makeRequest(method, path, body = null, headers = {}) {
@@ -32,13 +35,28 @@ function makeRequest(method, path, body = null, headers = {}) {
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
+        'Cookie': currentCookies,
         ...headers,
       },
     };
 
     const req = http.request(options, (res) => {
+      // Store cookies
+      const setCookies = res.headers['set-cookie'];
+      if (setCookies) {
+        setCookies.forEach(cookie => {
+          const cookieParts = cookie.split(';')[0];
+          const name = cookieParts.split('=')[0];
+          // Remove existing cookie with same name
+          const existingCookies = currentCookies.split('; ').filter(c => c && !c.startsWith(name + '='));
+          existingCookies.push(cookieParts);
+          currentCookies = existingCookies.join('; ');
+        });
+      }
+
       let data = '';
       res.on('data', chunk => data += chunk);
+
       res.on('end', () => {
         try {
           const parsed = data ? JSON.parse(data) : null;
@@ -101,8 +119,9 @@ async function runTests() {
     });
     
     if (loginRes.status === 200 || (loginRes.body && (loginRes.body.id || loginRes.body.success))) {
-      superAdminId = loginRes.body.id || loginRes.body.superAdminId || 1;
+      superAdminId = loginRes.body.id || loginRes.body.superAdminId || loginRes.body.data?.id || 1;
       logTest('Super Admin Login', 'PASS', 'Successfully logged in', `Admin ID: ${superAdminId}`);
+      superAdminCookies = currentCookies;
     } else {
       logTest('Super Admin Login', 'FAIL', `HTTP ${loginRes.status}`, JSON.stringify(loginRes.body));
     }
@@ -128,14 +147,12 @@ async function runTests() {
       location: 'Test Location',
       capacity: 100,
       description: 'Test arena for E2E workflow',
-    }, {
-      'fg_auth_role': 'super_admin',
-      'fg_auth_user': superAdminId.toString(),
     });
 
     if (createArenaRes.status === 200 || createArenaRes.status === 201) {
-      testArenaId = createArenaRes.body.id || createArenaRes.body.arenaId || 1;
+      testArenaId = createArenaRes.body.data?.id;
       logTest('Create Test Arena', 'PASS', `Arena created: ${testArenaName}`, `Arena ID: ${testArenaId}`);
+      superAdminCookies = currentCookies;
     } else {
       logTest('Create Test Arena', 'FAIL', `HTTP ${createArenaRes.status}`, JSON.stringify(createArenaRes.body));
     }
@@ -151,13 +168,10 @@ async function runTests() {
   // Test 3: Fetch and verify arena details
   console.log('\n--- Phase 3: Verify Arena Setup ---');
   try {
-    const arenaRes = await makeRequest('GET', `/api/super-admin/arenas?arenaId=${testArenaId}`, null, {
-      'fg_auth_role': 'super_admin',
-      'fg_auth_user': superAdminId.toString(),
-    });
+    const arenaRes = await makeRequest('GET', `/api/super-admin/arenas?arenaId=${testArenaId}`);
 
     if (arenaRes.status === 200 && arenaRes.body) {
-      logTest('Fetch Arena Details', 'PASS', `Arena details retrieved`, `Name: ${arenaRes.body.name || arenaRes.body[0]?.name}`);
+      logTest('Fetch Arena Details', 'PASS', `Arena details retrieved`, `Name: ${arenaRes.body.name || arenaRes.body.data?.[0]?.name}`);
     } else {
       logTest('Fetch Arena Details', 'FAIL', `HTTP ${arenaRes.status}`);
     }
@@ -168,22 +182,22 @@ async function runTests() {
   // Test 4: Create arena admin credentials
   console.log('\n--- Phase 4: Create Arena Admin ---');
   const testAdminEmail = `admin_${Date.now()}@test.local`;
-  const testAdminPassword = 'AdminTest@123';
+  const testAdminName = 'Test Arena Admin';
+  let testAdminPassword = null;
   let testArenaAdminId = null;
 
   try {
     const createAdminRes = await makeRequest('POST', '/api/super-admin/admins', {
-      arenaId: testArenaId,
+      arena_id: testArenaId,
       email: testAdminEmail,
-      password: testAdminPassword,
-    }, {
-      'fg_auth_role': 'super_admin',
-      'fg_auth_user': superAdminId.toString(),
+      name: testAdminName,
     });
 
     if (createAdminRes.status === 200 || createAdminRes.status === 201) {
-      testArenaAdminId = createAdminRes.body.id || createAdminRes.body.adminId;
+      testArenaAdminId = createAdminRes.body.data.admin.id;
+      testAdminPassword = createAdminRes.body.data.credentials.tempPassword;
       logTest('Create Arena Admin', 'PASS', `Admin created: ${testAdminEmail}`, `Admin ID: ${testArenaAdminId}`);
+      superAdminCookies = currentCookies;
     } else {
       logTest('Create Arena Admin', 'FAIL', `HTTP ${createAdminRes.status}`, JSON.stringify(createAdminRes.body));
     }
@@ -194,22 +208,20 @@ async function runTests() {
   // Test 5: Create security staff credentials
   console.log('\n--- Phase 5: Create Security Staff ---');
   const testSecurityEmail = `security_${Date.now()}@test.local`;
-  const testSecurityPassword = 'SecTest@123';
+  const testSecurityName = 'Test Security Staff';
   let testSecurityId = null;
 
   try {
     const createSecurityRes = await makeRequest('POST', '/api/super-admin/security', {
-      arenaId: testArenaId,
+      arena_id: testArenaId,
       email: testSecurityEmail,
-      password: testSecurityPassword,
-    }, {
-      'fg_auth_role': 'super_admin',
-      'fg_auth_user': superAdminId.toString(),
+      name: testSecurityName,
     });
 
     if (createSecurityRes.status === 200 || createSecurityRes.status === 201) {
-      testSecurityId = createSecurityRes.body.id || createSecurityRes.body.securityId;
+      testSecurityId = createSecurityRes.body.data.staff.id;
       logTest('Create Security Staff', 'PASS', `Security created: ${testSecurityEmail}`, `Security ID: ${testSecurityId}`);
+      superAdminCookies = currentCookies;
     } else {
       logTest('Create Security Staff', 'FAIL', `HTTP ${createSecurityRes.status}`, JSON.stringify(createSecurityRes.body));
     }
@@ -221,17 +233,16 @@ async function runTests() {
   console.log('\n--- Phase 6: Create Arena Time Slots ---');
   try {
     const timingRes = await makeRequest('POST', '/api/super-admin/arenas/timings', {
-      arenaId: testArenaId,
-      startTime: '09:00',
-      endTime: '22:00',
-      daysOfWeek: [1, 2, 3, 4, 5, 6, 7], // All days
-    }, {
-      'fg_auth_role': 'super_admin',
-      'fg_auth_user': superAdminId.toString(),
+      arena_id: testArenaId,
+      time_slot: '09:00-22:00',
+      start_time: '09:00',
+      end_time: '22:00',
+      day_of_week: 1, // Monday
     });
 
     if (timingRes.status === 200 || timingRes.status === 201) {
       logTest('Create Time Slots', 'PASS', 'Time slots created (09:00 - 22:00)');
+      superAdminCookies = currentCookies;
     } else {
       logTest('Create Time Slots', 'FAIL', `HTTP ${timingRes.status}`, JSON.stringify(timingRes.body));
     }
@@ -242,15 +253,12 @@ async function runTests() {
   // Test 7: Verify time slots
   console.log('\n--- Phase 7: Verify Time Slots ---');
   try {
-    const fetchTimingRes = await makeRequest('GET', `/api/super-admin/arenas/timings?arenaId=${testArenaId}`, null, {
-      'fg_auth_role': 'super_admin',
-      'fg_auth_user': superAdminId.toString(),
-    });
+    const fetchTimingRes = await makeRequest('GET', `/api/super-admin/arenas/timings?arena_id=${testArenaId}`);
 
     if (fetchTimingRes.status === 200 && fetchTimingRes.body) {
-      const hasTimings = Array.isArray(fetchTimingRes.body) && fetchTimingRes.body.length > 0;
+      const hasTimings = Array.isArray(fetchTimingRes.body.data) && fetchTimingRes.body.data.length > 0;
       if (hasTimings) {
-        logTest('Fetch Time Slots', 'PASS', `Time slots retrieved`, `Count: ${fetchTimingRes.body.length}`);
+        logTest('Fetch Time Slots', 'PASS', `Time slots retrieved`, `Count: ${fetchTimingRes.body.data.length}`);
       } else {
         logTest('Fetch Time Slots', 'FAIL', 'No time slots found');
       }
@@ -265,18 +273,16 @@ async function runTests() {
   console.log('\n--- Phase 8: Super Admin Creates Booking ---');
   try {
     const bookingRes = await makeRequest('POST', '/api/super-admin/bookings', {
-      arenaId: testArenaId,
-      slotType: '1R',
+      arena_id: testArenaId,
+      slot_type: '1R',
       date: new Date().toISOString().split('T')[0],
-      slotTime: '10:00',
+      time_slot: '10:00-11:00',
       reason: 'Maintenance block',
-    }, {
-      'fg_auth_role': 'super_admin',
-      'fg_auth_user': superAdminId.toString(),
     });
 
     if (bookingRes.status === 200 || bookingRes.status === 201) {
       logTest('Create Super Admin Booking', 'PASS', 'Booking created (slots blocked)', 'No approval needed');
+      superAdminCookies = currentCookies;
     } else {
       logTest('Create Super Admin Booking', 'FAIL', `HTTP ${bookingRes.status}`, JSON.stringify(bookingRes.body));
     }
@@ -287,6 +293,9 @@ async function runTests() {
   // Test 9: Arena Admin login (as created admin)
   console.log('\n--- Phase 9: Arena Admin Login ---');
   try {
+    superAdminCookies = currentCookies;
+    currentCookies = ''; // Fresh for arena admin
+
     const arenaAdminLoginRes = await makeRequest('POST', '/api/arena-admin/login', {
       email: testAdminEmail,
       password: testAdminPassword,
@@ -295,6 +304,7 @@ async function runTests() {
     if (arenaAdminLoginRes.status === 200 || (arenaAdminLoginRes.body && arenaAdminLoginRes.body.id)) {
       const arenaAdminId = arenaAdminLoginRes.body.id || testArenaAdminId;
       logTest('Arena Admin Login', 'PASS', `Admin logged in: ${testAdminEmail}`, `Admin ID: ${arenaAdminId}`);
+      arenaAdminCookies = currentCookies;
     } else {
       logTest('Arena Admin Login', 'FAIL', `HTTP ${arenaAdminLoginRes.status}`, JSON.stringify(arenaAdminLoginRes.body));
     }
@@ -305,20 +315,17 @@ async function runTests() {
   // Test 10: Arena Admin requests approval for free booking
   console.log('\n--- Phase 10: Arena Admin Request Approval ---');
   try {
+    currentCookies = arenaAdminCookies;
     const approvalReqRes = await makeRequest('POST', '/api/arena-admin/bookings/request-approval', {
-      arenaId: testArenaId,
-      slotType: '2R',
       date: new Date().toISOString().split('T')[0],
-      slotTime: '11:00',
+      time_slot: '11:00-12:00',
+      number_of_rounds: 2,
       reason: 'Team practice - request approval',
-    }, {
-      'fg_auth_role': 'arena_admin',
-      'fg_auth_user': (testArenaAdminId || 1).toString(),
-      'fg_arena_id': testArenaId.toString(),
     });
 
     if (approvalReqRes.status === 200 || approvalReqRes.status === 201) {
       logTest('Arena Admin Request Approval', 'PASS', 'Approval request submitted', 'Waiting for super admin approval');
+      arenaAdminCookies = currentCookies;
     } else {
       logTest('Arena Admin Request Approval', 'FAIL', `HTTP ${approvalReqRes.status}`, JSON.stringify(approvalReqRes.body));
     }
@@ -329,14 +336,11 @@ async function runTests() {
   // Test 11: Super Admin fetches pending approvals
   console.log('\n--- Phase 11: Super Admin Fetch Approvals ---');
   try {
-    const approvalsRes = await makeRequest('GET', `/api/super-admin/approvals?arenaId=${testArenaId}`, null, {
-      'fg_auth_role': 'super_admin',
-      'fg_auth_user': superAdminId.toString(),
-    });
+    currentCookies = superAdminCookies; // Switch back
+    const approvalsRes = await makeRequest('GET', `/api/super-admin/approvals?arenaId=${testArenaId}`);
 
     if (approvalsRes.status === 200 && approvalsRes.body) {
-      const hasApprovals = Array.isArray(approvalsRes.body) && approvalsRes.body.length > 0;
-      logTest('Fetch Approvals', 'PASS', `Approvals retrieved`, `Count: ${hasApprovals ? approvalsRes.body.length : 0}`);
+      logTest('Fetch Approvals', 'PASS', `Approvals retrieved`, `Status: OK`);
     } else {
       logTest('Fetch Approvals', 'FAIL', `HTTP ${approvalsRes.status}`);
     }
@@ -347,10 +351,8 @@ async function runTests() {
   // Test 12: Super Admin dashboard accessibility
   console.log('\n--- Phase 12: Dashboard Accessibility ---');
   try {
-    const dashRes = await makeRequest('GET', '/admin/super-admin', null, {
-      'fg_auth_role': 'super_admin',
-      'fg_auth_user': superAdminId.toString(),
-    });
+    currentCookies = superAdminCookies;
+    const dashRes = await makeRequest('GET', '/admin/super-admin');
 
     if (dashRes.status === 200) {
       logTest('Super Admin Dashboard', 'PASS', 'Dashboard page accessible', 'HTTP 200');

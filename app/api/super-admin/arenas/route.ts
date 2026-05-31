@@ -38,17 +38,19 @@ export async function POST(request: Request) {
       isJson ? await request.json() : Object.fromEntries((await request.formData()).entries())
     );
 
-    await query(
-      'INSERT INTO arenas (name, slug, address, description, contact_email, contact_phone, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())',
+    const result = await query(
+      'INSERT INTO arenas (name, slug, address, description, contact_email, contact_phone, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW()) RETURNING id',
       [payload.name, payload.slug, payload.address || null, payload.description || null, payload.contact_email || null, payload.contact_phone || null, 'active']
     );
+
+    const arenaId = (result as any)?.[0]?.id;
 
     // Log audit action
     await logAuditAction(
       superAdminId,
       'CREATE_ARENA',
       'arena',
-      undefined,
+      arenaId,
       { name: payload.name, slug: payload.slug },
       request.headers.get('x-forwarded-for') || 'unknown',
       request.headers.get('user-agent') || 'unknown'
@@ -57,7 +59,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       message: 'Arena created successfully',
-      data: payload,
+      data: { ...payload, id: arenaId },
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
