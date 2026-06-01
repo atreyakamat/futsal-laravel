@@ -18,7 +18,7 @@
 
 import http from 'http';
 
-const BASE_URL = 'http://localhost:3001';
+const BASE_URL = 'http://localhost:3005';
 let superAdminCookies = '';
 let arenaAdminCookies = '';
 let currentCookies = '';
