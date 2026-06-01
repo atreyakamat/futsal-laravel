@@ -227,10 +227,12 @@ export default function BookingSystem({ arenaId, initialDate }: { arenaId: numbe
                         key={slot.time_slot}
                         onClick={() => toggleSlot(slot)}
                         disabled={isBooked || isLocked}
-                        className={`slot-card p-8 rounded-3xl border border-white/5 glass text-center transition-all duration-300 group relative overflow-hidden ${
-                          isBooked ? 'opacity-20 grayscale cursor-not-allowed bg-white/[0.02]' : ''
-                        } ${isLocked ? 'opacity-40 cursor-not-allowed' : ''} ${
-                          isSelected ? 'border-primary bg-primary/5 text-primary shadow-[0_0_30px_rgba(13,242,32,0.1)] scale-105' : 'hover:border-primary/50 hover:scale-[1.02]'
+                        className={`slot-card p-8 rounded-3xl border transition-all duration-300 group relative overflow-hidden ${
+                          isBooked ? 'opacity-20 grayscale cursor-not-allowed bg-white/[0.02] border-white/5' : ''
+                        } ${isLocked ? 'opacity-40 cursor-not-allowed border-white/5' : ''} ${
+                          isSelected 
+                            ? 'border-primary bg-primary/10 text-primary shadow-[0_0_30px_rgba(13,242,32,0.15)] scale-105' 
+                            : 'bg-white/[0.02] border-white/5 hover:border-primary/50 hover:bg-white/[0.04] hover:scale-[1.02]'
                         }`}
                       >
                         <div className="text-xl font-black tracking-tight mb-2 uppercase italic">{slot.time_slot}</div>

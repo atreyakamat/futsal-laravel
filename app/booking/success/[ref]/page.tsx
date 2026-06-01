@@ -73,17 +73,19 @@ export default async function BookingSuccessPage({ params }: Props) {
 
       <div className="grid md:grid-cols-2 gap-16 max-w-5xl mx-auto">
         {/* Ticket Card */}
-        <div className="glass-card relative overflow-hidden flex flex-col items-center !p-12">
+        <div className="glass-card relative overflow-hidden flex flex-col items-center !p-12 border-primary/20 shadow-[0_0_50px_rgba(13,242,32,0.05)]">
           <div className="absolute top-0 right-0 p-12 opacity-[0.03]">
             <span className="material-symbols-outlined text-[100px]">qr_code_2</span>
           </div>
 
-          <div className="bg-white p-8 rounded-[2.5rem] mb-10 shadow-[0_0_50px_rgba(13,242,32,0.1)] scale-110">
-            <img
-              src={getTicketQrUrl(firstBooking.ticket_number ?? bookingRef)}
-              alt="Ticket QR"
-              className="w-40 h-40"
-            />
+          <div className="bg-white p-6 rounded-[2rem] mb-10 shadow-[0_0_40px_rgba(13,242,32,0.2)] scale-110">
+            <div className="bg-white p-2 rounded-xl">
+              <img
+                src={getTicketQrUrl(firstBooking.ticket_number ?? bookingRef)}
+                alt="Ticket QR"
+                className="w-40 h-40"
+              />
+            </div>
           </div>
 
           <div className="text-center space-y-4">
@@ -92,7 +94,7 @@ export default async function BookingSuccessPage({ params }: Props) {
             <div className="pt-6 flex justify-center">
               <a
                 href={`/booking/ticket/${bookingRef}?download=1`}
-                className="btn-secondary !py-3 !px-6 !rounded-full !text-[10px] flex items-center gap-3"
+                className="btn-secondary !py-3 !px-6 !rounded-full !text-[10px] flex items-center gap-3 border-primary/30 text-primary"
               >
                 <span className="material-symbols-outlined text-lg">download</span> DOWNLOAD TICKET
               </a>
