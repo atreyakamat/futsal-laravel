@@ -11,7 +11,8 @@ const { Client } = require('pg');
 const fs = require('fs');
 const path = require('path');
 
-const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/futsal_laravel?schema=public';
+require('dotenv').config();
+const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5434/futsal_laravel?schema=public';
 
 function executeCommand(command) {
   return new Promise((resolve, reject) => {

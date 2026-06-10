@@ -9,7 +9,7 @@ const bodySchema = z.object({
   name: z.string().min(2).max(100),
   email: z.string().email(),
   password: z.string().min(6),
-  role: z.enum(['super_admin', 'arena_admin', 'security', 'customer']),
+  role: z.enum(['super_admin', 'admin', 'arena_admin', 'security', 'customer']),
   arena_id: z.string().optional().transform(val => val ? Number(val) : null),
 });
 
