@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { query, queryOne, transaction, getSetting, createBookingBatch } from '@/lib/domain';
 import { sendTicketEmail } from '@/lib/ticket';
 
-export type AdminRole = 'super_admin' | 'arena_admin' | 'security' | 'customer';
+export type AdminRole = 'super_admin' | 'admin' | 'arena_admin' | 'security' | 'customer';
 export type EntryMode = 'open' | 'blocked' | 'free';
 export type ApprovalRequestType = 'slot_template_update' | 'entry_mode_update' | 'admin_free_booking' | 'timing_update' | 'image_update';
 export type SecurityPermissions = {

@@ -10,7 +10,7 @@ async function seed() {
 
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@example.com';
   const adminMobile = process.env.ADMIN_MOBILE || '+919999999999';
-  const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@123456';
+  const adminPassword = 'SuperAdmin@123';
   const adminPasswordHash = await bcrypt.hash(adminPassword, 12);
 
   console.log(`Seeding admin user: ${adminEmail}`);
@@ -23,6 +23,16 @@ async function seed() {
        role = EXCLUDED.role,
        updated_at = NOW()`,
     ['Admin', adminEmail, adminMobile, adminPasswordHash, 'super_admin']
+  );
+
+  await client.query(
+    `INSERT INTO super_admins (email, password_hash, first_name, last_name, is_active, created_at, updated_at, permissions)
+     VALUES (?, ?, ?, ?, true, NOW(), NOW(), ?)
+     ON CONFLICT (email)
+     DO UPDATE SET
+       password_hash = EXCLUDED.password_hash,
+       updated_at = NOW()`,
+    [adminEmail, adminPasswordHash, 'Super', 'Admin', JSON.stringify(['*'])]
   );
 
   console.log('Seed complete');

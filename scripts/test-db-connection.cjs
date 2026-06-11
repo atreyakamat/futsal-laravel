@@ -1,17 +1,19 @@
 const { Client } = require('pg');
-const DATABASE_URL = 'postgresql://postgres:postgres@localhost:5432/postgres'; // Try 5432 again
 
-async function checkConnection() {
-  const client = new Client({ connectionString: DATABASE_URL });
-  try {
-    await client.connect();
-    console.log('Successfully connected to PostgreSQL!');
-    const res = await client.query('SELECT version()');
-    console.log('PostgreSQL version:', res.rows[0].version);
-    await client.end();
-  } catch (err) {
-    console.error('Failed to connect to PostgreSQL:', err.message);
+async function testPorts() {
+  const ports = [5432, 5433, 5434, 5435];
+  for (const port of ports) {
+    console.log(`Testing port ${port} as user atkam...`);
+    const client = new Client({ host: 'localhost', port, user: 'atkam', database: 'postgres' });
+    try {
+      await client.connect();
+      console.log(`SUCCESS on port ${port}!`);
+      await client.end();
+      return;
+    } catch (err) {
+      console.log(`Failed on port ${port}: ${err.message}`);
+    }
   }
 }
 
-checkConnection();
+testPorts();
