@@ -1,25 +1,16 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { cookies } from 'next/headers';
 import { createBookingBatch, queryOne, getArenaPricing } from '@/lib/domain';
 import { logAuditAction } from '@/lib/super-admin';
+import { readSuperAdminId } from '@/lib/session';
 
 const createBookingSchema = z.object({
-  arena_id: z.number(),
+  arena_id: z.coerce.number(),
   date: z.string().min(1),
   time_slot: z.string().min(1),
   number_of_rounds: z.number().min(1).max(10).default(1),
   reason: z.string().optional(),
 });
-
-async function readSuperAdminId() {
-  const cookieStore = await cookies();
-  if (cookieStore.get('fg_auth_role')?.value !== 'super_admin') {
-    return null;
-  }
-  const value = cookieStore.get('fg_auth_user')?.value;
-  return value ? Number(value) : null;
-}
 
 export async function POST(request: Request) {
   try {

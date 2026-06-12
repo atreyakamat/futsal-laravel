@@ -1,24 +1,15 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { cookies } from 'next/headers';
 import { query, queryOne } from '@/lib/db';
+import { readSuperAdminId } from '@/lib/session';
 
 const createTimingSchema = z.object({
-  arena_id: z.number(),
+  arena_id: z.coerce.number(),
   time_slot: z.string().min(1),
   start_time: z.string().min(1),
   end_time: z.string().min(1),
   day_of_week: z.number().optional(),
 });
-
-async function readSuperAdminId() {
-  const cookieStore = await cookies();
-  if (cookieStore.get('fg_auth_role')?.value !== 'super_admin') {
-    return null;
-  }
-  const value = cookieStore.get('fg_auth_user')?.value;
-  return value ? Number(value) : null;
-}
 
 export async function POST(request: Request) {
   try {

@@ -13,15 +13,16 @@
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
+import { signValue } from '../../lib/session';
 
 const BASE_URL = 'http://localhost:3002';
-const SUPER_ADMIN_COOKIE = 'fg_auth_role=super_admin; fg_auth_user=1';
+const SUPER_ADMIN_COOKIE = `fg_auth_role=${signValue('super_admin')}; fg_auth_user=${signValue('1')}`;
 const ARENA_ADMIN_COOKIE = (adminId = 1, arenaId = 1) => 
-  `fg_auth_role=arena_admin; fg_auth_user=${adminId}; fg_arena_id=${arenaId}`;
+  `fg_auth_role=${signValue('arena_admin')}; fg_auth_user=${signValue(String(adminId))}; fg_arena_id=${signValue(String(arenaId))}`;
 
 class TestClient {
-  async request(method, path, body = null, cookies = '') {
-    const options = {
+  async request(method: string, path: string, body: any = null, cookies = '') {
+    const options: any = {
       method,
       headers: {
         'Content-Type': 'application/json',
@@ -36,9 +37,9 @@ class TestClient {
   }
 }
 
-let testClient;
-let testArenaId;
-let testAdminId;
+let testClient: TestClient;
+let testArenaId: any;
+let testAdminId: any;
 
 beforeAll(() => {
   testClient = new TestClient();

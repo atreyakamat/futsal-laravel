@@ -1,23 +1,14 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { cookies } from 'next/headers';
 import { generateReport, getArenaReports, logAuditAction } from '@/lib/super-admin';
+import { readSuperAdminId } from '@/lib/session';
 
 const generateReportSchema = z.object({
-  arena_id: z.number(),
+  arena_id: z.coerce.number(),
   report_type: z.enum(['daily', 'weekly', 'monthly']),
   date_range_start: z.string(),
   date_range_end: z.string(),
 });
-
-async function readSuperAdminId() {
-  const cookieStore = await cookies();
-  if (cookieStore.get('fg_auth_role')?.value !== 'super_admin') {
-    return null;
-  }
-  const value = cookieStore.get('fg_auth_user')?.value;
-  return value ? Number(value) : null;
-}
 
 export async function POST(request: Request) {
   try {

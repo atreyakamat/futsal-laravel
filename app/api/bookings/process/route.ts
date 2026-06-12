@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createBookingBatch, releaseLocks } from '@/lib/domain';
-import { getCookieValueFromRequest, getWritableSessionId, persistSessionCookie, AUTH_COOKIE, signValue } from '@/lib/session';
+import { getCookieValueFromRequest, getWritableSessionId, persistSessionCookie, AUTH_COOKIE, signValue, readAuthUserId, getCookieOptions } from '@/lib/session';
 import { getArenaEntryMode } from '@/lib/admin';
 import { sendTicketEmail } from '@/lib/ticket';
 
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
   });
 
   const sessionId = getWritableSessionId(request);
-  const authUserId = getCookieValueFromRequest(request, AUTH_COOKIE);
+  const authUserId = await readAuthUserId();
   const entryMode = await getArenaEntryMode(payload.arena_id);
 
   if (entryMode === 'blocked') {
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
     customerName: payload.customer_name,
     customerMobile: payload.customer_mobile,
     customerEmail: payload.customer_email ?? null,
-    userId: authUserId ? Number(authUserId) : null,
+    userId: authUserId,
     sessionId,
     freeBooking: entryMode === 'free',
   });
@@ -83,20 +83,13 @@ export async function POST(request: Request) {
       })
     : NextResponse.redirect(new URL(redirectTarget, request.url));
 
+  const cookieOpts = getCookieOptions();
   if (result.userId) {
-    response.cookies.set(AUTH_COOKIE, signValue(String(result.userId)), {
-      httpOnly: true,
-      sameSite: 'lax',
-      path: '/',
-    });
+    response.cookies.set(AUTH_COOKIE, signValue(String(result.userId)), cookieOpts);
     response.cookies.delete('fg_guest_identifier');
   }
 
-  response.cookies.set('fg_last_booking_ref', result.bookingRef, {
-    httpOnly: true,
-    sameSite: 'lax',
-    path: '/',
-  });
+  response.cookies.set('fg_last_booking_ref', result.bookingRef, cookieOpts);
 
   persistSessionCookie(response, sessionId);
   return response;

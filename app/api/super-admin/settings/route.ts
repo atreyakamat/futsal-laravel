@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { cookies } from 'next/headers';
 import { updateSuperAdminPassword, getSuperAdmin, logAuditAction } from '@/lib/super-admin';
 import * as bcrypt from 'bcryptjs';
+import { readSuperAdminId } from '@/lib/session';
 
 const changePasswordSchema = z.object({
   current_password: z.string().min(6),
@@ -12,15 +12,6 @@ const changePasswordSchema = z.object({
   message: "Passwords don't match",
   path: ["confirm_password"],
 });
-
-async function readSuperAdminId() {
-  const cookieStore = await cookies();
-  if (cookieStore.get('fg_auth_role')?.value !== 'super_admin') {
-    return null;
-  }
-  const value = cookieStore.get('fg_auth_user')?.value;
-  return value ? Number(value) : null;
-}
 
 export async function PUT(request: Request) {
   try {

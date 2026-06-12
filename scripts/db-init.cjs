@@ -59,7 +59,7 @@ async function seedDemoData(client) {
   const arenaId = arenaRows[0].id;
   const { rows: userRows } = await client.query(
     'SELECT id FROM users WHERE email = $1 LIMIT 1',
-    ['demo@example.com']
+    ['player@example.com']
   );
   const demoUserId = userRows.length ? userRows[0].id : null;
   const demoPassword = await bcrypt.hash('AngleFutsal123!', 10);
@@ -88,6 +88,25 @@ async function seedDemoData(client) {
   );
 
   console.log(`✓ Admin user created/updated: ${adminEmail}`);
+
+  // Seed super_admins table linked to this user
+  const { rows: superAdminUserRows } = await client.query(
+    'SELECT id FROM users WHERE email = $1 LIMIT 1',
+    [adminEmail]
+  );
+  if (superAdminUserRows.length > 0) {
+    const superAdminUserId = superAdminUserRows[0].id;
+    await client.query(
+      `INSERT INTO super_admins (user_id, email, password_hash, first_name, last_name, is_active, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, TRUE, NOW(), NOW())
+       ON CONFLICT (email) DO UPDATE SET
+         user_id = EXCLUDED.user_id,
+         password_hash = EXCLUDED.password_hash,
+         updated_at = NOW()`,
+      [superAdminUserId, adminEmail, adminPasswordHash, 'Super', 'Admin']
+    );
+    console.log(`✓ Super admin link created/updated for email: ${adminEmail}`);
+  }
 
   await client.query(
     `INSERT INTO bookings (
@@ -146,8 +165,12 @@ async function main() {
   await client.connect();
 
   try {
-    const seedDir = path.join(process.cwd(), 'docker', 'postgres-init');
-    await runSqlFiles(client, seedDir);
+    const seedFile = path.join(process.cwd(), 'docker', 'postgres-init', '002-seed.sql');
+    if (fs.existsSync(seedFile)) {
+      const sql = fs.readFileSync(seedFile, 'utf8');
+      console.log('Applying seed file: 002-seed.sql');
+      await client.query(sql);
+    }
     await seedDemoData(client);
   } finally {
     await client.end();

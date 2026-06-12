@@ -116,16 +116,16 @@ export async function createArenaAdmin(
 
   // Maintain legacy arena_admins table for compatibility with super admin module if needed
   await query(
-    'INSERT INTO arena_admins (arena_id, email, password_hash, first_name, last_name, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, true, NOW(), NOW())',
-    [arenaId, email, hashedPassword, name.split(' ')[0], name.split(' ')[1] || '']
+    'INSERT INTO arena_admins (id, arena_id, email, password_hash, first_name, last_name, is_active, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, true, ?, NOW(), NOW())',
+    [userId, arenaId, email, hashedPassword, name.split(' ')[0], name.split(' ')[1] || '', createdById || 1]
   );
 
   // Create a credential for the admin
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
   await query(
-    'INSERT INTO admin_credentials (admin_email, temporary_password, is_used, expires_at, created_at) VALUES (?, ?, false, ?, NOW())',
-    [email, tempPassword, expiresAt]
+    'INSERT INTO admin_credentials (admin_id, admin_type, credential_token, is_used, expires_at, created_at) VALUES (?, ?, ?, false, ?, NOW())',
+    [userId, 'arena_admin', tempPassword, expiresAt]
   );
 
   return {
@@ -180,16 +180,16 @@ export async function createSecurityStaff(
 
   // Maintain legacy security_staff table for compatibility
   await query(
-    'INSERT INTO security_staff (arena_id, email, password_hash, first_name, last_name, phone, permissions, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, true, NOW(), NOW())',
-    [arenaId, email, hashedPassword, name.split(' ')[0], name.split(' ')[1] || '', phone || null, JSON.stringify(permissions)]
+    'INSERT INTO security_staff (id, arena_id, email, password_hash, first_name, last_name, phone, permissions, is_active, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, true, ?, NOW(), NOW())',
+    [userId, arenaId, email, hashedPassword, name.split(' ')[0], name.split(' ')[1] || '', phone || null, permissions, createdById || 1]
   );
 
   // Create a credential for the security staff
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
   await query(
-    'INSERT INTO admin_credentials (admin_email, temporary_password, is_used, expires_at, created_at) VALUES (?, ?, false, ?, NOW())',
-    [email, tempPassword, expiresAt]
+    'INSERT INTO admin_credentials (admin_id, admin_type, credential_token, is_used, expires_at, created_at) VALUES (?, ?, ?, false, ?, NOW())',
+    [userId, 'security', tempPassword, expiresAt]
   );
 
   return {

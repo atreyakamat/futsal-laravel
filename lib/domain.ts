@@ -74,6 +74,15 @@ export async function getArenaPricing(arenaId: number) {
   return dbQuery<PricingRow>('SELECT * FROM pricings WHERE arena_id = ? ORDER BY time_slot ASC', [arenaId]);
 }
 
+export async function expirePendingBookings() {
+  await dbQuery(
+    `UPDATE bookings 
+        SET payment_status = 'failed', updated_at = NOW() 
+      WHERE payment_status = 'pending' 
+        AND created_at < NOW() - INTERVAL '15 minutes'`
+  );
+}
+
 export async function getBookingsByRef(bookingRef: string) {
   return dbQuery<BookingRow>('SELECT * FROM bookings WHERE booking_ref = ? ORDER BY time_slot ASC', [bookingRef]);
 }
@@ -87,6 +96,7 @@ export async function getBookingByTicket(ticketNumber: string) {
 }
 
 export async function getBookingsForDate(arenaId: number, bookingDate: string) {
+  await expirePendingBookings();
   return dbQuery<BookingRow>(
     `SELECT * FROM bookings
       WHERE arena_id = ?
@@ -97,6 +107,7 @@ export async function getBookingsForDate(arenaId: number, bookingDate: string) {
 }
 
 export async function getBookedSlots(arenaId: number, bookingDate: string) {
+  await expirePendingBookings();
   const rows = await dbQuery<{ time_slot: string }>(
     `SELECT time_slot FROM bookings
       WHERE arena_id = ?
@@ -135,6 +146,7 @@ export async function getMyLockedSlots(arenaId: number, bookingDate: string, ses
 }
 
 export async function lockSlots(arenaId: number, bookingDate: string, slots: string[], sessionId: string) {
+  await expirePendingBookings();
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
   const locked: string[] = [];
   const failed: string[] = [];
@@ -226,6 +238,7 @@ export async function createBookingBatch(params: {
   sessionId: string;
   freeBooking?: boolean;
 }) {
+  await expirePendingBookings();
   const bookingRef = `REF-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
   const bookings = await getArenaPricing(params.arenaId);
   const priceBySlot = new Map(bookings.map((row) => [row.time_slot, Number(row.price)]));

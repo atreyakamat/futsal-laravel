@@ -13,14 +13,14 @@ const requestApprovalSchema = z.object({
 
 async function readArenaAdminContext() {
   const cookieStore = await cookies();
-  const role = unsignValue(cookieStore.get('fg_auth_role')?.value);
+  const role = unsignValue(cookieStore.get('fg_auth_role')?.value ?? null);
   
   if (role !== 'arena_admin') {
     return null;
   }
 
-  const adminId = unsignValue(cookieStore.get('fg_auth_user')?.value);
-  const arenaId = unsignValue(cookieStore.get('fg_arena_id')?.value);
+  const adminId = unsignValue(cookieStore.get('fg_auth_user')?.value ?? null);
+  const arenaId = unsignValue(cookieStore.get('fg_arena_id')?.value ?? null);
 
   if (!adminId || !arenaId) {
     return null;

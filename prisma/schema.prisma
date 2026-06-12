@@ -101,6 +101,7 @@ model SlotLock {
   created_at  DateTime @default(now())
 
   @@map("slot_locks")
+  @@unique([arena_id, booking_date, time_slot])
   @@index([arena_id])
   @@index([session_id])
   @@index([expires_at])
@@ -146,6 +147,8 @@ model SuperAdmin {
   user_id           Int       @unique
   email             String    @unique
   password_hash     String
+  first_name        String?
+  last_name         String?
   permissions       String[]  @default([])
   is_active         Boolean   @default(true)
   last_login        DateTime?
@@ -162,7 +165,8 @@ model ArenaAdmin {
   arena_id          Int
   email             String    @unique
   password_hash     String
-  name              String
+  first_name        String?
+  last_name         String?
   phone             String?
   is_active         Boolean   @default(true)
   created_by        Int
@@ -181,7 +185,8 @@ model SecurityStaff {
   arena_id          Int
   email             String    @unique
   password_hash     String
-  name              String
+  first_name        String?
+  last_name         String?
   phone             String?
   permissions       String[]  @default([])
   is_active         Boolean   @default(true)
@@ -271,4 +276,69 @@ model SystemAuditLog {
   @@index([super_admin_id])
   @@index([action])
   @@index([created_at])
+}
+
+model SlotTiming {
+  id          Int      @id @default(autoincrement())
+  arena_id    Int
+  time_slot   String
+  start_time  String
+  end_time    String
+  day_of_week Int?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@unique([arena_id, time_slot, day_of_week])
+  @@map("slot_timings")
+  @@index([arena_id])
+}
+
+model AdminFreeBooking {
+  id               Int      @id @default(autoincrement())
+  arena_admin_id   Int
+  arena_id         Int
+  booking_date     String
+  time_slot        String
+  number_of_rounds Int?     @default(1)
+  status           String   @default("pending")
+  approved_by      Int?
+  rejection_reason String?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  @@map("admin_free_bookings")
+  @@index([arena_id])
+  @@index([arena_admin_id])
+  @@index([status])
+}
+
+model AdminSlotBlock {
+  id               Int      @id @default(autoincrement())
+  super_admin_id   Int?
+  arena_id         Int
+  booking_date     String
+  time_slot        String
+  number_of_rounds Int?     @default(1)
+  reason           String?
+  status           String   @default("confirmed")
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  @@map("admin_slot_blocks")
+  @@index([arena_id])
+  @@index([super_admin_id])
+  @@index([status])
+}
+
+model PaymentAuditLog {
+  id          Int      @id @default(autoincrement())
+  booking_ref String
+  status      String
+  amount      Decimal  @db.Decimal(10, 2)
+  mihpayid    String?
+  payload     String?
+  created_at  DateTime @default(now())
+
+  @@map("payment_audit_logs")
+  @@index([booking_ref])
 }

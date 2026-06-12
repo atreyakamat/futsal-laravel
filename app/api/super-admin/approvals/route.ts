@@ -1,25 +1,16 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { cookies } from 'next/headers';
 import { getPendingApprovalRequests, approveApprovalRequest, rejectApprovalRequest, logAuditAction } from '@/lib/super-admin';
+import { readSuperAdminId } from '@/lib/session';
 
 const approveSchema = z.object({
-  request_id: z.number(),
+  request_id: z.coerce.number(),
 });
 
 const rejectSchema = z.object({
-  request_id: z.number(),
+  request_id: z.coerce.number(),
   reason: z.string().min(1),
 });
-
-async function readSuperAdminId() {
-  const cookieStore = await cookies();
-  if (cookieStore.get('fg_auth_role')?.value !== 'super_admin') {
-    return null;
-  }
-  const value = cookieStore.get('fg_auth_user')?.value;
-  return value ? Number(value) : null;
-}
 
 export async function GET(request: Request) {
   try {

@@ -117,29 +117,7 @@ export async function getAdminContext(userId: number | null): Promise<AdminConte
     }
   }
 
-  // 3. Fallback to unified users table (legacy or standard accounts)
-  const user = await queryOne<{
-    id: number;
-    name: string;
-    email: string;
-    role: AdminRole;
-    customer_mobile: string | null;
-  }>('SELECT id, name, email, role, customer_mobile FROM users WHERE id = ? LIMIT 1', [userId]);
-
-  if (!user || !isAdminRole(user.role)) {
-    return null;
-  }
-
-  const manager = await queryOne<{ arena_id: number; role: string }>(
-    'SELECT arena_id, role FROM arena_managers WHERE user_id = ? LIMIT 1',
-    [userId]
-  );
-
-  return {
-    ...user,
-    arenaId: manager?.arena_id ?? null,
-    arenaRole: manager?.role ?? null,
-  };
+  return null;
 }
 
 

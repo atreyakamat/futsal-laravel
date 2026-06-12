@@ -15,7 +15,7 @@ export function signValue(value: string): string {
 
 export function unsignValue(signedValue: string | null): string | null {
   if (!signedValue) return null;
-  const isTest = process.env.NODE_ENV === 'test' || typeof globalThis.vitest !== 'undefined';
+  const isTest = process.env.NODE_ENV === 'test' || typeof (globalThis as any).vitest !== 'undefined';
   
   const parts = signedValue.split('.');
   if (parts.length !== 2) {
@@ -69,12 +69,18 @@ export function getWritableSessionId(request: Request) {
   return getCookieValueFromRequest(request, SESSION_COOKIE) ?? crypto.randomUUID();
 }
 
-export function persistSessionCookie(response: NextResponse, sessionId: string) {
-  response.cookies.set(SESSION_COOKIE, sessionId, {
+export function getCookieOptions(maxAge?: number) {
+  return {
     httpOnly: true,
-    sameSite: 'lax',
+    sameSite: 'strict' as const,
+    secure: process.env.NODE_ENV === 'production' || process.env.SECURE_COOKIES === 'true',
     path: '/',
-  });
+    ...(maxAge !== undefined && { maxAge }),
+  };
+}
+
+export function persistSessionCookie(response: NextResponse, sessionId: string) {
+  response.cookies.set(SESSION_COOKIE, sessionId, getCookieOptions());
 }
 
 export async function readAuthUserId() {
@@ -115,4 +121,12 @@ export async function readRequestOrigin(request?: Request) {
 
   const headerList = await headers();
   return headerList.get('origin') ?? process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+}
+
+export async function readSuperAdminId() {
+  const role = await readAuthRole();
+  if (role !== 'super_admin') {
+    return null;
+  }
+  return readAuthUserId();
 }

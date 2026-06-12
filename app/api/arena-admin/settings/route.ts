@@ -7,9 +7,9 @@ import { unsignValue } from '@/lib/session';
 export async function GET(request: NextRequest) {
   try {
     const cookieStore = await cookies();
-    const userId = unsignValue(cookieStore.get('fg_auth_user')?.value);
-    const role = unsignValue(cookieStore.get('fg_auth_role')?.value);
-    const arenaId = unsignValue(cookieStore.get('fg_arena_id')?.value);
+    const userId = unsignValue(cookieStore.get('fg_auth_user')?.value ?? null);
+    const role = unsignValue(cookieStore.get('fg_auth_role')?.value ?? null);
+    const arenaId = unsignValue(cookieStore.get('fg_arena_id')?.value ?? null);
 
     if (!userId || role !== 'arena_admin' || !arenaId) {
       return NextResponse.json(
@@ -59,8 +59,8 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const cookieStore = await cookies();
-    const userId = unsignValue(cookieStore.get('fg_auth_user')?.value);
-    const role = unsignValue(cookieStore.get('fg_auth_role')?.value);
+    const userId = unsignValue(cookieStore.get('fg_auth_user')?.value ?? null);
+    const role = unsignValue(cookieStore.get('fg_auth_role')?.value ?? null);
 
     if (!userId || role !== 'arena_admin') {
       return NextResponse.json(

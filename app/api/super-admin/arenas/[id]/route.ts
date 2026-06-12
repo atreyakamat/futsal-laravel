@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { cookies } from 'next/headers';
 import { query, queryOne } from '@/lib/db';
 import { logAuditAction } from '@/lib/super-admin';
+import { readSuperAdminId } from '@/lib/session';
 
 const updateSchema = z.object({
   name: z.string().min(1).max(255).optional(),
@@ -12,15 +12,6 @@ const updateSchema = z.object({
   contact_phone: z.string().optional(),
   status: z.enum(['active', 'inactive']).optional(),
 });
-
-async function readSuperAdminId() {
-  const cookieStore = await cookies();
-  if (cookieStore.get('fg_auth_role')?.value !== 'super_admin') {
-    return null;
-  }
-  const value = cookieStore.get('fg_auth_user')?.value;
-  return value ? Number(value) : null;
-}
 
 export async function GET(
   request: Request,

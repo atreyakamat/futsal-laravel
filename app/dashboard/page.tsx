@@ -39,6 +39,109 @@ export default async function DashboardPage() {
   }
 
   const bookingRefs = Object.keys(groups);
+  const todayStr = new Date().toISOString().split('T')[0];
+  
+  // Sort refs by booking date (newest first for history, closest first for upcoming)
+  const upcomingRefs = bookingRefs
+    .filter((ref) => groups[ref][0].booking_date >= todayStr)
+    .sort((a, b) => groups[a][0].booking_date.localeCompare(groups[b][0].booking_date));
+    
+  const historyRefs = bookingRefs
+    .filter((ref) => groups[ref][0].booking_date < todayStr)
+    .sort((a, b) => groups[b][0].booking_date.localeCompare(groups[a][0].booking_date));
+
+  const renderBookingCard = (ref: string) => {
+    const group = groups[ref];
+    if (!group || group.length === 0) return null;
+    const slots = group.map((b) => b.time_slot);
+    const mergedSlots = mergeSlots(slots).join(', ');
+    const duration = getDurationText(slots);
+    const totalAmount = group.reduce((sum, b) => sum + Number(b.amount), 0);
+    const firstBooking = group[0];
+    const arenaName = arenaCache[firstBooking.arena_id]?.name || 'Arena';
+
+    return (
+      <div
+        key={ref}
+        className="glass-card !p-0 overflow-hidden group hover:border-primary/30 transition-all duration-500 mb-8"
+      >
+        <div className="p-10">
+          <div className="flex flex-col md:flex-row justify-between gap-10">
+            <div className="space-y-8 flex-1">
+              <div className="flex items-center gap-6">
+                <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-inner">
+                  <span className="material-symbols-outlined text-3xl">stadium</span>
+                </div>
+                <div>
+                  <h3 className="text-3xl font-black uppercase tracking-tight group-hover:text-primary transition-colors italic">
+                    {arenaName}
+                  </h3>
+                  <div className="flex items-center gap-3 mt-1">
+                    <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">
+                      REF:
+                    </span>
+                    <span className="text-[10px] font-black text-primary px-3 py-1 rounded-full bg-primary/10 border border-primary/20 uppercase tracking-widest">
+                      {ref}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 pt-10 border-t border-white/5">
+                <div>
+                  <span className="label-classic !ml-0">Date</span>
+                  <span className="text-sm font-black text-white uppercase italic">
+                    {new Date(firstBooking.booking_date).toLocaleDateString('en-GB', {
+                      weekday: 'short',
+                      day: '2-digit',
+                      month: 'short',
+                    })}
+                  </span>
+                </div>
+                <div>
+                  <span className="label-classic !ml-0">Slots</span>
+                  <span className="text-sm font-black text-primary uppercase italic">{mergedSlots}</span>
+                </div>
+                <div>
+                  <span className="label-classic !ml-0">Duration</span>
+                  <span className="text-sm font-black text-white uppercase italic">{duration}</span>
+                </div>
+                <div>
+                  <span className="label-classic !ml-0">Status</span>
+                  <span
+                    className={`pill-status ${
+                      firstBooking.payment_status === 'confirmed'
+                        ? 'border-primary/20 text-primary'
+                        : 'border-yellow-500/20 text-yellow-500'
+                    }`}
+                  >
+                    {firstBooking.payment_status}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col justify-between items-end border-t md:border-t-0 md:border-l border-white/5 pt-10 md:pt-0 md:pl-10">
+              <div className="text-right">
+                <span className="label-classic !ml-0">Total Paid</span>
+                <span className="text-4xl font-black text-white italic tracking-tighter">
+                  ₹{totalAmount}
+                </span>
+              </div>
+
+              <Link
+                href={`/booking/success/${ref}`}
+                className="btn-secondary w-full md:w-auto mt-8 flex items-center justify-center gap-3 !py-3 hover:scale-105 active:scale-95"
+              >
+                VIEW TICKET
+                <span className="material-symbols-outlined text-xl">confirmation_number</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-20">
@@ -59,114 +162,36 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {(bookingRefs?.length === 0) ? (
+      {bookingRefs?.length === 0 ? (
         <div className="py-32 text-center glass-card border-dashed border-white/5">
           <div className="w-24 h-24 rounded-3xl bg-white/[0.03] flex items-center justify-center mx-auto mb-8 shadow-inner">
             <span className="material-symbols-outlined text-5xl text-white/10">history</span>
           </div>
           <h2 className="text-2xl font-black uppercase mb-3 tracking-tight italic">No bookings found</h2>
           <p className="text-white/40 text-sm mb-10 max-w-xs mx-auto font-medium">You haven't made any reservations yet. Ready to hit the pitch?</p>
-          <Link
-            href="/"
-            className="btn-primary px-10"
-          >
+          <Link href="/" className="btn-primary px-10">
             BROWSE ARENAS
           </Link>
         </div>
       ) : (
-        <div className="space-y-10">
-          {bookingRefs.map((ref) => {
-            const group = groups[ref];
-            if (!group || group.length === 0) return null;
-            const slots = group.map((b) => b.time_slot);
-            const mergedSlots = mergeSlots(slots).join(', ');
-            const duration = getDurationText(slots);
-            const totalAmount = group.reduce((sum, b) => sum + Number(b.amount), 0);
-            const firstBooking = group[0];
-            const arenaName = arenaCache[firstBooking.arena_id]?.name || 'Arena';
+        <div className="space-y-16">
+          {upcomingRefs.length > 0 && (
+            <div>
+              <h2 className="text-2xl font-black uppercase tracking-tight italic mb-6 text-primary">
+                Upcoming Bookings
+              </h2>
+              {upcomingRefs.map(renderBookingCard)}
+            </div>
+          )}
 
-            return (
-              <div
-                key={ref}
-                className="glass-card !p-0 overflow-hidden group hover:border-primary/30 transition-all duration-500"
-              >
-                <div className="p-10">
-                  <div className="flex flex-col md:flex-row justify-between gap-10">
-                    <div className="space-y-8 flex-1">
-                      <div className="flex items-center gap-6">
-                        <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-inner">
-                          <span className="material-symbols-outlined text-3xl">stadium</span>
-                        </div>
-                        <div>
-                          <h3 className="text-3xl font-black uppercase tracking-tight group-hover:text-primary transition-colors italic">
-                            {arenaName}
-                          </h3>
-                          <div className="flex items-center gap-3 mt-1">
-                            <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">
-                              REF:
-                            </span>
-                            <span className="text-[10px] font-black text-primary px-3 py-1 rounded-full bg-primary/10 border border-primary/20 uppercase tracking-widest">
-                              {ref}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 pt-10 border-t border-white/5">
-                        <div>
-                          <span className="label-classic !ml-0">Date</span>
-                          <span className="text-sm font-black text-white uppercase italic">
-                            {new Date(firstBooking.booking_date).toLocaleDateString('en-GB', {
-                              weekday: 'short',
-                              day: '2-digit',
-                              month: 'short',
-                            })}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="label-classic !ml-0">Slots</span>
-                          <span className="text-sm font-black text-primary uppercase italic">{mergedSlots}</span>
-                        </div>
-                        <div>
-                          <span className="label-classic !ml-0">Duration</span>
-                          <span className="text-sm font-black text-white uppercase italic">{duration}</span>
-                        </div>
-                        <div>
-                          <span className="label-classic !ml-0">Status</span>
-                          <span
-                            className={`pill-status ${
-                              firstBooking.payment_status === 'confirmed'
-                                ? 'border-primary/20 text-primary'
-                                : 'border-yellow-500/20 text-yellow-500'
-                            }`}
-                          >
-                            {firstBooking.payment_status}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col justify-between items-end border-t md:border-t-0 md:border-l border-white/5 pt-10 md:pt-0 md:pl-10">
-                      <div className="text-right">
-                        <span className="label-classic !ml-0">Total Paid</span>
-                        <span className="text-4xl font-black text-white italic tracking-tighter">
-                          ₹{totalAmount}
-                        </span>
-                      </div>
-
-                      <Link
-                        href={`/booking/success/${ref}`}
-                        className="btn-secondary w-full md:w-auto mt-8 flex items-center justify-center gap-3 !py-3 hover:scale-105 active:scale-95"
-                      >
-                        VIEW TICKET
-                        <span className="material-symbols-outlined text-xl">confirmation_number</span>
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {historyRefs.length > 0 && (
+            <div>
+              <h2 className="text-2xl font-black uppercase tracking-tight italic mb-6 text-white/40">
+                Booking History
+              </h2>
+              {historyRefs.map(renderBookingCard)}
+            </div>
+          )}
         </div>
       )}
     </div>

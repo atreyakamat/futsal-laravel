@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { AUTH_COOKIE, getCookieValueFromRequest } from '@/lib/session';
+import { readAuthUserId } from '@/lib/session';
 import { confirmEntryByTicket, getBookingByTicket } from '@/lib/domain';
 import { getAdminContext, userHasSecurityPermission } from '@/lib/admin';
 
@@ -13,8 +13,7 @@ export async function POST(request: Request) {
   const payload = bodySchema.parse(
     isJson ? await request.json() : Object.fromEntries((await request.formData()).entries())
   );
-  const checkedInBy = getCookieValueFromRequest(request, AUTH_COOKIE);
-  const actorId = checkedInBy ? Number(checkedInBy) : null;
+  const actorId = await readAuthUserId();
   const admin = await getAdminContext(actorId);
 
   if (!admin) {
