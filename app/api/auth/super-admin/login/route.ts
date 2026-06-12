@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { verifySuperAdminCredentials } from '@/lib/super-admin';
+import { signValue } from '@/lib/session';
 
 const bodySchema = z.object({
   email: z.string().email(),
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
     });
 
     // Set auth cookie with super admin ID encoded with role indicator
-    response.cookies.set('fg_auth_user', `${superAdmin.id}`, {
+    response.cookies.set('fg_auth_user', signValue(`${superAdmin.id}`), {
       httpOnly: true,
       sameSite: 'lax',
       path: '/',
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
     });
 
     // Set role cookie
-    response.cookies.set('fg_auth_role', 'super_admin', {
+    response.cookies.set('fg_auth_role', signValue('super_admin'), {
       httpOnly: true,
       sameSite: 'lax',
       path: '/',

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { verifyArenaAdminCredentials } from '@/lib/super-admin';
 import { cookies } from 'next/headers';
+import { signValue } from '@/lib/session';
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
     
     // In a real app, we would use a proper session/JWT
     // For this prototype, we use simple cookies as per the existing pattern
-    cookieStore.set('fg_auth_role', 'arena_admin', { 
+    cookieStore.set('fg_auth_role', signValue('arena_admin'), { 
       httpOnly: true, 
       path: '/',
       secure: process.env.NODE_ENV === 'production',
@@ -37,7 +38,7 @@ export async function POST(request: Request) {
       maxAge: 60 * 60 * 24 // 24 hours
     });
     
-    cookieStore.set('fg_auth_user', String(admin.id), { 
+    cookieStore.set('fg_auth_user', signValue(String(admin.id)), { 
       httpOnly: true, 
       path: '/',
       secure: process.env.NODE_ENV === 'production',
@@ -45,7 +46,7 @@ export async function POST(request: Request) {
       maxAge: 60 * 60 * 24
     });
     
-    cookieStore.set('fg_arena_id', String(admin.arena_id), { 
+    cookieStore.set('fg_arena_id', signValue(String(admin.arena_id)), { 
       httpOnly: true, 
       path: '/',
       secure: process.env.NODE_ENV === 'production',

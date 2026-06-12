@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
 import { query, queryOne, transaction, getSetting, createBookingBatch } from '@/lib/domain';
 import { sendTicketEmail } from '@/lib/ticket';
+import { readAuthRole } from '@/lib/session';
 
 export type AdminRole = 'super_admin' | 'admin' | 'arena_admin' | 'security' | 'customer';
 export type EntryMode = 'open' | 'blocked' | 'free';
@@ -9,7 +10,7 @@ export type ApprovalRequestType = 'slot_template_update' | 'entry_mode_update' |
 export type SecurityPermissions = {
   canVerifyTicket: boolean;
   canConfirmEntry: boolean;
-};
+ };
 
 export type SlotPricingInput = {
   time_slot: string;
@@ -34,11 +35,10 @@ export function isAdminRole(role: string | null | undefined): role is AdminRole 
 export async function getAdminContext(userId: number | null): Promise<AdminContext | null> {
   if (!userId) return null;
 
-  const cookieStore = await cookies();
-  const roleCookie = cookieStore.get('fg_auth_role')?.value ?? null;
+  const roleCookie = await readAuthRole();
 
-  // 1. Check Super Admin Table if role is super_admin OR if checking as fallback
-  if (roleCookie === 'super_admin' || !roleCookie) {
+  // 1. Check Super Admin Table if role is super_admin
+  if (roleCookie === 'super_admin') {
     const superAdmin = await queryOne<{
       id: number;
       email: string;
@@ -141,6 +141,7 @@ export async function getAdminContext(userId: number | null): Promise<AdminConte
     arenaRole: manager?.role ?? null,
   };
 }
+
 
 export async function getUserRole(userId: number | null) {
   const context = await getAdminContext(userId);

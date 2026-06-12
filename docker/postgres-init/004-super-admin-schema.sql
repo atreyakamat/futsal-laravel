@@ -123,7 +123,7 @@ CREATE INDEX IF NOT EXISTS "admin_credentials_expires_at_idx" ON "admin_credenti
 CREATE TABLE IF NOT EXISTS "system_audit_logs" (
   "id" SERIAL NOT NULL PRIMARY KEY,
   "super_admin_id" INTEGER NOT NULL,
-  "action_type" TEXT NOT NULL,
+  "action" TEXT NOT NULL,
   "entity_type" TEXT NOT NULL,
   "entity_id" INTEGER,
   "changes" TEXT,
@@ -134,7 +134,7 @@ CREATE TABLE IF NOT EXISTS "system_audit_logs" (
 );
 
 CREATE INDEX IF NOT EXISTS "system_audit_logs_super_admin_id_idx" ON "system_audit_logs"("super_admin_id");
-CREATE INDEX IF NOT EXISTS "system_audit_logs_action_type_idx" ON "system_audit_logs"("action_type");
+CREATE INDEX IF NOT EXISTS "system_audit_logs_action_idx" ON "system_audit_logs"("action");
 CREATE INDEX IF NOT EXISTS "system_audit_logs_entity_type_idx" ON "system_audit_logs"("entity_type");
 CREATE INDEX IF NOT EXISTS "system_audit_logs_created_at_idx" ON "system_audit_logs"("created_at");
 

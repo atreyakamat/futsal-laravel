@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { cookies } from 'next/headers';
 import { query, queryOne } from '@/lib/db';
+import { unsignValue } from '@/lib/session';
 
 const requestApprovalSchema = z.object({
   date: z.string(),
@@ -12,14 +13,14 @@ const requestApprovalSchema = z.object({
 
 async function readArenaAdminContext() {
   const cookieStore = await cookies();
-  const role = cookieStore.get('fg_auth_role')?.value;
+  const role = unsignValue(cookieStore.get('fg_auth_role')?.value);
   
   if (role !== 'arena_admin') {
     return null;
   }
 
-  const adminId = cookieStore.get('fg_auth_user')?.value;
-  const arenaId = cookieStore.get('fg_arena_id')?.value;
+  const adminId = unsignValue(cookieStore.get('fg_auth_user')?.value);
+  const arenaId = unsignValue(cookieStore.get('fg_arena_id')?.value);
 
   if (!adminId || !arenaId) {
     return null;

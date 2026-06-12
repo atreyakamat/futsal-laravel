@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { verifyArenaAdminCredentials } from '@/lib/super-admin';
+import { signValue } from '@/lib/session';
 
 const bodySchema = z.object({
   email: z.string().email(),
@@ -43,21 +44,21 @@ export async function POST(request: Request) {
     });
 
     // Set auth cookies
-    response.cookies.set('fg_auth_user', `${arenaAdmin.id}`, {
+    response.cookies.set('fg_auth_user', signValue(`${arenaAdmin.id}`), {
       httpOnly: true,
       sameSite: 'lax',
       path: '/',
       maxAge: 60 * 60 * 24 * 7, // 7 days
     });
 
-    response.cookies.set('fg_auth_role', 'arena_admin', {
+    response.cookies.set('fg_auth_role', signValue('arena_admin'), {
       httpOnly: true,
       sameSite: 'lax',
       path: '/',
       maxAge: 60 * 60 * 24 * 7, // 7 days
     });
 
-    response.cookies.set('fg_arena_id', `${arenaAdmin.arena_id}`, {
+    response.cookies.set('fg_arena_id', signValue(`${arenaAdmin.arena_id}`), {
       httpOnly: true,
       sameSite: 'lax',
       path: '/',

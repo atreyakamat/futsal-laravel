@@ -1,12 +1,13 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
 import { queryOne } from '@/lib/db';
+import { unsignValue } from '@/lib/session';
 
 export async function GET(request: NextRequest) {
   try {
     const cookieStore = await cookies();
-    const arenaId = cookieStore.get('fg_arena_id')?.value;
-    const role = cookieStore.get('fg_auth_role')?.value;
+    const arenaId = unsignValue(cookieStore.get('fg_arena_id')?.value);
+    const role = unsignValue(cookieStore.get('fg_auth_role')?.value);
 
     if (!arenaId || role !== 'arena_admin') {
       return NextResponse.json(

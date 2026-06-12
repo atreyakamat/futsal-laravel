@@ -5,7 +5,8 @@ CREATE TABLE IF NOT EXISTS users (
   name TEXT NOT NULL,
   email TEXT NOT NULL UNIQUE,
   email_verified_at TIMESTAMPTZ NULL,
-  password TEXT NOT NULL,
+  password TEXT NULL,
+  role TEXT NOT NULL DEFAULT 'customer',
   remember_token TEXT NULL,
   customer_mobile TEXT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -34,10 +35,9 @@ CREATE TABLE IF NOT EXISTS pricings (
   arena_id BIGINT NOT NULL REFERENCES arenas(id) ON DELETE CASCADE,
   time_slot TEXT NOT NULL,
   price NUMERIC(10,2) NOT NULL,
-  day_of_week SMALLINT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE (arena_id, time_slot, day_of_week)
+  UNIQUE (arena_id, time_slot)
 );
 
 CREATE TABLE IF NOT EXISTS bookings (

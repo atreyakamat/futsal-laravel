@@ -2,13 +2,14 @@ import { NextResponse, NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
 import { query, queryOne } from '@/lib/db';
 import * as bcrypt from 'bcryptjs';
+import { unsignValue } from '@/lib/session';
 
 export async function GET(request: NextRequest) {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('fg_auth_user')?.value;
-    const role = cookieStore.get('fg_auth_role')?.value;
-    const arenaId = cookieStore.get('fg_arena_id')?.value;
+    const userId = unsignValue(cookieStore.get('fg_auth_user')?.value);
+    const role = unsignValue(cookieStore.get('fg_auth_role')?.value);
+    const arenaId = unsignValue(cookieStore.get('fg_arena_id')?.value);
 
     if (!userId || role !== 'arena_admin' || !arenaId) {
       return NextResponse.json(
@@ -58,8 +59,8 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('fg_auth_user')?.value;
-    const role = cookieStore.get('fg_auth_role')?.value;
+    const userId = unsignValue(cookieStore.get('fg_auth_user')?.value);
+    const role = unsignValue(cookieStore.get('fg_auth_role')?.value);
 
     if (!userId || role !== 'arena_admin') {
       return NextResponse.json(
@@ -78,8 +79,8 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const admin = await queryOne<{ id: number; password_hash: string }>(
-      'SELECT id, password_hash FROM arena_admins WHERE id = ? AND is_active = true',
+    const admin = await queryOne<{ id: number; email: string; password_hash: string }>(
+      'SELECT id, email, password_hash FROM arena_admins WHERE id = ? AND is_active = true',
       [parseInt(userId)]
     );
 
@@ -102,10 +103,16 @@ export async function PUT(request: NextRequest) {
     // Hash new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    // Update password
+    // Update password in arena_admins
     await query(
       'UPDATE arena_admins SET password_hash = ?, updated_at = NOW() WHERE id = ?',
       [hashedPassword, admin.id]
+    );
+
+    // Update password in users
+    await query(
+      'UPDATE users SET password = ?, updated_at = NOW() WHERE email = ?',
+      [hashedPassword, admin.email]
     );
 
     return NextResponse.json({
@@ -120,3 +127,4 @@ export async function PUT(request: NextRequest) {
     );
   }
 }
+

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { removeOtp, findUserByIdentifier, verifyOtp as verifyOtpHash } from '@/lib/domain';
-import { AUTH_COOKIE, GUEST_COOKIE } from '@/lib/session';
+import { AUTH_COOKIE, GUEST_COOKIE, signValue } from '@/lib/session';
 
 const bodySchema = z.object({
   identifier: z.string().min(3).max(100),
@@ -30,12 +30,13 @@ export async function POST(request: Request) {
   let redirectResponse = NextResponse.redirect(new URL('/', request.url));
 
   if (user) {
-    response.cookies.set(AUTH_COOKIE, String(user.id), {
+    const signedUserId = signValue(String(user.id));
+    response.cookies.set(AUTH_COOKIE, signedUserId, {
       httpOnly: true,
       sameSite: 'lax',
       path: '/',
     });
-    redirectResponse.cookies.set(AUTH_COOKIE, String(user.id), {
+    redirectResponse.cookies.set(AUTH_COOKIE, signedUserId, {
       httpOnly: true,
       sameSite: 'lax',
       path: '/',

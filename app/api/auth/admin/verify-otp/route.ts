@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { removeOtp, findUserByIdentifier, verifyOtp as verifyOtpHash, query } from '@/lib/domain';
-import { AUTH_COOKIE } from '@/lib/session';
+import { removeOtp, findUserByIdentifier, verifyOtp as verifyOtpHash, query, queryOne } from '@/lib/domain';
+import { AUTH_COOKIE, signValue } from '@/lib/session';
 
 const bodySchema = z.object({
   identifier: z.string().min(3).max(100),
@@ -35,11 +35,36 @@ export async function POST(request: Request) {
   await removeOtp(payload.identifier);
 
   const response = NextResponse.json({ success: true, userExists: true, role: user[0].role });
-  response.cookies.set(AUTH_COOKIE, String(user[0].id), {
+  
+  const signedUserId = signValue(String(user[0].id));
+  const signedRole = signValue(user[0].role);
+
+  response.cookies.set(AUTH_COOKIE, signedUserId, {
+    httpOnly: true,
+    sameSite: 'lax',
+    path: '/',
+  });
+  
+  response.cookies.set('fg_auth_role', signedRole, {
     httpOnly: true,
     sameSite: 'lax',
     path: '/',
   });
 
+  if (user[0].role === 'arena_admin' || user[0].role === 'security') {
+    const manager = await queryOne<{ arena_id: number }>(
+      'SELECT arena_id FROM arena_managers WHERE user_id = ? LIMIT 1',
+      [user[0].id]
+    );
+    if (manager?.arena_id) {
+      response.cookies.set('fg_arena_id', signValue(String(manager.arena_id)), {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+      });
+    }
+  }
+
   return response;
 }
+

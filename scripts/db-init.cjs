@@ -77,13 +77,14 @@ async function seedDemoData(client) {
 
   // Upsert initial admin user
   await client.query(
-    `INSERT INTO users (email, customer_mobile, password, role, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, NOW(), NOW())
+    `INSERT INTO users (name, email, customer_mobile, password, role, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
      ON CONFLICT (email) DO UPDATE SET
+       name = EXCLUDED.name,
        password = EXCLUDED.password,
        role = EXCLUDED.role,
        updated_at = NOW()`,
-    [adminEmail, adminMobile, adminPasswordHash, 'super_admin']
+    ['Super Admin', adminEmail, adminMobile, adminPasswordHash, 'super_admin']
   );
 
   console.log(`✓ Admin user created/updated: ${adminEmail}`);

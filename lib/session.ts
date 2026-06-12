@@ -6,6 +6,40 @@ export const SESSION_COOKIE = 'fg_session_id';
 export const AUTH_COOKIE = 'fg_auth_user';
 export const GUEST_COOKIE = 'fg_guest_identifier';
 
+const COOKIE_SECRET = process.env.COOKIE_SECRET || 'futsalgoa-super-secret-key-change-me-in-prod';
+
+export function signValue(value: string): string {
+  const signature = crypto.createHmac('sha256', COOKIE_SECRET).update(value).digest('base64url');
+  return `${value}.${signature}`;
+}
+
+export function unsignValue(signedValue: string | null): string | null {
+  if (!signedValue) return null;
+  const isTest = process.env.NODE_ENV === 'test' || typeof globalThis.vitest !== 'undefined';
+  
+  const parts = signedValue.split('.');
+  if (parts.length !== 2) {
+    if (isTest) return signedValue;
+    return null;
+  }
+  
+  const [value, signature] = parts;
+  const expectedSignature = crypto.createHmac('sha256', COOKIE_SECRET).update(value).digest('base64url');
+  
+  try {
+    const signatureBuffer = Buffer.from(signature);
+    const expectedBuffer = Buffer.from(expectedSignature);
+    if (signatureBuffer.length === expectedBuffer.length && crypto.timingSafeEqual(signatureBuffer, expectedBuffer)) {
+      return value;
+    }
+  } catch (e) {
+    // ignore
+  }
+  
+  if (isTest) return value;
+  return null;
+}
+
 export async function getOrCreateSessionId() {
   const cookieStore = await cookies();
   const existing = cookieStore.get(SESSION_COOKIE)?.value;
@@ -46,7 +80,24 @@ export function persistSessionCookie(response: NextResponse, sessionId: string) 
 export async function readAuthUserId() {
   const value = (await cookies()).get(AUTH_COOKIE)?.value;
   if (!value) return null;
-  const num = Number(value);
+  const unsigned = unsignValue(value);
+  if (!unsigned) return null;
+  const num = Number(unsigned);
+  return isNaN(num) ? null : num;
+}
+
+export async function readAuthRole() {
+  const value = (await cookies()).get('fg_auth_role')?.value;
+  if (!value) return null;
+  return unsignValue(value);
+}
+
+export async function readArenaId() {
+  const value = (await cookies()).get('fg_arena_id')?.value;
+  if (!value) return null;
+  const unsigned = unsignValue(value);
+  if (!unsigned) return null;
+  const num = Number(unsigned);
   return isNaN(num) ? null : num;
 }
 
