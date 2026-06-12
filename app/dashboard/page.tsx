@@ -153,6 +153,11 @@ export default async function DashboardPage() {
           <p className="label-classic">
             History of your arena reservations
           </p>
+          <div className="mt-4">
+            <Link href="/dashboard/profile" className="btn-secondary !py-2 !px-4 !rounded-xl text-[10px]">
+              EDIT PROFILE
+            </Link>
+          </div>
         </div>
         <div className="glass px-8 py-5 rounded-[2rem] border border-white/5">
           <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] block mb-2">

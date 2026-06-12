@@ -11,6 +11,20 @@ if (!DATABASE_URL) {
   process.exit(1);
 }
 
+if (process.env.NODE_ENV === 'production') {
+  const requiredEnv = ['COOKIE_SECRET', 'PAYU_MERCHANT_KEY', 'PAYU_SALT'];
+  const missing = [];
+  for (const key of requiredEnv) {
+    if (!process.env[key]) {
+      missing.push(key);
+    }
+  }
+  if (missing.length > 0) {
+    console.error(`CRITICAL: Missing required production environment variables: ${missing.join(', ')}`);
+    process.exit(1);
+  }
+}
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }

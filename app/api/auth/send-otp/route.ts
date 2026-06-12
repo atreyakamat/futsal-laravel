@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { storeOtp } from '@/lib/domain';
 import { GUEST_COOKIE, getCookieOptions } from '@/lib/session';
+import { canSendOtp, isLockedOut } from '@/lib/rate-limit';
 
 const bodySchema = z.object({
   identifier: z.string().min(3).max(100),
@@ -13,6 +14,20 @@ export async function POST(request: Request) {
   const payload = bodySchema.parse(
     isJson ? await request.json() : Object.fromEntries((await request.formData()).entries())
   );
+
+  const allowed = await canSendOtp(payload.identifier);
+  if (!allowed) {
+    const isLocked = await isLockedOut(payload.identifier);
+    const msg = isLocked
+      ? 'Too many failed attempts. You are locked out for 15 minutes.'
+      : 'Please wait 60 seconds before requesting another OTP.';
+
+    if (!isJson) {
+      return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(msg)}`, request.url));
+    }
+    return NextResponse.json({ success: false, message: msg }, { status: 429 });
+  }
+
   const otp = crypto.randomInt(100000, 999999).toString();
 
   await storeOtp(payload.identifier, otp);

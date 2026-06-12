@@ -342,3 +342,56 @@ model PaymentAuditLog {
   @@map("payment_audit_logs")
   @@index([booking_ref])
 }
+
+model ApprovalRequest {
+  id               Int       @id @default(autoincrement())
+  booking_id       Int?
+  status           String    @default("pending")
+  notes            String?
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+  request_type     String    @default("slot_template_update")
+  arena_id         Int?
+  requested_by     Int?
+  payload_json     String?
+  decision_by      Int?
+  decision_reason  String?
+  decision_at      DateTime?
+  applied_at       DateTime?
+
+  @@map("approval_requests")
+  @@index([arena_id])
+  @@index([status])
+  @@index([requested_by])
+}
+
+model OtpAttempt {
+  id           Int       @id @default(autoincrement())
+  identifier   String    @unique
+  attempts     Int       @default(0)
+  locked_until DateTime?
+  last_attempt DateTime  @default(now())
+
+  @@map("otp_attempts")
+}
+
+model RevokedSession {
+  id         Int      @id @default(autoincrement())
+  session_id String   @unique
+  revoked_at DateTime @default(now())
+
+  @@map("revoked_sessions")
+}
+
+model PaymentCallback {
+  id          Int      @id @default(autoincrement())
+  booking_ref String
+  gateway_id  String   @unique
+  status      String
+  raw_payload Json
+  received_at DateTime @default(now())
+
+  @@map("payment_callbacks")
+  @@index([booking_ref])
+  @@index([gateway_id])
+}

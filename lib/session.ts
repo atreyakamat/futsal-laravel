@@ -15,11 +15,9 @@ export function signValue(value: string): string {
 
 export function unsignValue(signedValue: string | null): string | null {
   if (!signedValue) return null;
-  const isTest = process.env.NODE_ENV === 'test' || typeof (globalThis as any).vitest !== 'undefined';
   
   const parts = signedValue.split('.');
   if (parts.length !== 2) {
-    if (isTest) return signedValue;
     return null;
   }
   
@@ -36,7 +34,6 @@ export function unsignValue(signedValue: string | null): string | null {
     // ignore
   }
   
-  if (isTest) return value;
   return null;
 }
 
