@@ -91,16 +91,16 @@ export default function SuperAdminDashboardClient() {
   const fetchInitialData = useCallback(async () => {
     try {
       setLoading(true);
-      const settingsRes = await fetch('/api/super-admin/settings');
+      const settingsRes = await fetch('/api/fg-admin/super-admin/settings');
       if (settingsRes.ok) {
         const settingsData = await settingsRes.json();
         setSettings(settingsData.data || null);
       } else if (settingsRes.status === 401) {
-        router.push('/fg-admin/platform/super-admin-login');
+        router.push('/fg-admin/login');
         return;
       }
 
-      const arenasRes = await fetch('/api/super-admin/arenas');
+      const arenasRes = await fetch('/api/fg-admin/super-admin/arenas');
       if (arenasRes.ok) {
         const arenasData = await arenasRes.json();
         setArenas(arenasData.data || []);
@@ -114,19 +114,19 @@ export default function SuperAdminDashboardClient() {
 
   const fetchArenaDetails = useCallback(async (arenaId: number) => {
     try {
-      const adminsRes = await fetch(`/api/super-admin/admins?arena_id=${arenaId}`);
+      const adminsRes = await fetch(`/api/fg-admin/super-admin/admins?arena_id=${arenaId}`);
       if (adminsRes.ok) {
         const adminsData = await adminsRes.json();
         setArenaAdmins(adminsData.data || []);
       }
 
-      const securityRes = await fetch(`/api/super-admin/security?arena_id=${arenaId}`);
+      const securityRes = await fetch(`/api/fg-admin/super-admin/security?arena_id=${arenaId}`);
       if (securityRes.ok) {
         const securityData = await securityRes.json();
         setSecurityStaff(securityData.data || []);
       }
 
-      const timingsRes = await fetch(`/api/super-admin/arenas/timings?arena_id=${arenaId}`);
+      const timingsRes = await fetch(`/api/fg-admin/super-admin/arenas/timings?arena_id=${arenaId}`);
       if (timingsRes.ok) {
         const timingsData = await timingsRes.json();
         setArenaTimings(timingsData.data || []);
@@ -152,7 +152,7 @@ export default function SuperAdminDashboardClient() {
     setSuccess('');
     
     try {
-      const res = await fetch('/api/super-admin/arenas', {
+      const res = await fetch('/api/fg-admin/super-admin/arenas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -185,7 +185,7 @@ export default function SuperAdminDashboardClient() {
     setSuccess('');
 
     try {
-      const res = await fetch('/api/super-admin/admins', {
+      const res = await fetch('/api/fg-admin/super-admin/admins', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -217,7 +217,7 @@ export default function SuperAdminDashboardClient() {
     setSuccess('');
 
     try {
-      const res = await fetch('/api/super-admin/security', {
+      const res = await fetch('/api/fg-admin/super-admin/security', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -252,7 +252,7 @@ export default function SuperAdminDashboardClient() {
     setSuccess('');
 
     try {
-      const res = await fetch('/api/super-admin/arenas/timings', {
+      const res = await fetch('/api/fg-admin/super-admin/arenas/timings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -286,7 +286,7 @@ export default function SuperAdminDashboardClient() {
     setSuccess('');
 
     try {
-      const res = await fetch('/api/super-admin/bookings', {
+      const res = await fetch('/api/fg-admin/super-admin/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -317,7 +317,7 @@ export default function SuperAdminDashboardClient() {
   const handleLogout = async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
-      router.push('/fg-admin/platform/super-admin-login');
+      router.push('/fg-admin/login');
     } catch (err) {
       console.error('Logout error:', err);
     }
@@ -339,7 +339,7 @@ export default function SuperAdminDashboardClient() {
       <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-950 flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-400 mb-4">{error || 'Not authenticated'}</p>
-          <a href="/fg-admin/platform/super-admin-login" className="px-6 py-2 btn-primary rounded-full inline-block">
+          <a href="/fg-admin/login" className="px-6 py-2 btn-primary rounded-full inline-block">
             Back to Login
           </a>
         </div>

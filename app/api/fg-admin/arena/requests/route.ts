@@ -1,12 +1,20 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { query } from '@/lib/db';
-import { readAuthUserId } from '@/lib/session';
 import { getAdminContext } from '@/lib/admin';
+import { readAuthUserId } from '@/lib/session';
 
 const requestSchema = z.object({
-  cover_image: z.string().url().optional().or(z.literal('')),
-  logo_url: z.string().url().optional().or(z.literal('')),
+  request_type: z.enum([
+    'ARENA_UPDATE',
+    'PRICING_UPDATE',
+    'TIMING_UPDATE',
+    'IMAGE_UPDATE',
+    'FREE_BOOKING_REQUEST',
+    'BLOCK_SLOT_REQUEST'
+  ]),
+  payload: z.any(), // Structure depends on request_type
+  reason: z.string().optional(),
 });
 
 export async function POST(request: Request) {
@@ -21,14 +29,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const payload = requestSchema.parse(await request.json());
-
-    if (!payload.cover_image && !payload.logo_url) {
-      return NextResponse.json(
-        { success: false, message: 'Must provide at least one image URL to update' },
-        { status: 400 }
-      );
-    }
+    const isJson = request.headers.get('content-type')?.includes('application/json');
+    const body = requestSchema.parse(
+      isJson ? await request.json() : Object.fromEntries((await request.formData()).entries())
+    );
 
     // Insert into approval_requests
     await query(
@@ -38,21 +42,23 @@ export async function POST(request: Request) {
         request_type, 
         status, 
         payload_json, 
+        notes,
         created_at, 
         updated_at
-      ) VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
+      ) VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())`,
       [
         context.arenaId,
-        context.userId,
-        'arena_image_update',
+        context.id,
+        body.request_type,
         'pending',
-        JSON.stringify(payload)
+        JSON.stringify(body.payload),
+        body.reason || null
       ]
     );
 
     return NextResponse.json({
       success: true,
-      message: 'Image update request submitted for approval',
+      message: `${body.request_type} submitted for Super Admin approval`,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -62,7 +68,7 @@ export async function POST(request: Request) {
       );
     }
 
-    console.error('Image request error:', error);
+    console.error('Request submission error:', error);
     return NextResponse.json(
       { success: false, message: 'Internal server error' },
       { status: 500 }

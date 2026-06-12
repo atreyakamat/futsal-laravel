@@ -11,7 +11,7 @@ export default async function AdminBookingsPage() {
   const context = await getAdminContext(userId);
 
   if (!context || !['super_admin', 'arena_admin'].includes(context.role)) {
-    redirect('/fg-admin/platform/login');
+    redirect('/fg-admin/login');
   }
 
   const scopedClauses: string[] = [];

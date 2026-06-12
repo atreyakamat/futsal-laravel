@@ -12,7 +12,7 @@ export default async function ArenaAdminDashboardPage() {
   const context = await getAdminContext(userId);
 
   if (!context || role !== 'arena_admin' || !context.arenaId) {
-    redirect('/fg-admin/platform/login');
+    redirect('/fg-admin/login');
   }
 
   const arenaId = context.arenaId;

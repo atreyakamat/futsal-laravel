@@ -8,7 +8,7 @@ export default async function AdminSecurityPage() {
   const context = await getAdminContext(userId);
 
   if (!context) {
-    redirect('/fg-admin/platform/login');
+    redirect('/fg-admin/login');
   }
 
   return (

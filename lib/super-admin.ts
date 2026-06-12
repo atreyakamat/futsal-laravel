@@ -304,7 +304,7 @@ export async function getPendingApprovalRequests(arenaId?: number) {
  */
 export async function approveApprovalRequest(requestId: number, approvedById: number) {
   // First, get the request details
-  const request = await queryOne(
+  const request = await queryOne<any>(
     'SELECT * FROM approval_requests WHERE id = ? AND status = ?',
     [requestId, 'pending']
   );
@@ -456,8 +456,8 @@ export async function verifyArenaAdminCredentials(email: string, password: strin
  * Verify security staff credentials
  */
 export async function verifySecurityStaffCredentials(email: string, password: string) {
-  const staff = await queryOne<{ id: number; email: string; password_hash: string; is_active: boolean }>(
-    'SELECT id, email, password_hash, is_active FROM security_staff WHERE email = ?',
+  const staff = await queryOne<{ id: number; email: string; password_hash: string; is_active: boolean; arena_id: number }>(
+    'SELECT id, email, password_hash, is_active, arena_id FROM security_staff WHERE email = ?',
     [email]
   );
 

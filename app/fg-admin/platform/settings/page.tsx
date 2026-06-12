@@ -9,7 +9,7 @@ export default async function AdminSettingsPage() {
   const userId = await readAuthUserId();
 
   if (!userId) {
-    redirect('/fg-admin/platform/login');
+    redirect('/fg-admin/login');
   }
 
   const context = await getAdminContext(userId);

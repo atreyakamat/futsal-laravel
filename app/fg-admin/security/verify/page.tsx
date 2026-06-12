@@ -13,7 +13,7 @@ export default async function SecurityVerifyPage({ searchParams }: Props) {
   const userId = await readAuthUserId();
   const context = await getAdminContext(userId);
   if (!context) {
-    redirect('/fg-admin/platform/login');
+    redirect('/fg-admin/login');
   }
 
   if (context.role === 'security') {
@@ -103,7 +103,7 @@ export default async function SecurityVerifyPage({ searchParams }: Props) {
         </div>
 
         {!isCheckedIn && (
-          <form className="space-y-4" action="/api/security/confirm-entry" method="post">
+          <form className="space-y-4" action="/api/fg-admin/security/confirm-entry" method="post">
             <input type="hidden" name="ticket_number" value={ticketNumber} />
             <button
               className="btn-primary w-full py-6 flex items-center justify-center gap-4 scale-105"

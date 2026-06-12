@@ -14,7 +14,7 @@ export default async function EditArenaPage({
   const context = await getAdminContext(userId);
 
   if (!context || context.role !== 'super_admin') {
-    redirect('/fg-admin/platform/login');
+    redirect('/fg-admin/login');
   }
 
   const arena = await getArenaById(Number(id));

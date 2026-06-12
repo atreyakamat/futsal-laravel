@@ -6,13 +6,13 @@ const ROLE_MATRIX: Record<string, string[]> = {
   '/fg-admin/platform': ['super_admin'],
   '/fg-admin/arena': ['arena_admin'],
   '/fg-admin/security': ['security'],
-  '/api/admin': ['super_admin'],
-  '/api/super-admin': ['super_admin'],
-  '/api/security': ['security'],
-  '/api/arena-admin': ['arena_admin'],
+  '/api/fg-admin/platform': ['super_admin'],
+  '/api/fg-admin/super-admin': ['super_admin'],
+  '/api/fg-admin/security': ['security'],
+  '/api/fg-admin/arena': ['arena_admin'],
 };
 
-const PROTECTED_PREFIXES = ['/fg-admin/platform', '/fg-admin/arena', '/fg-admin/security', '/api/admin', '/api/super-admin', '/api/security', '/api/arena-admin'];
+const PROTECTED_PREFIXES = ['/fg-admin/platform', '/fg-admin/arena', '/fg-admin/security', '/api/fg-admin/platform', '/api/fg-admin/super-admin', '/api/fg-admin/security', '/api/fg-admin/arena'];
 
 function jsonError(message: string, status: number) {
   return new NextResponse(JSON.stringify({ success: false, message }), {
@@ -69,10 +69,11 @@ export async function middleware(req: NextRequest) {
   }
 
   // For arena-admin routes, verify arena_id matches
-  if (matchedPrefix === '/api/arena-admin') {
+  if (matchedPrefix === '/fg-admin/arena' || matchedPrefix === '/api/fg-admin/arena') {
     const arenaIdCookie = await readCookieFromRequest(req, 'fg_arena_id');
     if (!arenaIdCookie) {
-      return jsonError('Forbidden: arena assignment required', 403);
+      if (isApiRoute) return jsonError('Forbidden: arena assignment required', 403);
+      return NextResponse.redirect(new URL('/fg-admin/login', req.url));
     }
   }
 
@@ -82,9 +83,6 @@ export async function middleware(req: NextRequest) {
 export const config = {
   matcher: [
     '/fg-admin/:path*',
-    '/api/admin/:path*',
-    '/api/super-admin/:path*',
-    '/api/security/:path*',
-    '/api/arena-admin/:path*',
+    '/api/fg-admin/:path*',
   ],
 };

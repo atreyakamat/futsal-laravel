@@ -11,7 +11,7 @@ export default async function AdminDashboardPage() {
   const arenaId = context?.arenaId ?? null;
 
   if (!context || !['super_admin', 'arena_admin', 'security'].includes(context.role)) {
-    redirect('/fg-admin/platform/login');
+    redirect('/fg-admin/login');
   }
 
   if (context.role === 'super_admin') {

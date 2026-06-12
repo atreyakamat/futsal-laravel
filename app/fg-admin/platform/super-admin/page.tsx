@@ -14,7 +14,7 @@ export default async function SuperAdminDashboardPage() {
     if (context && (context.role === 'arena_admin' || context.role === 'security')) {
       redirect('/fg-admin/platform/dashboard');
     }
-    redirect('/fg-admin/platform/super-admin-login');
+    redirect('/fg-admin/login');
   }
 
   return <SuperAdminDashboardClient />;

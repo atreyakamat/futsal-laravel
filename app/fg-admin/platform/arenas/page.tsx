@@ -10,7 +10,7 @@ export default async function AdminArenasPage() {
   const context = await getAdminContext(userId);
 
   if (!context) {
-    redirect('/fg-admin/platform/login');
+    redirect('/fg-admin/login');
   }
 
   let arenas = await listArenas();

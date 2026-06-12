@@ -26,7 +26,7 @@ export default function UnifiedLogin() {
       endpoint = '/api/auth/super-admin/login';
       redirectPath = '/fg-admin/platform/dashboard';
     } else if (activeTab === 'arena_admin') {
-      endpoint = '/api/auth/fg-admin/arena/login';
+      endpoint = '/api/auth/arena-admin/login';
       redirectPath = '/fg-admin/arena/dashboard';
     } else if (activeTab === 'security') {
       endpoint = '/api/auth/security/login';

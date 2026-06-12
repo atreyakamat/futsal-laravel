@@ -16,7 +16,7 @@ function isoDate(value: Date) {
 export default async function AdminReportsPage({ searchParams }: Props) {
   const userId = await readAuthUserId();
   if (!userId) {
-    redirect('/fg-admin/platform/login');
+    redirect('/fg-admin/login');
   }
 
   const context = await getAdminContext(userId);

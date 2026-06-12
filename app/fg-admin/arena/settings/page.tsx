@@ -183,7 +183,7 @@ export default function ArenaAdminSettingsPage() {
           </div>
           <h2 className="text-2xl font-black uppercase italic">Access Denied</h2>
           <p className="text-white/40 text-sm max-w-md mx-auto">{error}</p>
-          <Link href="/fg-admin/platform/login" className="btn-primary inline-block">
+          <Link href="/fg-admin/login" className="btn-primary inline-block">
             GO TO LOGIN
           </Link>
         </div>

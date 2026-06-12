@@ -7,7 +7,7 @@ export default async function AdminPage() {
   const context = await getAdminContext(userId);
 
   if (!context) {
-    redirect('/fg-admin/platform/login');
+    redirect('/fg-admin/login');
   }
 
   if (context.role === 'super_admin') {

@@ -8,7 +8,7 @@ export default async function CreateArenaPage() {
   const context = await getAdminContext(userId);
 
   if (!context || context.role !== 'super_admin') {
-    redirect('/fg-admin/platform/login');
+    redirect('/fg-admin/login');
   }
 
   return (
