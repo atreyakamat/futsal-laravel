@@ -1,7 +1,6 @@
 import { cookies, headers } from 'next/headers';
 import type { NextResponse } from 'next/server';
-import crypto from 'node:crypto';
-
+import CryptoJS from 'crypto-js';
 export const SESSION_COOKIE = 'fg_session_id';
 export const AUTH_COOKIE = 'fg_auth_user';
 export const GUEST_COOKIE = 'fg_guest_identifier';
@@ -9,7 +8,7 @@ export const GUEST_COOKIE = 'fg_guest_identifier';
 const COOKIE_SECRET = process.env.COOKIE_SECRET || 'futsalgoa-super-secret-key-change-me-in-prod';
 
 export function signValue(value: string): string {
-  const signature = crypto.createHmac('sha256', COOKIE_SECRET).update(value).digest('base64url');
+  const signature = CryptoJS.HmacSHA256(value, COOKIE_SECRET).toString(CryptoJS.enc.Base64url);
   return `${value}.${signature}`;
 }
 
@@ -22,16 +21,16 @@ export function unsignValue(signedValue: string | null): string | null {
   }
   
   const [value, signature] = parts;
-  const expectedSignature = crypto.createHmac('sha256', COOKIE_SECRET).update(value).digest('base64url');
+  const expectedSignature = CryptoJS.HmacSHA256(value, COOKIE_SECRET).toString(CryptoJS.enc.Base64url);
   
-  try {
-    const signatureBuffer = Buffer.from(signature);
-    const expectedBuffer = Buffer.from(expectedSignature);
-    if (signatureBuffer.length === expectedBuffer.length && crypto.timingSafeEqual(signatureBuffer, expectedBuffer)) {
+  if (signature.length === expectedSignature.length) {
+    let mismatch = 0;
+    for (let i = 0; i < signature.length; i++) {
+      mismatch |= signature.charCodeAt(i) ^ expectedSignature.charCodeAt(i);
+    }
+    if (mismatch === 0) {
       return value;
     }
-  } catch (e) {
-    // ignore
   }
   
   return null;
@@ -125,5 +124,5 @@ export async function readSuperAdminId() {
   if (role !== 'super_admin') {
     return null;
   }
-  return readAuthUserId();
+  return await readAuthUserId();
 }

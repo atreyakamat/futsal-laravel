@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import crypto from 'node:crypto';
+import crypto from 'crypto';
 import { query as dbQuery, queryOne, transaction } from '@/lib/db';
 import type { ArenaSummary, BookingRow, PricingRow, SlotLockRow } from '@/lib/types';
 

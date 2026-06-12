@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import crypto from 'node:crypto';
+import crypto from 'crypto';
 import { query, queryOne, getBookingsByRef } from '@/lib/domain';
 import { logAuditAction } from '@/lib/super-admin';
 

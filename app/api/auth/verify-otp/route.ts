@@ -49,7 +49,7 @@ export async function POST(request: Request) {
   const cookieOpts = getCookieOptions();
 
   if (user) {
-    const signedUserId = signValue(String(user.id));
+    const signedUserId = await signValue(String(user.id));
     response.cookies.set(AUTH_COOKIE, signedUserId, cookieOpts);
     redirectResponse.cookies.set(AUTH_COOKIE, signedUserId, cookieOpts);
     redirectResponse.cookies.delete(GUEST_COOKIE);

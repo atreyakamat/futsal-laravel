@@ -1,4 +1,4 @@
-import crypto from 'node:crypto';
+import crypto from 'crypto';
 
 export function getPayuConfig() {
   const merchantKey = process.env.PAYU_MERCHANT_KEY ?? process.env.PAYU_KEY ?? '';

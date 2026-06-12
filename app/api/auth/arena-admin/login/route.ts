@@ -45,9 +45,9 @@ export async function POST(request: Request) {
 
     // Set auth cookies
     const cookieOpts = getCookieOptions(60 * 60 * 24 * 7);
-    response.cookies.set('fg_auth_user', signValue(`${arenaAdmin.id}`), cookieOpts);
-    response.cookies.set('fg_auth_role', signValue('arena_admin'), cookieOpts);
-    response.cookies.set('fg_arena_id', signValue(`${arenaAdmin.arena_id}`), cookieOpts);
+    response.cookies.set('fg_auth_user', await signValue(`${arenaAdmin.id}`), cookieOpts);
+    response.cookies.set('fg_auth_role', await signValue('arena_admin'), cookieOpts);
+    response.cookies.set('fg_arena_id', await signValue(`${arenaAdmin.arena_id}`), cookieOpts);
 
     return response;
   } catch (error) {

@@ -64,7 +64,7 @@ export async function POST(request: Request) {
   }
 
   if (!isJson) {
-    return NextResponse.redirect(new URL('/admin/credentials?updated=1', request.url));
+    return NextResponse.redirect(new URL('/fg-admin/platform/credentials?updated=1', request.url));
   }
 
   return NextResponse.json({ success: true });

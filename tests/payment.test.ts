@@ -20,7 +20,7 @@ describe('Payment Callback & Signature Validation', () => {
     const salt = process.env.PAYU_SALT || '';
 
     const expectedHashSource = `${salt}|${params.status}|||||||||||${params.email}|${params.firstname}|${params.productinfo}|${params.amount}|${params.txnid}|${key}`;
-    const crypto = require('node:crypto');
+    const crypto = require('crypto');
     const validHash = crypto.createHash('sha512').update(expectedHashSource).digest('hex').toLowerCase();
 
     // Verify valid hash

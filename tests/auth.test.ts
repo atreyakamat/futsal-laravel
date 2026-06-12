@@ -4,24 +4,24 @@ import { isLockedOut, recordFailedAttempt, resetAttempts, canSendOtp } from '@/l
 import { query } from '@/lib/db';
 
 describe('Auth & Session Cookie Security', () => {
-  it('should cryptographically sign and verify values correctly', () => {
+  it('should cryptographically sign and verify values correctly', async () => {
     const original = '12345';
-    const signed = signValue(original);
+    const signed = await signValue(original);
     
     // Structure check
     expect(signed).toContain('.');
     
     // Valid signature check
-    const unsigned = unsignValue(signed);
+    const unsigned = await unsignValue(signed);
     expect(unsigned).toBe(original);
 
     // Tampered signature check
     const tampered = signed + 'x';
-    const tamperedUnsigned = unsignValue(tampered);
+    const tamperedUnsigned = await unsignValue(tampered);
     expect(tamperedUnsigned).toBeNull();
 
     // Random non-signed cookie check
-    expect(unsignValue('12345')).toBeNull();
+    expect(await unsignValue('12345')).toBeNull();
   });
 });
 

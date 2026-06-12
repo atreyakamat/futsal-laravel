@@ -9,8 +9,10 @@ const bodySchema = z.object({
   slug: z.string().min(1).max(255),
   address: z.string().optional(),
   description: z.string().optional(),
-  contact_email: z.string().email().optional(),
+  contact_email: z.string().email().optional().or(z.literal('')),
   contact_phone: z.string().optional(),
+  cover_image: z.string().url().optional().or(z.literal('')),
+  logo_url: z.string().url().optional().or(z.literal('')),
 });
 
 export async function POST(request: Request) {
@@ -30,8 +32,8 @@ export async function POST(request: Request) {
     );
 
     const result = await query(
-      'INSERT INTO arenas (name, slug, address, description, contact_email, contact_phone, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW()) RETURNING id',
-      [payload.name, payload.slug, payload.address || null, payload.description || null, payload.contact_email || null, payload.contact_phone || null, 'active']
+      'INSERT INTO arenas (name, slug, address, description, contact_email, contact_phone, cover_image, logo_url, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW()) RETURNING id',
+      [payload.name, payload.slug, payload.address || null, payload.description || null, payload.contact_email || null, payload.contact_phone || null, payload.cover_image || null, payload.logo_url || null, 'active']
     );
 
     const arenaId = (result as any)?.[0]?.id;

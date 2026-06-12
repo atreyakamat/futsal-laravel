@@ -1,4 +1,4 @@
-import crypto from 'node:crypto';
+import crypto from 'crypto';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { storeOtp } from '@/lib/domain';

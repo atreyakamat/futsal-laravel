@@ -303,10 +303,43 @@ export async function getPendingApprovalRequests(arenaId?: number) {
  * Approve an approval request
  */
 export async function approveApprovalRequest(requestId: number, approvedById: number) {
+  // First, get the request details
+  const request = await queryOne(
+    'SELECT * FROM approval_requests WHERE id = ? AND status = ?',
+    [requestId, 'pending']
+  );
+
+  if (!request) {
+    throw new Error('Approval request not found or already processed');
+  }
+
+  // Update status
   await query(
-    'UPDATE slot_approval_requests SET status = ?, approved_by = ?, approved_at = NOW(), updated_at = NOW() WHERE id = ?',
+    'UPDATE approval_requests SET status = ?, decision_by = ?, decision_at = NOW(), applied_at = NOW(), updated_at = NOW() WHERE id = ?',
     ['approved', approvedById, requestId]
   );
+
+  // Apply the changes based on request_type
+  const payload = request.payload_json ? (typeof request.payload_json === 'string' ? JSON.parse(request.payload_json) : request.payload_json) : {};
+
+  if (request.request_type === 'IMAGE_UPDATE' || request.request_type === 'ARENA_UPDATE') {
+    const updates: string[] = [];
+    const values: any[] = [];
+    
+    // Example: update arenas table dynamically based on payload
+    Object.keys(payload).forEach(key => {
+      updates.push(`${key} = ?`);
+      values.push(payload[key]);
+    });
+
+    if (updates.length > 0 && request.arena_id) {
+      values.push(request.arena_id);
+      await query(
+        `UPDATE arenas SET ${updates.join(', ')}, updated_at = NOW() WHERE id = ?`,
+        values
+      );
+    }
+  }
 
   return { id: requestId, status: 'approved' };
 }
@@ -314,10 +347,10 @@ export async function approveApprovalRequest(requestId: number, approvedById: nu
 /**
  * Reject an approval request
  */
-export async function rejectApprovalRequest(requestId: number, rejectionReason: string) {
+export async function rejectApprovalRequest(requestId: number, rejectionReason: string, rejectedById: number) {
   await query(
-    'UPDATE slot_approval_requests SET status = ?, rejection_reason = ?, updated_at = NOW() WHERE id = ?',
-    ['rejected', rejectionReason, requestId]
+    'UPDATE approval_requests SET status = ?, decision_reason = ?, decision_by = ?, decision_at = NOW(), updated_at = NOW() WHERE id = ?',
+    ['rejected', rejectionReason, rejectedById, requestId]
   );
 
   return { id: requestId, status: 'rejected' };

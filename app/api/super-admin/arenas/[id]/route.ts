@@ -8,8 +8,10 @@ const updateSchema = z.object({
   name: z.string().min(1).max(255).optional(),
   address: z.string().optional(),
   description: z.string().optional(),
-  contact_email: z.string().email().optional(),
+  contact_email: z.string().email().optional().or(z.literal('')),
   contact_phone: z.string().optional(),
+  cover_image: z.string().url().optional().or(z.literal('')),
+  logo_url: z.string().url().optional().or(z.literal('')),
   status: z.enum(['active', 'inactive']).optional(),
 });
 
@@ -111,6 +113,14 @@ export async function PUT(
     if (payload.status) {
       updates.push('status = ?');
       values.push(payload.status);
+    }
+    if (payload.cover_image !== undefined) {
+      updates.push('cover_image = ?');
+      values.push(payload.cover_image);
+    }
+    if (payload.logo_url !== undefined) {
+      updates.push('logo_url = ?');
+      values.push(payload.logo_url);
     }
 
     if (updates?.length > 0) {

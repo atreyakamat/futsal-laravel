@@ -50,7 +50,7 @@ export async function POST(request: Request) {
   }
 
   if (!isJson) {
-    return NextResponse.redirect(new URL('/admin/slots?requested=1', request.url));
+    return NextResponse.redirect(new URL('/fg-admin/platform/slots?requested=1', request.url));
   }
 
   return NextResponse.json({ success: true, requestId: created.id });

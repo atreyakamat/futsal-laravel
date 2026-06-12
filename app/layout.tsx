@@ -44,7 +44,7 @@ export default async function RootLayout({
             <div className="flex items-center gap-8">
               <div className="hidden md:flex items-center gap-6">
                 <Link href="/#arenas" className="text-[10px] font-bold uppercase tracking-widest text-white/40 hover:text-primary transition-colors">Arenas</Link>
-                <Link href="/admin/dashboard" className="text-[10px] font-bold uppercase tracking-widest text-white/40 hover:text-primary transition-colors">Admin</Link>
+                <Link href="/fg-admin/platform/dashboard" className="text-[10px] font-bold uppercase tracking-widest text-white/40 hover:text-primary transition-colors">Admin</Link>
               </div>
               
               {userId ? (
@@ -86,7 +86,7 @@ export default async function RootLayout({
                 <div className="flex flex-col gap-4">
                   <Link href="/#arenas" className="text-xs text-white/40 hover:text-primary transition-colors">Find Arenas</Link>
                   <Link href="/login" className="text-xs text-white/40 hover:text-primary transition-colors">User Login</Link>
-                  <Link href="/admin/login" className="text-xs text-white/40 hover:text-primary transition-colors">Admin Portal</Link>
+                  <Link href="/fg-admin/platform/login" className="text-xs text-white/40 hover:text-primary transition-colors">Admin Portal</Link>
                 </div>
               </div>
 
@@ -103,9 +103,9 @@ export default async function RootLayout({
               <div className="opacity-0 hover:opacity-100 transition-opacity duration-300 absolute bottom-8 right-8 bg-black/80 p-4 rounded-lg backdrop-blur-sm border border-white/10">
                 <p className="text-[9px] font-black uppercase tracking-widest text-white/60 mb-3">Admin Access</p>
                 <div className="flex flex-col gap-2">
-                  <Link href="/admin/super-admin-login" className="text-[9px] text-primary hover:text-white transition-colors font-bold">Super Admin</Link>
-                  <Link href="/admin/login" className="text-[9px] text-primary hover:text-white transition-colors font-bold">Arena Admin</Link>
-                  <Link href="/admin/security-login" className="text-[9px] text-primary hover:text-white transition-colors font-bold">Security</Link>
+                  <Link href="/fg-admin/platform/super-admin-login" className="text-[9px] text-primary hover:text-white transition-colors font-bold">Super Admin</Link>
+                  <Link href="/fg-admin/platform/login" className="text-[9px] text-primary hover:text-white transition-colors font-bold">Arena Admin</Link>
+                  <Link href="/fg-admin/platform/login" className="text-[9px] text-primary hover:text-white transition-colors font-bold">Security</Link>
                 </div>
               </div>
             </div>

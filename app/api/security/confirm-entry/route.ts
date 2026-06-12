@@ -38,7 +38,7 @@ export async function POST(request: Request) {
   const result = await confirmEntryByTicket(payload.ticket_number, actorId);
 
   if (!isJson) {
-    return NextResponse.redirect(new URL(`/security/scan?ticket_number=${encodeURIComponent(payload.ticket_number)}&result=${result.success ? 'success' : 'error'}`, request.url));
+    return NextResponse.redirect(new URL(`/fg-admin/security/scan?ticket_number=${encodeURIComponent(payload.ticket_number)}&result=${result.success ? 'success' : 'error'}`, request.url));
   }
 
   return NextResponse.json(result, result.success ? { status: 200 } : { status: 400 });

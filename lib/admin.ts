@@ -130,6 +130,24 @@ export async function getAdminContext(userId: number | null, sessionId?: string 
   return null;
 }
 
+/**
+ * Get admin context from a NextRequest object.
+ * Reads sessionId and userId from cookies with signature verification.
+ */
+export async function getAdminContextFromRequest(request: NextRequest): Promise<AdminContext | null> {
+  const sessionId = getCookieValueFromRequest(request, 'fg_session_id');
+  const userIdRaw = getCookieValueFromRequest(request, 'fg_auth_user');
+
+  if (!userIdRaw) return null;
+
+  const unsignedUserId = await unsignValue(userIdRaw);
+  if (!unsignedUserId) return null;
+
+  const userId = Number(unsignedUserId);
+  if (isNaN(userId)) return null;
+
+  return getAdminContext(userId, sessionId);
+}
 
 export async function getUserRole(userId: number | null) {
   const context = await getAdminContext(userId);

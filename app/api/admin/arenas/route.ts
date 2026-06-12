@@ -38,7 +38,7 @@ export async function POST(request: Request) {
   });
 
   if (!isJson) {
-    return NextResponse.redirect(new URL('/admin/arenas?created=1', request.url));
+    return NextResponse.redirect(new URL('/fg-admin/platform/arenas?created=1', request.url));
   }
 
   return NextResponse.json({ success: true, message: 'Arena created successfully' });

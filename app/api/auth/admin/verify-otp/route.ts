@@ -36,8 +36,8 @@ export async function POST(request: Request) {
 
   const response = NextResponse.json({ success: true, userExists: true, role: user[0].role });
   
-  const signedUserId = signValue(String(user[0].id));
-  const signedRole = signValue(user[0].role);
+  const signedUserId = await signValue(String(user[0].id));
+  const signedRole = await signValue(user[0].role);
   const cookieOpts = getCookieOptions();
 
   response.cookies.set(AUTH_COOKIE, signedUserId, cookieOpts);
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
       [user[0].id]
     );
     if (manager?.arena_id) {
-      response.cookies.set('fg_arena_id', signValue(String(manager.arena_id)), cookieOpts);
+      response.cookies.set('fg_arena_id', await signValue(String(manager.arena_id)), cookieOpts);
     }
   }
 

@@ -209,7 +209,7 @@ export async function POST(request: Request) {
   }
 
   if (!isJson) {
-    return NextResponse.redirect(new URL('/admin/slots?updated=1', request.url));
+    return NextResponse.redirect(new URL('/fg-admin/platform/slots?updated=1', request.url));
   }
 
   return NextResponse.json({ success: true });

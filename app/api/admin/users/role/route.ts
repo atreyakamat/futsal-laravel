@@ -48,7 +48,7 @@ export async function POST(request: Request) {
   }
 
   if (!isJson) {
-    return NextResponse.redirect(new URL('/admin/users?updated=1', request.url));
+    return NextResponse.redirect(new URL('/fg-admin/platform/users?updated=1', request.url));
   }
 
   return NextResponse.json({ success: true });

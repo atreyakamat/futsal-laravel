@@ -31,9 +31,9 @@ export async function POST(request: Request) {
     // In a real app, we would use a proper session/JWT
     // For this prototype, we use simple cookies as per the existing pattern
     const cookieOpts = getCookieOptions(60 * 60 * 24);
-    cookieStore.set('fg_auth_role', signValue('arena_admin'), cookieOpts);
-    cookieStore.set('fg_auth_user', signValue(String(admin.id)), cookieOpts);
-    cookieStore.set('fg_arena_id', signValue(String(admin.arena_id)), cookieOpts);
+    cookieStore.set('fg_auth_role', await signValue('arena_admin'), cookieOpts);
+    cookieStore.set('fg_auth_user', await signValue(String(admin.id)), cookieOpts);
+    cookieStore.set('fg_arena_id', await signValue(String(admin.arena_id)), cookieOpts);
 
     return NextResponse.json({
       success: true,

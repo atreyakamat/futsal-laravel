@@ -8,6 +8,8 @@ export default function CreateArenaForm() {
     name: '',
     slug: '',
     address: '',
+    cover_image: '',
+    logo_url: '',
     status: 'active' as 'active' | 'inactive',
   });
   const [loading, setLoading] = useState(false);
@@ -18,7 +20,7 @@ export default function CreateArenaForm() {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/admin/arenas', {
+      const response = await fetch('/api/fg-admin/platform/arenas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -26,7 +28,7 @@ export default function CreateArenaForm() {
 
       if (response.ok) {
         alert('Arena created successfully!');
-        router.push('/admin/arenas');
+        router.push('/fg-admin/platform/arenas');
         router.refresh();
       } else {
         alert('Failed to create arena.');
@@ -72,6 +74,26 @@ export default function CreateArenaForm() {
             className="input-field"
             value={formData.address}
             onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+          />
+        </div>
+        <div className="space-y-3">
+          <label className="label-classic">Cover Image URL</label>
+          <input
+            type="url"
+            className="input-field"
+            value={formData.cover_image}
+            onChange={(e) => setFormData({ ...formData, cover_image: e.target.value })}
+            placeholder="https://example.com/cover.jpg"
+          />
+        </div>
+        <div className="space-y-3">
+          <label className="label-classic">Logo URL</label>
+          <input
+            type="url"
+            className="input-field"
+            value={formData.logo_url}
+            onChange={(e) => setFormData({ ...formData, logo_url: e.target.value })}
+            placeholder="https://example.com/logo.png"
           />
         </div>
         <button

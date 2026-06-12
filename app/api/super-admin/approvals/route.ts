@@ -79,7 +79,7 @@ export async function POST(request: Request) {
       });
     } else if (action === 'reject') {
       const payload = rejectSchema.parse(body);
-      const result = await rejectApprovalRequest(payload.request_id, payload.reason);
+      const result = await rejectApprovalRequest(payload.request_id, payload.reason, superAdminId);
 
       // Log audit action
       await logAuditAction(

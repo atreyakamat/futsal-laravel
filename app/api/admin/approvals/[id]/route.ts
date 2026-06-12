@@ -29,7 +29,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   });
 
   if (!isJson) {
-    return NextResponse.redirect(new URL('/admin/approvals?updated=1', request.url));
+    return NextResponse.redirect(new URL('/fg-admin/platform/approvals?updated=1', request.url));
   }
 
   return NextResponse.json({ success: true });

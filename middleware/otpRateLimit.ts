@@ -6,7 +6,7 @@ const LIMIT = 5;
 const INTERVAL_MS = 60 * 60 * 1000;
 
 export async function otpRateLimit(req: NextRequest) {
-  const ip = req.headers.get('x-forwarded-for') ?? req.ip ?? 'unknown';
+  const ip = req.headers.get('x-forwarded-for') ?? (req as any).ip ?? 'unknown';
   const now = Date.now();
   const bucket = BUCKETS.get(ip) ?? { tokens: LIMIT, lastRefill: now };
 

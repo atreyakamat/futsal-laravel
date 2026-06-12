@@ -6,8 +6,8 @@ import { unsignValue } from '@/lib/session';
 export async function GET(request: NextRequest) {
   try {
     const cookieStore = await cookies();
-    const arenaId = unsignValue(cookieStore.get('fg_arena_id')?.value ?? null);
-    const role = unsignValue(cookieStore.get('fg_auth_role')?.value ?? null);
+    const arenaId = await unsignValue(cookieStore.get('fg_arena_id')?.value ?? null);
+    const role = await unsignValue(cookieStore.get('fg_auth_role')?.value ?? null);
 
     if (!arenaId || role !== 'arena_admin') {
       return NextResponse.json(

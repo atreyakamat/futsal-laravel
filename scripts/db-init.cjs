@@ -161,6 +161,15 @@ async function seedDemoData(client) {
       'Second seeded booking for the demo dashboard',
     ]
   );
+
+  console.log('\n=================================================================');
+  console.log('                 🔥 SYSTEM SEED COMPLETE 🔥');
+  console.log('=================================================================');
+  console.log(' SUPER ADMIN LOGIN CREDENTIALS:');
+  console.log(` -> URL:      http://localhost:3000/admin/super-admin-login`);
+  console.log(` -> EMAIL:    ${adminEmail}`);
+  console.log(` -> PASSWORD: ${adminPassword}`);
+  console.log('=================================================================\n');
 }
 
 async function main() {

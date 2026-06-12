@@ -85,7 +85,7 @@ export async function POST(request: Request) {
 
   const cookieOpts = getCookieOptions();
   if (result.userId) {
-    response.cookies.set(AUTH_COOKIE, signValue(String(result.userId)), cookieOpts);
+    response.cookies.set(AUTH_COOKIE, await signValue(String(result.userId)), cookieOpts);
     response.cookies.delete('fg_guest_identifier');
   }
 

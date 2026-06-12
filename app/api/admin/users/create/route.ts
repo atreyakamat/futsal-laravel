@@ -30,7 +30,7 @@ export async function POST(request: Request) {
   const existing = await query<{ id: number }>('SELECT id FROM users WHERE email = ? LIMIT 1', [payload.email]);
   if (!existing || existing?.length > 0) {
     if (!isJson) {
-      return NextResponse.redirect(new URL('/admin/users?error=exists', request.url));
+      return NextResponse.redirect(new URL('/fg-admin/platform/users?error=exists', request.url));
     }
     return NextResponse.json({ success: false, message: 'User already exists' }, { status: 400 });
   }
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
   });
 
   if (!isJson) {
-    return NextResponse.redirect(new URL('/admin/users?created=1', request.url));
+    return NextResponse.redirect(new URL('/fg-admin/platform/users?created=1', request.url));
   }
 
   return NextResponse.json({ success: true, message: 'User created successfully', userId: newUserId });

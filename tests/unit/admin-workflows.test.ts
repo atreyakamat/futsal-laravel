@@ -1,24 +1,19 @@
 /**
  * Comprehensive Unit Tests for Super Admin Features
- * 
- * Tests:
- * - Arena CRUD operations
- * - Admin management
- * - Security staff management
- * - Timing/slot management
- * - Booking blocking
- * - Approval workflows
- * 
- * Run with: npm test (requires vitest configured)
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
 import { signValue } from '../../lib/session';
 
 const BASE_URL = 'http://localhost:3002';
-const SUPER_ADMIN_COOKIE = `fg_auth_role=${signValue('super_admin')}; fg_auth_user=${signValue('1')}`;
-const ARENA_ADMIN_COOKIE = (adminId = 1, arenaId = 1) => 
-  `fg_auth_role=${signValue('arena_admin')}; fg_auth_user=${signValue(String(adminId))}; fg_arena_id=${signValue(String(arenaId))}`;
+
+async function getSuperAdminCookie() {
+  return `fg_auth_role=${await signValue('super_admin')}; fg_auth_user=${await signValue('1')}`;
+}
+
+async function getArenaAdminCookie(adminId = 1, arenaId = 1) {
+  return `fg_auth_role=${await signValue('arena_admin')}; fg_auth_user=${await signValue(String(adminId))}; fg_arena_id=${await signValue(String(arenaId))}`;
+}
 
 class TestClient {
   async request(method: string, path: string, body: any = null, cookies = '') {
@@ -48,6 +43,7 @@ beforeAll(() => {
 // Arena Management Tests
 describe('Arena Management', () => {
   it('should create an arena', async () => {
+    const cookie = await getSuperAdminCookie();
     const res = await testClient.request(
       'POST',
       '/api/super-admin/arenas',
@@ -56,7 +52,7 @@ describe('Arena Management', () => {
         slug: `test-${Date.now()}`,
         address: '123 Test St',
       },
-      SUPER_ADMIN_COOKIE
+      cookie
     );
 
     expect(res.ok).toBe(true);
@@ -65,11 +61,12 @@ describe('Arena Management', () => {
   });
 
   it('should fetch arenas', async () => {
+    const cookie = await getSuperAdminCookie();
     const res = await testClient.request(
       'GET',
       '/api/super-admin/arenas',
       null,
-      SUPER_ADMIN_COOKIE
+      cookie
     );
 
     expect(res.ok).toBe(true);
@@ -93,6 +90,7 @@ describe('Admin Management', () => {
   it('should create an arena admin', async () => {
     if (!testArenaId) return;
 
+    const cookie = await getSuperAdminCookie();
     const res = await testClient.request(
       'POST',
       '/api/super-admin/admins',
@@ -101,7 +99,7 @@ describe('Admin Management', () => {
         email: `admin-${Date.now()}@test.local`,
         name: 'Test Admin',
       },
-      SUPER_ADMIN_COOKIE
+      cookie
     );
 
     expect(res.ok).toBe(true);
@@ -109,11 +107,12 @@ describe('Admin Management', () => {
   });
 
   it('should fetch arena admins', async () => {
+    const cookie = await getSuperAdminCookie();
     const res = await testClient.request(
       'GET',
       `/api/super-admin/admins?arena_id=${testArenaId || 1}`,
       null,
-      SUPER_ADMIN_COOKIE
+      cookie
     );
 
     expect(res.ok).toBe(true);
@@ -126,6 +125,7 @@ describe('Security Management', () => {
   it('should create security staff', async () => {
     if (!testArenaId) return;
 
+    const cookie = await getSuperAdminCookie();
     const res = await testClient.request(
       'POST',
       '/api/super-admin/security',
@@ -136,18 +136,19 @@ describe('Security Management', () => {
         phone: '9876543210',
         permissions: ['verify_ticket'],
       },
-      SUPER_ADMIN_COOKIE
+      cookie
     );
 
     expect(res.ok).toBe(true);
   });
 
   it('should fetch security staff', async () => {
+    const cookie = await getSuperAdminCookie();
     const res = await testClient.request(
       'GET',
       `/api/super-admin/security?arena_id=${testArenaId || 1}`,
       null,
-      SUPER_ADMIN_COOKIE
+      cookie
     );
 
     expect(res.ok).toBe(true);
@@ -160,6 +161,7 @@ describe('Timing Management', () => {
   it('should create a time slot', async () => {
     if (!testArenaId) return;
 
+    const cookie = await getSuperAdminCookie();
     const res = await testClient.request(
       'POST',
       '/api/super-admin/arenas/timings',
@@ -169,18 +171,19 @@ describe('Timing Management', () => {
         start_time: '09:00',
         end_time: '10:00',
       },
-      SUPER_ADMIN_COOKIE
+      cookie
     );
 
     expect(res.ok).toBe(true);
   });
 
   it('should fetch time slots', async () => {
+    const cookie = await getSuperAdminCookie();
     const res = await testClient.request(
       'GET',
       `/api/super-admin/arenas/timings?arena_id=${testArenaId || 1}`,
       null,
-      SUPER_ADMIN_COOKIE
+      cookie
     );
 
     expect(res.ok).toBe(true);
@@ -193,6 +196,7 @@ describe('Approval Workflow', () => {
   it('arena admin should request approval', async () => {
     if (!testAdminId) return;
 
+    const cookie = await getArenaAdminCookie(testAdminId, testArenaId || 1);
     const res = await testClient.request(
       'POST',
       '/api/arena-admin/bookings/request-approval',
@@ -202,7 +206,7 @@ describe('Approval Workflow', () => {
         number_of_rounds: 1,
         reason: 'Free event',
       },
-      ARENA_ADMIN_COOKIE(testAdminId, testArenaId || 1)
+      cookie
     );
 
     expect(res.ok).toBe(true);
@@ -211,11 +215,12 @@ describe('Approval Workflow', () => {
   it('arena admin should view approval requests', async () => {
     if (!testAdminId) return;
 
+    const cookie = await getArenaAdminCookie(testAdminId, testArenaId || 1);
     const res = await testClient.request(
       'GET',
       '/api/arena-admin/bookings/request-approval',
       null,
-      ARENA_ADMIN_COOKIE(testAdminId, testArenaId || 1)
+      cookie
     );
 
     expect(res.ok).toBe(true);
