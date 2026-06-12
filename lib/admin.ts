@@ -1,8 +1,9 @@
 import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
+import type { NextRequest } from 'next/server';
 import { query, queryOne, transaction, getSetting, createBookingBatch } from '@/lib/domain';
 import { sendTicketEmail } from '@/lib/ticket';
-import { readAuthRole } from '@/lib/session';
+import { readAuthRole, getCookieValueFromRequest, unsignValue } from '@/lib/session';
 
 export type AdminRole = 'super_admin' | 'admin' | 'arena_admin' | 'security' | 'customer';
 export type EntryMode = 'open' | 'blocked' | 'free';
@@ -32,10 +33,19 @@ export function isAdminRole(role: string | null | undefined): role is AdminRole 
   return ['super_admin', 'arena_admin', 'security'].includes(String(role));
 }
 
-export async function getAdminContext(userId: number | null): Promise<AdminContext | null> {
+export async function getAdminContext(userId: number | null, sessionId?: string | null): Promise<AdminContext | null> {
   if (!userId) return null;
 
   const roleCookie = await readAuthRole();
+
+  // Check if session has been revoked
+  if (sessionId) {
+    const revoked = await queryOne<{ id: number }>(
+      'SELECT id FROM revoked_sessions WHERE session_id = ? LIMIT 1',
+      [sessionId]
+    );
+    if (revoked) return null;
+  }
 
   // 1. Check Super Admin Table if role is super_admin
   if (roleCookie === 'super_admin') {
