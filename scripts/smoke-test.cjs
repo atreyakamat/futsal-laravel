@@ -6,7 +6,9 @@
 
 const http = require('http');
 
-const BASE_URL = 'http://localhost:3000';
+const BASE_URL = (process.env.BASE_URL && process.env.BASE_URL.startsWith('http'))
+  ? process.env.BASE_URL
+  : 'http://localhost:3001';
 let authCookie = '';
 
 function request(method, path, body = null, headers = {}) {

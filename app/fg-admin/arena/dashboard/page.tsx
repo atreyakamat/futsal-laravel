@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function ArenaAdminDashboardPage() {
   // Extract signed cookies
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const userIdSigned = cookieStore.get('fg_auth_user')?.value;
   const sessionIdSigned = cookieStore.get('fg_session_id')?.value;
   const userId = userIdSigned ? Number(unsignValue(userIdSigned) ?? 0) : null;

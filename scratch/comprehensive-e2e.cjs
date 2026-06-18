@@ -4,7 +4,9 @@ const http = require('http');
 const bcrypt = require('bcryptjs');
 require('dotenv').config();
 
-const BASE_URL = 'http://localhost:3000';
+const BASE_URL = (process.env.BASE_URL && process.env.BASE_URL.startsWith('http'))
+  ? process.env.BASE_URL
+  : 'http://localhost:3001';
 const DATABASE_URL = process.env.DATABASE_URL;
 
 class CookieJar {

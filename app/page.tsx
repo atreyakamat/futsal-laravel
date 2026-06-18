@@ -42,6 +42,57 @@ export default async function Home() {
         <ArenaGrid arenas={arenas} />
       </div>
 
+      {/* Features / Why Choose Us Section */}
+      <section className="py-32 border-t border-white/5 bg-white/[0.01] relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(0,183,255,0.03)_0,transparent_50%)]" />
+        <div className="max-w-7xl mx-auto px-6 relative z-10">
+          <div className="text-center mb-20">
+            <span className="text-[10px] font-bold text-primary uppercase tracking-[0.3em] block mb-4">Why FutsalGoa</span>
+            <h2 className="text-4xl md:text-6xl font-black uppercase tracking-tighter italic">
+              ENGINEERED FOR <span className="text-primary text-stroke">THE PITCH</span>
+            </h2>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="glass-card flex flex-col justify-between group hover:border-primary/30 transition-all duration-300">
+              <div className="space-y-6">
+                <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                  <span className="material-symbols-outlined text-2xl">lock_clock</span>
+                </div>
+                <h3 className="text-xl font-black uppercase tracking-tight italic">Instant Slot Locking</h3>
+                <p className="text-white/40 text-sm leading-relaxed">
+                  No double bookings, ever. Our real-time scheduling engine immediately locks selected slots during checkout so you never lose your game time.
+                </p>
+              </div>
+            </div>
+
+            <div className="glass-card flex flex-col justify-between group hover:border-primary/30 transition-all duration-300">
+              <div className="space-y-6">
+                <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                  <span className="material-symbols-outlined text-2xl">qr_code_2</span>
+                </div>
+                <h3 className="text-xl font-black uppercase tracking-tight italic">Digital Pass Entry</h3>
+                <p className="text-white/40 text-sm leading-relaxed">
+                  Seamless gate access. Every confirmed booking automatically generates a verified digital ticket containing a secure entry QR code scanned at the field.
+                </p>
+              </div>
+            </div>
+
+            <div className="glass-card flex flex-col justify-between group hover:border-primary/30 transition-all duration-300">
+              <div className="space-y-6">
+                <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                  <span className="material-symbols-outlined text-2xl">credit_card</span>
+                </div>
+                <h3 className="text-xl font-black uppercase tracking-tight italic">Secure Payments</h3>
+                <p className="text-white/40 text-sm leading-relaxed">
+                  Safe, end-to-end encrypted transactions via PayU checkout routing. Lock your slot, confirm payment, and get ticketed instantly.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* AI Assistant Section */}
       <section className="py-32 border-t border-white/5 bg-white/[0.02]">
         <div className="max-w-7xl mx-auto px-6">
@@ -107,6 +158,50 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* FAQ Section */}
+      <section className="py-32 border-b border-white/5">
+        <div className="max-w-4xl mx-auto px-6">
+          <div className="text-center mb-20">
+            <span className="text-[10px] font-bold text-primary uppercase tracking-[0.3em] block mb-4">FAQ</span>
+            <h2 className="text-4xl md:text-5xl font-black uppercase tracking-tighter italic">
+              FREQUENTLY ASKED <span className="text-primary">QUESTIONS</span>
+            </h2>
+          </div>
+
+          <div className="space-y-6">
+            <details className="group glass-card !p-6 [&_summary::-webkit-details-marker]:hidden">
+              <summary className="flex items-center justify-between cursor-pointer list-none">
+                <h3 className="font-bold text-sm uppercase tracking-wider group-hover:text-primary transition-colors">How do I access the arena?</h3>
+                <span className="material-symbols-outlined transition-transform duration-300 group-open:rotate-180 text-primary">expand_more</span>
+              </summary>
+              <div className="mt-4 text-white/40 text-xs md:text-sm leading-relaxed border-t border-white/5 pt-4">
+                After checkout, you receive a digital ticket with a QR code. Security staff at the arena will scan this QR code to verify your booking and confirm your entry.
+              </div>
+            </details>
+
+            <details className="group glass-card !p-6 [&_summary::-webkit-details-marker]:hidden">
+              <summary className="flex items-center justify-between cursor-pointer list-none">
+                <h3 className="font-bold text-sm uppercase tracking-wider group-hover:text-primary transition-colors">Can I cancel or reschedule my booking?</h3>
+                <span className="material-symbols-outlined transition-transform duration-300 group-open:rotate-180 text-primary">expand_more</span>
+              </summary>
+              <div className="mt-4 text-white/40 text-xs md:text-sm leading-relaxed border-t border-white/5 pt-4">
+                Yes, slot changes or cancellation requests can be initiated from your Customer Dashboard. Requests are sent directly to the Arena Manager for review and approval.
+              </div>
+            </details>
+
+            <details className="group glass-card !p-6 [&_summary::-webkit-details-marker]:hidden">
+              <summary className="flex items-center justify-between cursor-pointer list-none">
+                <h3 className="font-bold text-sm uppercase tracking-wider group-hover:text-primary transition-colors">What happens if a session is double booked?</h3>
+                <span className="material-symbols-outlined transition-transform duration-300 group-open:rotate-180 text-primary">expand_more</span>
+              </summary>
+              <div className="mt-4 text-white/40 text-xs md:text-sm leading-relaxed border-t border-white/5 pt-4">
+                Our platform enforces transactional locking. Once a slot is selected and added to checkout, it is locked dynamically in the system database to prevent other users from selecting it.
+              </div>
+            </details>
+          </div>
+        </div>
+      </section>
+
       {/* Help Section */}
       <section className="py-32">
         <div className="max-w-3xl mx-auto px-6 text-center">
@@ -125,6 +220,25 @@ export default async function Home() {
           </div>
         </div>
       </section>
+
+      {/* JSON-LD Local Business Structured Data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'SportsActivityLocation',
+            'name': 'FutsalGoa',
+            'description': 'Premium futsal turf booking platform in Goa with instant slot locking and digital QR ticketing.',
+            'url': 'https://futsalgoa.com',
+            'address': {
+              '@type': 'PostalAddress',
+              'addressLocality': 'Goa',
+              'addressCountry': 'IN'
+            }
+          })
+        }}
+      />
     </div>
   );
 }
