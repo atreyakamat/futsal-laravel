@@ -1,4 +1,5 @@
-import { readAuthUserId, readAuthRole } from '@/lib/session';
+import { cookies } from 'next/headers';
+import { unsignValue } from '@/lib/session';
 import { getAdminContext } from '@/lib/admin';
 import { query, queryOne, getArenaById } from '@/lib/domain';
 import { redirect } from 'next/navigation';
@@ -7,11 +8,15 @@ import Link from 'next/link';
 export const dynamic = 'force-dynamic';
 
 export default async function ArenaAdminDashboardPage() {
-  const userId = await readAuthUserId();
-  const role = await readAuthRole();
-  const context = await getAdminContext(userId);
+  // Extract signed cookies
+  const cookieStore = cookies();
+  const userIdSigned = cookieStore.get('fg_auth_user')?.value;
+  const sessionIdSigned = cookieStore.get('fg_session_id')?.value;
+  const userId = userIdSigned ? Number(unsignValue(userIdSigned) ?? 0) : null;
+  const sessionId = sessionIdSigned ? unsignValue(sessionIdSigned) ?? null : null;
+  const context = await getAdminContext(userId, sessionId);
 
-  if (!context || role !== 'arena_admin' || !context.arenaId) {
+  if (!context || context.role !== 'arena_admin' || !context.arenaId) {
     redirect('/fg-admin/login');
   }
 
@@ -35,12 +40,7 @@ export default async function ArenaAdminDashboardPage() {
       "SELECT COUNT(DISTINCT customer_mobile) as count FROM bookings WHERE arena_id = ?",
       [arenaId]
     ),
-    // Pending Approvals (admin free bookings requests)
-    queryOne<{ count: number }>(
-      "SELECT COUNT(*) as count FROM admin_free_bookings WHERE arena_id = ? AND status = 'pending'",
-      [arenaId]
-    ),
-    // Pending Approval Requests (slot changes, entry mode, etc.)
+    // Pending Approval Requests (slot changes, entry mode, free bookings, etc.)
     queryOne<{ count: number }>(
       "SELECT COUNT(*) as count FROM approval_requests WHERE arena_id = ? AND status = 'pending'",
       [arenaId]
@@ -50,7 +50,7 @@ export default async function ArenaAdminDashboardPage() {
   const confirmedBookings = stats[0]?.count ?? 0;
   const totalRevenue = Number(stats[1]?.sum ?? 0);
   const uniqueCustomers = stats[2]?.count ?? 0;
-  const pendingApprovals = (stats[3]?.count ?? 0) + (stats[4]?.count ?? 0);
+  const pendingApprovals = stats[3]?.count ?? 0;
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-20 space-y-12">
@@ -106,31 +106,40 @@ export default async function ArenaAdminDashboardPage() {
           Manager <span className="text-primary">Operations</span>
         </h2>
 
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-4 gap-6">
           <Link href="/fg-admin/arena/bookings" className="glass-card !p-8 group hover:border-primary/50 transition-all">
-            <div className="flex items-center gap-6">
+            <div className="flex flex-col items-center gap-4 text-center">
               <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
                 <span className="material-symbols-outlined text-primary text-2xl">book_online</span>
               </div>
-              <span className="font-black text-sm uppercase tracking-widest italic group-hover:text-primary transition-colors">Bookings List</span>
+              <span className="font-black text-xs uppercase tracking-widest italic group-hover:text-primary transition-colors">Bookings List</span>
             </div>
           </Link>
 
           <Link href="/fg-admin/arena/slots" className="glass-card !p-8 group hover:border-primary/50 transition-all">
-            <div className="flex items-center gap-6">
+            <div className="flex flex-col items-center gap-4 text-center">
               <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
                 <span className="material-symbols-outlined text-primary text-2xl">schedule</span>
               </div>
-              <span className="font-black text-sm uppercase tracking-widest italic group-hover:text-primary transition-colors">Slot & Mode</span>
+              <span className="font-black text-xs uppercase tracking-widest italic group-hover:text-primary transition-colors">Slot & Mode</span>
             </div>
           </Link>
 
           <Link href="/fg-admin/arena/settings" className="glass-card !p-8 group hover:border-primary/50 transition-all">
-            <div className="flex items-center gap-6">
+            <div className="flex flex-col items-center gap-4 text-center">
               <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
                 <span className="material-symbols-outlined text-primary text-2xl">settings</span>
               </div>
-              <span className="font-black text-sm uppercase tracking-widest italic group-hover:text-primary transition-colors">Password & Profile</span>
+              <span className="font-black text-xs uppercase tracking-widest italic group-hover:text-primary transition-colors">Password & Profile</span>
+            </div>
+          </Link>
+          
+          <Link href="/fg-admin/arena/notifications" className="glass-card !p-8 group hover:border-primary/50 transition-all">
+            <div className="flex flex-col items-center gap-4 text-center">
+              <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <span className="material-symbols-outlined text-primary text-2xl">notifications</span>
+              </div>
+              <span className="font-black text-xs uppercase tracking-widest italic group-hover:text-primary transition-colors">Notifications</span>
             </div>
           </Link>
         </div>

@@ -263,18 +263,43 @@ model AdminCredential {
 
 model SystemAuditLog {
   id                Int       @id @default(autoincrement())
-  super_admin_id    Int
+  requested_by      Int?
+  approved_by       Int?
+  arena_id          Int?
   action            String
-  entity_type       String
-  entity_id         Int?
-  changes           Json?
+  field_changed     String?
+  old_value         Json?
+  new_value         Json?
+  reason            String?
   ip_address        String?
   user_agent        String?
   created_at        DateTime  @default(now())
 
   @@map("system_audit_logs")
-  @@index([super_admin_id])
+  @@index([requested_by])
+  @@index([approved_by])
+  @@index([arena_id])
   @@index([action])
+  @@index([created_at])
+}
+
+model Notification {
+  id                Int       @id @default(autoincrement())
+  user_id           Int
+  role              String
+  title             String
+  message           String
+  request_type      String?
+  arena_id          Int?
+  status            String?
+  approver_id       Int?
+  is_read           Boolean   @default(false)
+  created_at        DateTime  @default(now())
+
+  @@map("notifications")
+  @@index([user_id])
+  @@index([role])
+  @@index([is_read])
   @@index([created_at])
 }
 

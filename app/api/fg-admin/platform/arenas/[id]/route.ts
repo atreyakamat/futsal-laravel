@@ -31,9 +31,8 @@ export async function DELETE(
 
   await createAdminAuditLog({
     action: 'arena_deleted',
-    actorUserId: context.id,
-    entityType: 'arena',
-    entityId: arenaId,
+    approvedBy: context.id,
+    arenaId: arenaId,
   });
 
   return NextResponse.json({ success: true, message: 'Arena deleted successfully' });

@@ -93,11 +93,9 @@ export async function POST(request: Request) {
       await setArenaEntryMode(arenaId, mode);
       await createAdminAuditLog({
         action: 'entry_mode_changed',
-        actorUserId: context.id,
+        approvedBy: context.id,
         arenaId,
-        entityType: 'arena',
-        entityId: arenaId,
-        afterData: { mode, notes },
+        newValue: { mode, notes },
       });
     } else {
       await createApprovalRequest({
@@ -122,11 +120,9 @@ export async function POST(request: Request) {
       await replaceArenaPricing(arenaId, slots);
       await createAdminAuditLog({
         action: 'slot_template_replaced',
-        actorUserId: context.id,
+        approvedBy: context.id,
         arenaId,
-        entityType: 'arena',
-        entityId: arenaId,
-        afterData: { slots, notes },
+        newValue: { slots, notes },
       });
     } else {
       await createApprovalRequest({
@@ -155,11 +151,9 @@ export async function POST(request: Request) {
         await query(`UPDATE arenas SET ${updates.join(', ')}, updated_at = NOW() WHERE id = ?`, values);
         await createAdminAuditLog({
           action: 'image_updated',
-          actorUserId: context.id,
+          approvedBy: context.id,
           arenaId,
-          entityType: 'arena',
-          entityId: arenaId,
-          afterData: { cover_image: coverImage, logo_url: logoUrl, notes },
+          newValue: { cover_image: coverImage, logo_url: logoUrl, notes },
         });
       }
     } else {
@@ -191,11 +185,9 @@ export async function POST(request: Request) {
       );
       await createAdminAuditLog({
         action: 'timing_added',
-        actorUserId: context.id,
+        approvedBy: context.id,
         arenaId,
-        entityType: 'arena',
-        entityId: arenaId,
-        afterData: { timeSlot, startTime, endTime, notes },
+        newValue: { timeSlot, startTime, endTime, notes },
       });
     } else {
       await createApprovalRequest({

@@ -55,10 +55,9 @@ export async function POST(request: Request) {
 
   await createAdminAuditLog({
     action: 'user_created',
-    actorUserId: context.id,
-    entityType: 'user',
-    entityId: newUserId,
-    afterData: { name: payload.name, email: payload.email, role: payload.role, arena_id: payload.arena_id },
+    approvedBy: context.id,
+    arenaId: newUserId,
+    newValue: { name: payload.name, email: payload.email, role: payload.role, arena_id: payload.arena_id },
   });
 
   if (!isJson) {

@@ -43,6 +43,16 @@ export default function ArenaAdminSettingsPage() {
   const [imgError, setImgError] = useState('');
   const [imgSuccess, setImgSuccess] = useState('');
 
+  // Arena Info form states
+  const [showArenaForm, setShowArenaForm] = useState(false);
+  const [infoName, setInfoName] = useState('');
+  const [infoDesc, setInfoDesc] = useState('');
+  const [infoContact, setInfoContact] = useState('');
+  const [infoAddress, setInfoAddress] = useState('');
+  const [infoLoading, setInfoLoading] = useState(false);
+  const [infoError, setInfoError] = useState('');
+  const [infoSuccess, setInfoSuccess] = useState('');
+
   useEffect(() => {
     async function fetchData() {
       try {
@@ -62,6 +72,10 @@ export default function ArenaAdminSettingsPage() {
         if (profileData.success && arenaData.success) {
           setProfile(profileData.data);
           setArena(arenaData.data);
+          setInfoName(arenaData.data.name || '');
+          setInfoDesc(arenaData.data.description || '');
+          setInfoContact(arenaData.data.contact_phone || '');
+          setInfoAddress(arenaData.data.address || '');
         } else {
           throw new Error(profileData.message || arenaData.message || 'Failed to fetch settings');
         }
@@ -121,6 +135,40 @@ export default function ArenaAdminSettingsPage() {
     }
   }
 
+  async function handleArenaInfoRequest(e: React.FormEvent) {
+    e.preventDefault();
+    setInfoError('');
+    setInfoSuccess('');
+    setInfoLoading(true);
+    try {
+      const res = await fetch('/api/fg-admin/arena/requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          request_type: 'ARENA_UPDATE',
+          payload: {
+            name: infoName,
+            description: infoDesc,
+            contact_phone: infoContact,
+            location: infoAddress
+          },
+          reason: 'Manager requested facility info update.'
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setInfoSuccess('Facility info update request submitted to Super Admin!');
+        setShowArenaForm(false);
+      } else {
+        setInfoError(data.message || 'Failed to submit request');
+      }
+    } catch (err) {
+      setInfoError('Error processing request.');
+    } finally {
+      setInfoLoading(false);
+    }
+  }
+
   async function handleImageRequest(e: React.FormEvent) {
     e.preventDefault();
     setImgError('');
@@ -134,7 +182,7 @@ export default function ArenaAdminSettingsPage() {
     setImgLoading(true);
 
     try {
-      const res = await fetch('/api/arena-admin/requests', {
+      const res = await fetch('/api/fg-admin/arena/requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -231,7 +279,43 @@ export default function ArenaAdminSettingsPage() {
           </div>
 
           <div className="glass-card space-y-6">
-            <h2 className="text-2xl font-black uppercase italic">Turf Details</h2>
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-black uppercase italic">Turf Details</h2>
+              <button onClick={() => setShowArenaForm(!showArenaForm)} className="text-xs font-bold text-primary hover:text-white uppercase">
+                {showArenaForm ? 'Cancel' : 'Edit Info'}
+              </button>
+            </div>
+            
+            {infoSuccess && (
+              <div className="p-3 bg-green-500/10 border border-green-500/30 text-green-400 text-sm font-bold rounded-lg">
+                {infoSuccess}
+              </div>
+            )}
+            
+            {showArenaForm && (
+              <form onSubmit={handleArenaInfoRequest} className="space-y-4 border-b border-white/10 pb-6 mb-6">
+                {infoError && <div className="text-red-400 text-xs font-bold">{infoError}</div>}
+                <div>
+                  <label className="label-classic">Turf Name</label>
+                  <input className="input-field" value={infoName} onChange={e => setInfoName(e.target.value)} required />
+                </div>
+                <div>
+                  <label className="label-classic">Description</label>
+                  <textarea className="input-field min-h-[80px]" value={infoDesc} onChange={e => setInfoDesc(e.target.value)} />
+                </div>
+                <div>
+                  <label className="label-classic">Address</label>
+                  <input className="input-field" value={infoAddress} onChange={e => setInfoAddress(e.target.value)} />
+                </div>
+                <div>
+                  <label className="label-classic">Contact Phone</label>
+                  <input className="input-field" value={infoContact} onChange={e => setInfoContact(e.target.value)} />
+                </div>
+                <button type="submit" disabled={infoLoading} className="btn-primary w-full">
+                  {infoLoading ? 'SUBMITTING...' : 'SUBMIT REQUEST TO SUPER ADMIN'}
+                </button>
+              </form>
+            )}
             <div className="grid gap-6">
               <div>
                 <span className="label-classic !ml-0 mb-1">Turf Name</span>

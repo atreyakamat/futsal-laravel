@@ -45,17 +45,26 @@ export default async function ArenaAdminSlotsPage() {
   );
 
   // Fetch free booking approvals
-  const freeBookings = await query<{
+  const freeBookingsRaw = await query<{
     id: number;
-    booking_date: string;
-    time_slot: string;
-    number_of_rounds: number | null;
+    payload_json: string;
     status: string;
-    rejection_reason: string | null;
+    decision_reason: string | null;
   }>(
-    'SELECT id, booking_date, time_slot, number_of_rounds, status, rejection_reason FROM admin_free_bookings WHERE arena_id = ? ORDER BY created_at DESC LIMIT 10',
+    "SELECT id, payload_json, status, decision_reason FROM approval_requests WHERE arena_id = ? AND request_type = 'FREE_BOOKING_REQUEST' ORDER BY created_at DESC LIMIT 10",
     [arenaId]
   );
+  const freeBookings = freeBookingsRaw.map(fb => {
+    const payload = fb.payload_json ? JSON.parse(fb.payload_json) : {};
+    return {
+      id: fb.id,
+      booking_date: payload.bookingDate || '',
+      time_slot: payload.slots ? payload.slots.join(', ') : '',
+      number_of_rounds: 1,
+      status: fb.status,
+      rejection_reason: fb.decision_reason
+    };
+  });
 
   const getDayName = (day: number | null) => {
     if (day === null) return 'All Days';
@@ -171,6 +180,25 @@ export default async function ArenaAdminSlotsPage() {
           </div>
           <textarea name="reason" rows={2} className="input-field" placeholder="Event details/Reason" required />
           <button className="btn-primary w-full" type="submit">Submit Free Booking Request</button>
+        </form>
+        <form action="/api/fg-admin/arena/requests" method="POST" className="glass-card space-y-6 mt-8">
+          <input type="hidden" name="request_type" value="BLOCK_SLOT_REQUEST" />
+          <h2 className="text-2xl font-black uppercase italic">Request Slot Block</h2>
+          <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest">
+            Block a specific slot from being booked by customers.
+          </p>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="label-classic">Date</label>
+              <input name="payload[bookingDate]" type="date" className="input-field" required />
+            </div>
+            <div className="space-y-2">
+              <label className="label-classic">Time Slot</label>
+              <input name="payload[slots][]" className="input-field" placeholder="e.g. 19:00-20:00" required />
+            </div>
+          </div>
+          <textarea name="reason" rows={2} className="input-field" placeholder="Reason for blocking" required />
+          <button className="btn-primary w-full" type="submit">Submit Block Request</button>
         </form>
       </div>
 

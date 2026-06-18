@@ -31,10 +31,8 @@ export async function POST(request: Request) {
 
   await createAdminAuditLog({
     action: 'arena_created',
-    actorUserId: context.id,
-    entityType: 'arena',
-    entityId: payload.slug,
-    afterData: payload,
+    approvedBy: context.id,
+    newValue: payload,
   });
 
   if (!isJson) {

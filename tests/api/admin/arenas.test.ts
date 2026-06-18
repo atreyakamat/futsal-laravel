@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { DELETE } from '@/app/api/admin/arenas/[id]/route';
+import { DELETE } from '@/app/api/fg-admin/platform/arenas/[id]/route';
 import * as admin from '@/lib/admin';
 import * as domain from '@/lib/domain';
 

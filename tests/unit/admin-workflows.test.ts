@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { signValue } from '../../lib/session';
 
-const BASE_URL = 'http://localhost:3002';
+const BASE_URL = 'http://localhost:3000';
 
 async function getSuperAdminCookie() {
   return `fg_auth_role=${await signValue('super_admin')}; fg_auth_user=${await signValue('1')}`;
@@ -46,7 +46,7 @@ describe('Arena Management', () => {
     const cookie = await getSuperAdminCookie();
     const res = await testClient.request(
       'POST',
-      '/api/super-admin/arenas',
+      '/api/fg-admin/super-admin/arenas',
       {
         name: `Test Arena ${Date.now()}`,
         slug: `test-${Date.now()}`,
@@ -64,7 +64,7 @@ describe('Arena Management', () => {
     const cookie = await getSuperAdminCookie();
     const res = await testClient.request(
       'GET',
-      '/api/super-admin/arenas',
+      '/api/fg-admin/super-admin/arenas',
       null,
       cookie
     );
@@ -76,7 +76,7 @@ describe('Arena Management', () => {
   it('should require auth for arena creation', async () => {
     const res = await testClient.request(
       'POST',
-      '/api/super-admin/arenas',
+      '/api/fg-admin/super-admin/arenas',
       { name: 'Test', slug: 'test' },
       ''
     );
@@ -93,7 +93,7 @@ describe('Admin Management', () => {
     const cookie = await getSuperAdminCookie();
     const res = await testClient.request(
       'POST',
-      '/api/super-admin/admins',
+      '/api/fg-admin/super-admin/admins',
       {
         arena_id: testArenaId,
         email: `admin-${Date.now()}@test.local`,
@@ -110,7 +110,7 @@ describe('Admin Management', () => {
     const cookie = await getSuperAdminCookie();
     const res = await testClient.request(
       'GET',
-      `/api/super-admin/admins?arena_id=${testArenaId || 1}`,
+      `/api/fg-admin/super-admin/admins?arena_id=${testArenaId || 1}`,
       null,
       cookie
     );
@@ -128,7 +128,7 @@ describe('Security Management', () => {
     const cookie = await getSuperAdminCookie();
     const res = await testClient.request(
       'POST',
-      '/api/super-admin/security',
+      '/api/fg-admin/super-admin/security',
       {
         arena_id: testArenaId,
         email: `security-${Date.now()}@test.local`,
@@ -146,7 +146,7 @@ describe('Security Management', () => {
     const cookie = await getSuperAdminCookie();
     const res = await testClient.request(
       'GET',
-      `/api/super-admin/security?arena_id=${testArenaId || 1}`,
+      `/api/fg-admin/super-admin/security?arena_id=${testArenaId || 1}`,
       null,
       cookie
     );
@@ -164,7 +164,7 @@ describe('Timing Management', () => {
     const cookie = await getSuperAdminCookie();
     const res = await testClient.request(
       'POST',
-      '/api/super-admin/arenas/timings',
+      '/api/fg-admin/super-admin/arenas/timings',
       {
         arena_id: testArenaId,
         time_slot: 'Morning 09:00-10:00',
@@ -181,7 +181,7 @@ describe('Timing Management', () => {
     const cookie = await getSuperAdminCookie();
     const res = await testClient.request(
       'GET',
-      `/api/super-admin/arenas/timings?arena_id=${testArenaId || 1}`,
+      `/api/fg-admin/super-admin/arenas/timings?arena_id=${testArenaId || 1}`,
       null,
       cookie
     );
@@ -199,7 +199,7 @@ describe('Approval Workflow', () => {
     const cookie = await getArenaAdminCookie(testAdminId, testArenaId || 1);
     const res = await testClient.request(
       'POST',
-      '/api/arena-admin/bookings/request-approval',
+      '/api/fg-admin/arena/bookings/request-approval',
       {
         date: new Date(Date.now() + 172800000).toISOString().split('T')[0],
         time_slot: 'Evening 18:00-19:00',
@@ -218,7 +218,7 @@ describe('Approval Workflow', () => {
     const cookie = await getArenaAdminCookie(testAdminId, testArenaId || 1);
     const res = await testClient.request(
       'GET',
-      '/api/arena-admin/bookings/request-approval',
+      '/api/fg-admin/arena/bookings/request-approval',
       null,
       cookie
     );
@@ -233,7 +233,7 @@ describe('Authorization', () => {
   it('should deny unauthorized requests', async () => {
     const res = await testClient.request(
       'GET',
-      '/api/super-admin/arenas',
+      '/api/fg-admin/super-admin/arenas',
       null,
       ''
     );

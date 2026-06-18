@@ -19,7 +19,7 @@ export default function EditArenaForm({ arena }: { arena: any }) {
     setLoading(true);
 
     try {
-      const response = await fetch(`/api/super-admin/arenas/${arena.id}`, {
+      const response = await fetch(`/api/fg-admin/super-admin/arenas/${arena.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),

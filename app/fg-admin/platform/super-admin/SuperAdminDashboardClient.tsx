@@ -54,6 +54,8 @@ export default function SuperAdminDashboardClient() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [activeTab, setActiveTab] = useState('overview');
+  const [approvals, setApprovals] = useState<any[]>([]);
+  const [approvalsLoading, setApprovalsLoading] = useState(false);
   const router = useRouter();
 
   // Form states
@@ -87,6 +89,46 @@ export default function SuperAdminDashboardClient() {
   const [bookingTimeSlot, setBookingTimeSlot] = useState('');
   const [bookingRounds, setBookingRounds] = useState(1);
   const [bookingReason, setBookingReason] = useState('');
+
+  
+  const fetchApprovals = useCallback(async () => {
+    try {
+      setApprovalsLoading(true);
+      const res = await fetch('/api/fg-admin/platform/approvals');
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setApprovals(data.requests);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setApprovalsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'approvals') {
+      fetchApprovals();
+    }
+  }, [activeTab, fetchApprovals]);
+
+  const handleResolveRequest = async (id: number, decision: 'approved' | 'rejected') => {
+    try {
+      const res = await fetch(`/api/fg-admin/platform/approvals/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decision, reason: `${decision.toUpperCase()} by Super Admin` })
+      });
+      if (res.ok) {
+        setSuccess(`Request ${decision} successfully`);
+        fetchApprovals();
+      } else {
+        setError('Failed to resolve request');
+      }
+    } catch (e) {
+      setError('Error resolving request');
+    }
+  };
 
   const fetchInitialData = useCallback(async () => {
     try {
@@ -405,6 +447,18 @@ export default function SuperAdminDashboardClient() {
                 {item.label}
               </button>
             ))}
+            
+            <hr className="border-white/10 my-4" />
+            
+            <a href="/fg-admin/platform/audit-logs" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-colors text-gray-400 hover:text-white hover:bg-white/5">
+              <span className="material-symbols-outlined text-lg">history</span>
+              Audit Logs
+            </a>
+            
+            <a href="/fg-admin/platform/notifications" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-colors text-gray-400 hover:text-white hover:bg-white/5">
+              <span className="material-symbols-outlined text-lg">notifications</span>
+              Notifications
+            </a>
           </nav>
         </aside>
 
@@ -835,10 +889,59 @@ export default function SuperAdminDashboardClient() {
           )}
 
           {activeTab === 'approvals' && (
-            <div className="space-y-6 text-center py-20">
-              <span className="material-symbols-outlined text-6xl text-white/10 mb-6">verified_user</span>
-              <h2 className="text-3xl font-black italic tracking-tighter uppercase mb-4">Approval <span className="text-primary">System</span></h2>
-              <p className="text-gray-500 font-bold uppercase tracking-widest text-xs max-w-sm mx-auto">Pending approval requests for slot templates and entry modes will appear here.</p>
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-3xl font-bold italic tracking-tighter uppercase">Approval <span className="text-primary">Requests</span></h2>
+                  <p className="text-gray-400 text-xs mt-1 uppercase tracking-widest">Manage pending requests from Arena Admins</p>
+                </div>
+                <button onClick={fetchApprovals} className="btn-secondary !py-2 !px-4 !rounded-xl text-[10px]">REFRESH</button>
+              </div>
+
+              {approvalsLoading ? (
+                <div className="text-center py-12 text-gray-400">Loading...</div>
+              ) : approvals.length === 0 ? (
+                <div className="text-center py-12 text-gray-400">
+                  <span className="material-symbols-outlined text-4xl mb-4 block">check_circle</span>
+                  <p className="text-sm uppercase tracking-widest font-bold">No pending requests</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {approvals.map(req => (
+                    <div key={req.id} className="glass-card p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className="text-xs font-bold bg-primary/20 text-primary px-2 py-1 rounded border border-primary/30 uppercase tracking-widest">
+                            {req.request_type.replace(/_/g, ' ')}
+                          </span>
+                          <span className="text-[10px] text-gray-400 uppercase tracking-widest">
+                            {new Date(req.created_at).toLocaleString()}
+                          </span>
+                        </div>
+                        <p className="text-white text-sm font-semibold mb-1">Requested by Admin #{req.requested_by}</p>
+                        <p className="text-gray-400 text-xs italic">{req.notes || 'No notes provided.'}</p>
+                        <div className="mt-4 bg-black/20 p-3 rounded text-xs font-mono text-gray-300 break-all">
+                          {req.payload_json}
+                        </div>
+                      </div>
+                      <div className="flex gap-3 w-full md:w-auto">
+                        <button 
+                          onClick={() => handleResolveRequest(req.id, 'approved')} 
+                          className="flex-1 md:flex-none px-6 py-2 bg-green-500/20 text-green-400 border border-green-500/30 rounded font-bold uppercase tracking-widest hover:bg-green-500/40 transition-colors"
+                        >
+                          Approve
+                        </button>
+                        <button 
+                          onClick={() => handleResolveRequest(req.id, 'rejected')} 
+                          className="flex-1 md:flex-none px-6 py-2 bg-red-500/20 text-red-400 border border-red-500/30 rounded font-bold uppercase tracking-widest hover:bg-red-500/40 transition-colors"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

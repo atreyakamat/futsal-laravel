@@ -369,17 +369,32 @@ export async function replaceArenaPricing(arenaId: number, slots: SlotPricingInp
 export async function createApprovalRequest(input: {
   arenaId: number;
   requestedBy: number;
-  requestType: ApprovalRequestType;
+  requestType: ApprovalRequestType | string;
   payload: Record<string, unknown>;
   notes?: string | null;
 }) {
-  return queryOne<{ id: number }>(
+  const request = await queryOne<{ id: number }>(
     `INSERT INTO approval_requests (
        booking_id, request_type, arena_id, requested_by, payload_json, notes, status, created_at, updated_at
      ) VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW(), NOW())
      RETURNING id`,
     [null, input.requestType, input.arenaId, input.requestedBy, JSON.stringify(input.payload), input.notes ?? null]
   );
+
+  const superAdmin = await queryOne<{ id: number }>('SELECT id FROM super_admins LIMIT 1');
+  if (superAdmin && request) {
+    await sendNotification({
+      userId: superAdmin.id,
+      role: 'super_admin',
+      title: 'New Approval Request',
+      message: `A new ${input.requestType} request has been created.`,
+      requestType: input.requestType,
+      arenaId: input.arenaId,
+      status: 'pending'
+    });
+  }
+
+  return request;
 }
 
 export async function listApprovalRequests(scope: { status?: string; arenaId?: number | null } = {}) {
@@ -426,26 +441,80 @@ export async function listApprovalRequests(scope: { status?: string; arenaId?: n
 
 export async function createAdminAuditLog(input: {
   action: string;
-  actorUserId: number | null;
+  requestedBy?: number | null;
+  approvedBy?: number | null;
   arenaId?: number | null;
-  entityType?: string | null;
-  entityId?: string | number | null;
-  beforeData?: unknown;
-  afterData?: unknown;
+  fieldChanged?: string | null;
+  oldValue?: unknown;
+  newValue?: unknown;
+  reason?: string | null;
 }) {
   await query(
-    `INSERT INTO admin_audit_logs (
-       action, actor_user_id, arena_id, entity_type, entity_id, before_json, after_json, created_at
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
+    `INSERT INTO system_audit_logs (
+       action, requested_by, approved_by, arena_id, field_changed, old_value, new_value, reason, created_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
     [
       input.action,
-      input.actorUserId,
+      input.requestedBy ?? null,
+      input.approvedBy ?? null,
       input.arenaId ?? null,
-      input.entityType ?? null,
-      input.entityId != null ? String(input.entityId) : null,
-      input.beforeData != null ? JSON.stringify(input.beforeData) : null,
-      input.afterData != null ? JSON.stringify(input.afterData) : null,
+      input.fieldChanged ?? null,
+      input.oldValue != null ? JSON.stringify(input.oldValue) : null,
+      input.newValue != null ? JSON.stringify(input.newValue) : null,
+      input.reason ?? null,
     ]
+  );
+}
+
+export async function sendNotification(input: {
+  userId: number;
+  role: 'super_admin' | 'arena_admin';
+  title: string;
+  message: string;
+  requestType?: string | null;
+  arenaId?: number | null;
+  status?: string | null;
+  approverId?: number | null;
+}) {
+  await query(
+    `INSERT INTO notifications (
+       user_id, role, title, message, request_type, arena_id, status, approver_id, is_read, created_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, false, NOW())`,
+    [
+      input.userId,
+      input.role,
+      input.title,
+      input.message,
+      input.requestType ?? null,
+      input.arenaId ?? null,
+      input.status ?? null,
+      input.approverId ?? null,
+    ]
+  );
+}
+
+export async function getNotifications(userId: number, role: string) {
+  return query<{
+    id: number;
+    title: string;
+    message: string;
+    request_type: string | null;
+    status: string | null;
+    is_read: boolean;
+    created_at: string;
+  }>(
+    `SELECT id, title, message, request_type, status, is_read, created_at 
+       FROM notifications 
+      WHERE user_id = ? AND role = ? 
+      ORDER BY created_at DESC LIMIT 50`,
+    [userId, role]
+  );
+}
+
+export async function markNotificationsRead(userId: number, role: string) {
+  await query(
+    `UPDATE notifications SET is_read = true WHERE user_id = ? AND role = ?`,
+    [userId, role]
   );
 }
 
@@ -457,7 +526,7 @@ export async function resolveApprovalRequest(input: {
 }) {
   const request = await queryOne<{
     id: number;
-    request_type: ApprovalRequestType;
+    request_type: string;
     arena_id: number | null;
     requested_by: number | null;
     payload_json: string | null;
@@ -477,94 +546,92 @@ export async function resolveApprovalRequest(input: {
   if (input.decision === 'approved') {
     const payload = request.payload_json ? (JSON.parse(request.payload_json) as Record<string, unknown>) : {};
 
-    if (request.request_type === 'slot_template_update') {
-      const slots = Array.isArray(payload.slots) ? (payload.slots as SlotPricingInput[]) : [];
-      if (!request.arena_id) {
-        throw new Error('Approval request is missing an arena.');
-      }
+    if (request.request_type === 'ARENA_UPDATE') {
+      const arenaPayload = payload as { name?: string; description?: string; slug?: string; contact_phone?: string; location?: string };
+      const updates = [];
+      const values = [];
+      if (arenaPayload.name) { updates.push('name = ?'); values.push(arenaPayload.name); }
+      if (arenaPayload.description) { updates.push('description = ?'); values.push(arenaPayload.description); }
+      if (arenaPayload.slug) { updates.push('slug = ?'); values.push(arenaPayload.slug); }
+      if (arenaPayload.contact_phone) { updates.push('contact_phone = ?'); values.push(arenaPayload.contact_phone); }
+      if (arenaPayload.location) { updates.push('location = ?'); values.push(arenaPayload.location); }
 
+      if (updates.length > 0 && request.arena_id) {
+        values.push(request.arena_id);
+        await query(`UPDATE arenas SET ${updates.join(', ')}, updated_at = NOW() WHERE id = ?`, values);
+        
+        await createAdminAuditLog({
+          action: 'ARENA_UPDATE',
+          requestedBy: request.requested_by,
+          approvedBy: input.decisionBy,
+          arenaId: request.arena_id,
+          fieldChanged: 'Multiple Arena Fields',
+          newValue: payload,
+          reason: input.reason
+        });
+      }
+    }
+
+    if (request.request_type === 'PRICING_UPDATE' || request.request_type === 'slot_template_update') {
+      const slots = Array.isArray(payload.slots) ? (payload.slots as SlotPricingInput[]) : [];
+      if (!request.arena_id) throw new Error('Approval request is missing an arena.');
       await replaceArenaPricing(request.arena_id, slots);
       await createAdminAuditLog({
-        action: 'slot_template_update_approved',
-        actorUserId: input.decisionBy,
+        action: 'PRICING_UPDATE',
+        requestedBy: request.requested_by,
+        approvedBy: input.decisionBy,
         arenaId: request.arena_id,
-        entityType: 'approval_request',
-        entityId: request.id,
-        afterData: payload,
+        fieldChanged: 'Pricing',
+        newValue: payload,
+        reason: input.reason
       });
     }
 
-    if (request.request_type === 'entry_mode_update') {
-      const mode = String(payload.mode ?? 'open') as EntryMode;
-      if (request.arena_id) {
-        await setArenaEntryMode(request.arena_id, mode);
-      }
-      await createAdminAuditLog({
-        action: 'entry_mode_update_approved',
-        actorUserId: input.decisionBy,
-        arenaId: request.arena_id,
-        entityType: 'approval_request',
-        entityId: request.id,
-        afterData: payload,
-      });
-    }
-
-    if (request.request_type === 'timing_update') {
-      const timing = payload as { arena_id: number; time_slot: string; start_time: string; end_time: string; day_of_week?: number };
+    if (request.request_type === 'TIMING_UPDATE' || request.request_type === 'timing_update') {
+      const timing = payload as { start_time: string; end_time: string; day_of_week?: number; time_slot?: string };
+      if (!request.arena_id) throw new Error('Approval request is missing an arena.');
       await query(
         `INSERT INTO slot_timings (arena_id, time_slot, start_time, end_time, day_of_week, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
-        [timing.arena_id, timing.time_slot, timing.start_time, timing.end_time, timing.day_of_week ?? null]
+        [request.arena_id, timing.time_slot ?? 'general', timing.start_time, timing.end_time, timing.day_of_week ?? null]
       );
       await createAdminAuditLog({
-        action: 'timing_update_approved',
-        actorUserId: input.decisionBy,
+        action: 'TIMING_UPDATE',
+        requestedBy: request.requested_by,
+        approvedBy: input.decisionBy,
         arenaId: request.arena_id,
-        entityType: 'approval_request',
-        entityId: request.id,
-        afterData: payload,
+        fieldChanged: 'Timings',
+        newValue: payload,
+        reason: input.reason
       });
     }
 
-    if (request.request_type === 'image_update') {
-      const imagePayload = payload as { arena_id: number; cover_image?: string; logo_url?: string };
+    if (request.request_type === 'IMAGE_UPDATE' || request.request_type === 'image_update') {
+      const imagePayload = payload as { cover_image?: string; logo_url?: string };
       const updates = [];
       const values = [];
-      
-      if (imagePayload.cover_image) {
-        updates.push('cover_image = ?');
-        values.push(imagePayload.cover_image);
+      if (imagePayload.cover_image) { updates.push('cover_image = ?'); values.push(imagePayload.cover_image); }
+      if (imagePayload.logo_url) { updates.push('logo_url = ?'); values.push(imagePayload.logo_url); }
+      if (updates.length > 0 && request.arena_id) {
+        values.push(request.arena_id);
+        await query(`UPDATE arenas SET ${updates.join(', ')}, updated_at = NOW() WHERE id = ?`, values);
       }
-      if (imagePayload.logo_url) {
-        updates.push('logo_url = ?');
-        values.push(imagePayload.logo_url);
-      }
-
-      if (updates?.length > 0) {
-        values.push(imagePayload.arena_id || request.arena_id);
-        await query(
-          `UPDATE arenas SET ${updates.join(', ')}, updated_at = NOW() WHERE id = ?`,
-          values
-        );
-      }
-
       await createAdminAuditLog({
-        action: 'image_update_approved',
-        actorUserId: input.decisionBy,
+        action: 'IMAGE_UPDATE',
+        requestedBy: request.requested_by,
+        approvedBy: input.decisionBy,
         arenaId: request.arena_id,
-        entityType: 'approval_request',
-        entityId: request.id,
-        afterData: payload,
+        fieldChanged: 'Images',
+        newValue: payload,
+        reason: input.reason
       });
     }
 
-    if (request.request_type === 'admin_free_booking') {
-      const arenaId = Number(payload.arenaId ?? request.arena_id ?? 0);
+    if (request.request_type === 'FREE_BOOKING_REQUEST' || request.request_type === 'admin_free_booking') {
+      const arenaId = request.arena_id;
       const bookingDate = String(payload.bookingDate ?? '');
       const slots = Array.isArray(payload.slots) ? (payload.slots as string[]) : [];
-      if (!arenaId || !bookingDate || slots?.length === 0) {
-        throw new Error('Approval request is missing booking details.');
-      }
+      if (!arenaId || !bookingDate || slots.length === 0) throw new Error('Missing booking details.');
 
       const booking = await createBookingBatch({
         arenaId,
@@ -577,16 +644,41 @@ export async function resolveApprovalRequest(input: {
         sessionId: `approval-${request.id}`,
         freeBooking: true,
       });
-
       await sendTicketEmail(booking.bookingRef);
 
       await createAdminAuditLog({
-        action: 'admin_free_booking_approved',
-        actorUserId: input.decisionBy,
+        action: 'FREE_BOOKING_REQUEST',
+        requestedBy: request.requested_by,
+        approvedBy: input.decisionBy,
         arenaId,
-        entityType: 'approval_request',
-        entityId: request.id,
-        afterData: payload,
+        fieldChanged: 'Free Booking',
+        newValue: payload,
+        reason: input.reason
+      });
+    }
+
+    if (request.request_type === 'BLOCK_SLOT_REQUEST') {
+      const arenaId = request.arena_id;
+      const bookingDate = String(payload.bookingDate ?? '');
+      const slots = Array.isArray(payload.slots) ? (payload.slots as string[]) : [];
+      if (!arenaId || !bookingDate || slots.length === 0) throw new Error('Missing block details.');
+      
+      for (const slot of slots) {
+        await query(
+          `INSERT INTO admin_slot_blocks (super_admin_id, arena_id, booking_date, time_slot, number_of_rounds, reason, status, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, 'confirmed', NOW(), NOW())`,
+          [input.decisionBy, arenaId, bookingDate, slot, 1, payload.reason ?? 'Blocked']
+        );
+      }
+
+      await createAdminAuditLog({
+        action: 'BLOCK_SLOT_REQUEST',
+        requestedBy: request.requested_by,
+        approvedBy: input.decisionBy,
+        arenaId,
+        fieldChanged: 'Slot Blocks',
+        newValue: payload,
+        reason: input.reason
       });
     }
   }
@@ -598,6 +690,19 @@ export async function resolveApprovalRequest(input: {
       WHERE id = ?`,
     [input.decision, input.decisionBy, input.reason ?? null, input.decision === 'approved' ? new Date() : null, input.requestId]
   );
+
+  if (request.requested_by) {
+    await sendNotification({
+      userId: request.requested_by,
+      role: 'arena_admin',
+      title: `Request ${input.decision.toUpperCase()}`,
+      message: `Your ${request.request_type} request has been ${input.decision}.${input.reason ? ' Reason: ' + input.reason : ''}`,
+      requestType: request.request_type,
+      arenaId: request.arena_id,
+      status: input.decision,
+      approverId: input.decisionBy
+    });
+  }
 
   return request;
 }

@@ -3,7 +3,9 @@
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function SecurityScanPage() {
+import { Suspense } from 'react';
+
+function SecurityScanContent() {
   const [ticketNumber, setTicketNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -80,5 +82,13 @@ export default function SecurityScanPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SecurityScanPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-primary text-xs font-black tracking-widest uppercase">LOADING...</div>}>
+      <SecurityScanContent />
+    </Suspense>
   );
 }

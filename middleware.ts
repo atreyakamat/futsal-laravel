@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { unsignValue } from '@/lib/session';
 
 const ROLE_MATRIX: Record<string, string[]> = {
+  '/arena-admin': ['arena_admin'],
   '/fg-admin/platform': ['super_admin'],
   '/fg-admin/arena': ['arena_admin'],
   '/fg-admin/security': ['security'],
@@ -12,7 +13,7 @@ const ROLE_MATRIX: Record<string, string[]> = {
   '/api/fg-admin/arena': ['arena_admin'],
 };
 
-const PROTECTED_PREFIXES = ['/fg-admin/platform', '/fg-admin/arena', '/fg-admin/security', '/api/fg-admin/platform', '/api/fg-admin/super-admin', '/api/fg-admin/security', '/api/fg-admin/arena'];
+const PROTECTED_PREFIXES = ['/fg-admin/platform', '/fg-admin/arena', '/fg-admin/security', '/arena-admin', '/api/fg-admin/platform', '/api/fg-admin/super-admin', '/api/fg-admin/security', '/api/fg-admin/arena', '/api/arena-admin'];
 
 function jsonError(message: string, status: number) {
   return new NextResponse(JSON.stringify({ success: false, message }), {
@@ -24,7 +25,7 @@ function jsonError(message: string, status: number) {
 async function readCookieFromRequest(req: NextRequest, name: string): Promise<string | null> {
   const cookie = req.cookies.get(name);
   if (!cookie?.value) return null;
-  const unsigned = await unsignValue(cookie.value);
+  const unsigned = unsignValue(cookie.value);
   return unsigned;
 }
 

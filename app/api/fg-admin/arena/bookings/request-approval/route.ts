@@ -48,13 +48,23 @@ export async function POST(request: Request) {
       isJson ? await request.json() : Object.fromEntries((await request.formData()).entries())
     );
 
-    // Create free booking approval request
-    const approval = await queryOne<{ id: number }>(
-      `INSERT INTO admin_free_bookings (arena_admin_id, arena_id, booking_date, time_slot, number_of_rounds, status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, 'pending', NOW(), NOW())
-       RETURNING id`,
-      [context.adminId, context.arenaId, payload.date, payload.time_slot, payload.number_of_rounds]
-    );
+    const { createApprovalRequest } = await import('@/lib/admin');
+
+    // Generate slots array from time_slot (assuming it's a single slot for now, or comma separated)
+    const slots = payload.time_slot.split(',').map(s => s.trim());
+
+    const approval = await createApprovalRequest({
+      arenaId: context.arenaId,
+      requestedBy: context.adminId,
+      requestType: 'FREE_BOOKING_REQUEST',
+      payload: {
+        bookingDate: payload.date,
+        slots: slots,
+        customerName: 'Free Booking Request',
+        customerMobile: 'N/A'
+      },
+      notes: payload.reason || 'Free booking request'
+    });
 
     return NextResponse.json({
       success: true,
@@ -99,23 +109,35 @@ export async function GET(request: Request) {
       params.push(status);
     }
 
-    const approvals = await query<{
-      id: number;
-      booking_date: string;
-      time_slot: string;
-      number_of_rounds: number;
-      status: string;
-    }>(
-      `SELECT id, booking_date, time_slot, number_of_rounds, status
-       FROM admin_free_bookings
-       WHERE ${whereClause.join(' AND ')}
-       ORDER BY created_at DESC`,
+    const approvals = await query(
+      `SELECT id, 
+              payload_json, 
+              status, 
+              decision_reason as rejection_reason,
+              created_at
+         FROM approval_requests 
+        WHERE request_type = 'FREE_BOOKING_REQUEST' AND ${whereClause.join(' AND ')}
+        ORDER BY created_at DESC 
+        LIMIT 50`,
       params
     );
 
+    // Map payload_json back to expected format
+    const mappedApprovals = approvals.map((a: any) => {
+      const payload = a.payload_json ? JSON.parse(a.payload_json) : {};
+      return {
+        id: a.id,
+        booking_date: payload.bookingDate || '',
+        time_slot: payload.slots ? payload.slots.join(', ') : '',
+        number_of_rounds: 1,
+        status: a.status,
+        rejection_reason: a.rejection_reason
+      };
+    });
+
     return NextResponse.json({
       success: true,
-      data: approvals,
+      data: mappedApprovals,
     });
   } catch (error) {
     console.error('Fetch approval requests error:', error);

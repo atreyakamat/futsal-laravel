@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { POST } from '@/app/api/admin/users/create/route';
+import { POST } from '@/app/api/fg-admin/platform/users/create/route';
 import * as domain from '@/lib/domain';
 import * as admin from '@/lib/admin';
 
