@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { queryOne } from '@/lib/db';
+import '@/lib/env-validate';
 
 export const dynamic = 'force-dynamic';
 

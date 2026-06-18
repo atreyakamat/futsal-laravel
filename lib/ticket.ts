@@ -1,5 +1,6 @@
 import { getArenaById, getBookingsByRef } from '@/lib/domain';
 import { mergeSlots, getDurationText } from '@/lib/slot-merge';
+import { generateQrDataUrl } from '@/lib/qr';
 
 export type TicketPackage = {
   bookingRef: string;
@@ -10,13 +11,13 @@ export type TicketPackage = {
   slots: string[];
 };
 
-export function getTicketQrUrl(ticketNumber: string) {
-  return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(ticketNumber)}`;
+export async function getTicketQrUrl(ticketNumber: string): Promise<string> {
+  return generateQrDataUrl(ticketNumber);
 }
 
-export function buildTicketHtml(ticket: TicketPackage) {
+export async function buildTicketHtml(ticket: TicketPackage): Promise<string> {
   const mergedSlots = mergeSlots(ticket.slots);
-  const qrUrl = getTicketQrUrl(ticket.ticketNumbers[0] ?? ticket.bookingRef);
+  const qrUrl = await getTicketQrUrl(ticket.ticketNumbers[0] ?? ticket.bookingRef);
   const ticketNumbers = (ticket.ticketNumbers || []).join(', ');
   const downloadHref = `/booking/ticket/${encodeURIComponent(ticket.bookingRef)}?download=1`;
 
@@ -82,7 +83,7 @@ export async function sendTicketEmail(bookingRef: string) {
     return { sent: false, reason: 'No recipient email' as const };
   }
 
-  const html = buildTicketHtml(ticket);
+  const html = await buildTicketHtml(ticket);
   const subject = `Your FutsalGoa ticket ${bookingRef}`;
   console.info(`[TICKET EMAIL LOG] To: ${firstBooking.customer_email}\nSubject: ${subject}\n${html}`);
   return { sent: true, mode: 'log' as const };

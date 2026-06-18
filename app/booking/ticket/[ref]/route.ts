@@ -8,7 +8,7 @@ export async function GET(request: Request, context: { params: Promise<{ ref: st
     return new Response('Ticket not found.', { status: 404, headers: { 'Content-Type': 'text/plain' } });
   }
 
-  const html = buildTicketHtml(ticket);
+  const html = await buildTicketHtml(ticket);
   const download = new URL(request.url).searchParams.get('download') === '1';
 
   return new Response(html, {

@@ -358,9 +358,9 @@ export async function replaceArenaPricing(arenaId: number, slots: SlotPricingInp
 
     for (const slot of slots) {
       await connection.execute(
-        `INSERT INTO pricings (arena_id, time_slot, price, day_of_week, created_at, updated_at)
-         VALUES (?, ?, ?, ?, NOW(), NOW())`,
-        [arenaId, slot.time_slot, slot.price, slot.day_of_week ?? null]
+        `INSERT INTO pricings (arena_id, time_slot, price, created_at, updated_at)
+         VALUES (?, ?, ?, NOW(), NOW())`,
+        [arenaId, slot.time_slot, slot.price]
       );
     }
   });

@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { storeOtp } from '@/lib/domain';
 import { GUEST_COOKIE, getCookieOptions } from '@/lib/session';
 import { canSendOtp, isLockedOut } from '@/lib/rate-limit';
+import { getSmsProvider } from '@/lib/sms';
 
 const bodySchema = z.object({
   identifier: z.string().min(3).max(100),
@@ -32,6 +33,20 @@ export async function POST(request: Request) {
 
   await storeOtp(payload.identifier, otp);
   console.info(`[OTP] ${payload.identifier}: ${otp}`);
+
+  // Trigger SMS Provider if identifier is a mobile number
+  const isMobile = /^\+?[0-9]{10,15}$/.test(payload.identifier.trim());
+  if (isMobile) {
+    const provider = getSmsProvider();
+    try {
+      await provider.sendSms(
+        payload.identifier.trim(),
+        `Your OTP for FutsalGoa is ${otp}. Valid for 10 minutes.`
+      );
+    } catch (smsErr) {
+      console.error('[SMS] Failed to send SMS via provider:', smsErr);
+    }
+  }
 
   if (!isJson) {
     const response = NextResponse.redirect(new URL(`/verify-otp?identifier=${encodeURIComponent(payload.identifier)}`, request.url));

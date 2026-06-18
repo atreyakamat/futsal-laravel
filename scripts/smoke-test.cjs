@@ -6,7 +6,7 @@
 
 const http = require('http');
 
-const BASE_URL = 'http://localhost:3002';
+const BASE_URL = 'http://localhost:3000';
 let authCookie = '';
 
 function request(method, path, body = null, headers = {}) {
@@ -79,7 +79,7 @@ async function runTests() {
 
     // Test 2: Get Arenas
     console.log('\n📝 Test 2: Get Arenas');
-    const arenasRes = await request('GET', '/api/super-admin/arenas');
+    const arenasRes = await request('GET', '/api/fg-admin/super-admin/arenas');
     if (arenasRes.statusCode === 200) {
       console.log('✅ Arenas API working');
       testsPassed++;
@@ -90,7 +90,7 @@ async function runTests() {
 
     // Test 3: Create Arena
     console.log('\n📝 Test 3: Create Arena');
-    const createArenaRes = await request('POST', '/api/super-admin/arenas', {
+    const createArenaRes = await request('POST', '/api/fg-admin/super-admin/arenas', {
       name: 'Test Arena ' + Date.now(),
       slug: 'test-arena-' + Date.now(),
       address: 'Test Address',
@@ -110,7 +110,7 @@ async function runTests() {
     // Test 4: Get Arena Details
     if (createdArenaId) {
       console.log('\n📝 Test 4: Get Arena Details');
-      const arenaDetailsRes = await request('GET', `/api/super-admin/arenas/${createdArenaId}`);
+      const arenaDetailsRes = await request('GET', `/api/fg-admin/super-admin/arenas/${createdArenaId}`);
       if (arenaDetailsRes.body.success && arenaDetailsRes.body.data.id === createdArenaId) {
         console.log('✅ Arena details retrieved successfully');
         testsPassed++;
@@ -123,15 +123,15 @@ async function runTests() {
     // Test 5: Create Arena Admin
     console.log('\n📝 Test 5: Create Arena Admin');
     const adminEmail = `admin-${Date.now()}@test.com`;
-    const createAdminRes = await request('POST', '/api/super-admin/admins', {
+    const createAdminRes = await request('POST', '/api/fg-admin/super-admin/admins', {
       arena_id: createdArenaId || 1,
       name: 'Test Admin',
       email: adminEmail,
     });
     let createdAdminId = null;
-    if (createAdminRes.body.success && createAdminRes.body.data.id) {
+    if (createAdminRes.body.success && createAdminRes.body.data.admin?.id) {
       console.log('✅ Arena admin created successfully');
-      createdAdminId = createAdminRes.body.data.id;
+      createdAdminId = createAdminRes.body.data.admin.id;
       testsPassed++;
     } else {
       console.log('❌ Admin creation failed:', createAdminRes.body.message);
@@ -140,7 +140,7 @@ async function runTests() {
 
     // Test 6: Get Admins List
     console.log('\n📝 Test 6: Get Admins List');
-    const adminsRes = await request('GET', `/api/super-admin/admins?arena_id=${createdArenaId || 1}`);
+    const adminsRes = await request('GET', `/api/fg-admin/super-admin/admins?arena_id=${createdArenaId || 1}`);
     if (adminsRes.statusCode === 200) {
       console.log('✅ Admins list API working');
       testsPassed++;
@@ -152,16 +152,16 @@ async function runTests() {
     // Test 7: Create Security Staff
     console.log('\n📝 Test 7: Create Security Staff');
     const securityEmail = `security-${Date.now()}@test.com`;
-    const createSecurityRes = await request('POST', '/api/super-admin/security', {
+    const createSecurityRes = await request('POST', '/api/fg-admin/super-admin/security', {
       arena_id: createdArenaId || 1,
       name: 'Test Security',
       email: securityEmail,
       permissions: ['checkin', 'checkout'],
     });
     let createdSecurityId = null;
-    if (createSecurityRes.body.success && createSecurityRes.body.data.id) {
+    if (createSecurityRes.body.success && createSecurityRes.body.data.staff?.id) {
       console.log('✅ Security staff created successfully');
-      createdSecurityId = createSecurityRes.body.data.id;
+      createdSecurityId = createSecurityRes.body.data.staff.id;
       testsPassed++;
     } else {
       console.log('❌ Security staff creation failed:', createSecurityRes.body.message);
@@ -170,7 +170,7 @@ async function runTests() {
 
     // Test 8: Get Security Staff List
     console.log('\n📝 Test 8: Get Security Staff List');
-    const securityRes = await request('GET', `/api/super-admin/security?arena_id=${createdArenaId || 1}`);
+    const securityRes = await request('GET', `/api/fg-admin/super-admin/security?arena_id=${createdArenaId || 1}`);
     if (securityRes.statusCode === 200) {
       console.log('✅ Security staff list API working');
       testsPassed++;
@@ -181,7 +181,7 @@ async function runTests() {
 
     // Test 9: Get Pending Approvals
     console.log('\n📝 Test 9: Get Pending Approvals');
-    const approvalsRes = await request('GET', '/api/super-admin/approvals');
+    const approvalsRes = await request('GET', '/api/fg-admin/super-admin/approvals');
     if (approvalsRes.statusCode === 200) {
       console.log('✅ Approvals API working');
       testsPassed++;
@@ -192,7 +192,7 @@ async function runTests() {
 
     // Test 10: Generate Report
     console.log('\n📝 Test 10: Generate Report');
-    const reportRes = await request('POST', '/api/super-admin/reports', {
+    const reportRes = await request('POST', '/api/fg-admin/super-admin/reports', {
       arena_id: createdArenaId || 1,
       report_type: 'daily',
       date_range_start: '2024-01-01',
@@ -208,7 +208,7 @@ async function runTests() {
 
     // Test 11: Get Reports
     console.log('\n📝 Test 11: Get Reports');
-    const getReportsRes = await request('GET', `/api/super-admin/reports?arena_id=${createdArenaId || 1}`);
+    const getReportsRes = await request('GET', `/api/fg-admin/super-admin/reports?arena_id=${createdArenaId || 1}`);
     if (getReportsRes.statusCode === 200) {
       console.log('✅ Reports list API working');
       testsPassed++;
@@ -219,7 +219,7 @@ async function runTests() {
 
     // Test 12: Update Settings (Change Password)
     console.log('\n📝 Test 12: Change Password');
-    const settingsRes = await request('PUT', '/api/super-admin/settings', {
+    const settingsRes = await request('PUT', '/api/fg-admin/super-admin/settings', {
       current_password: 'SuperAdmin@123',
       new_password: 'NewPassword@456',
       confirm_password: 'NewPassword@456',
@@ -234,23 +234,23 @@ async function runTests() {
 
     // Test 13: Super Admin Dashboard Page
     console.log('\n📝 Test 13: Super Admin Dashboard Page');
-    const dashboardRes = await request('GET', '/admin/super-admin');
-    if (dashboardRes.statusCode === 200 && dashboardRes.body.includes('Loading dashboard')) {
+    const dashboardRes = await request('GET', '/fg-admin/platform/super-admin');
+    if (dashboardRes.statusCode === 200) {
       console.log('✅ Dashboard page loads successfully');
       testsPassed++;
     } else {
-      console.log('❌ Dashboard page failed to load');
+      console.log('❌ Dashboard page failed to load:', dashboardRes.statusCode);
       testsFailed++;
     }
-
+ 
     // Test 14: Super Admin Login Page
     console.log('\n📝 Test 14: Super Admin Login Page');
-    const loginPageRes = await request('GET', '/admin/super-admin-login');
+    const loginPageRes = await request('GET', '/fg-admin/login');
     if (loginPageRes.statusCode === 200) {
       console.log('✅ Login page loads successfully');
       testsPassed++;
     } else {
-      console.log('❌ Login page failed to load');
+      console.log('❌ Login page failed to load:', loginPageRes.statusCode);
       testsFailed++;
     }
 

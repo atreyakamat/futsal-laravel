@@ -26,6 +26,7 @@ export default async function BookingSuccessPage({ params }: Props) {
   const slots = bookings.map((b) => b.time_slot);
   const mergedSlots = mergeSlots(slots).join(', ');
   const duration = getDurationText(slots);
+  const qrUrl = await getTicketQrUrl(firstBooking.ticket_number ?? bookingRef);
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-20">
@@ -81,7 +82,7 @@ export default async function BookingSuccessPage({ params }: Props) {
           <div className="bg-white p-6 rounded-[2rem] mb-10 shadow-[0_0_40px_rgba(13,242,32,0.2)] scale-110">
             <div className="bg-white p-2 rounded-xl">
               <img
-                src={getTicketQrUrl(firstBooking.ticket_number ?? bookingRef)}
+                src={qrUrl}
                 alt="Ticket QR"
                 className="w-40 h-40"
               />
