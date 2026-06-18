@@ -20,9 +20,17 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const userId = await readAuthUserId();
-  const role = await readAuthRole();
-  const arenaId = await readArenaId();
+  let userId: number | null = null;
+  let role: string | null = null;
+  let arenaId: number | null = null;
+
+  try {
+    userId = await readAuthUserId();
+    role = await readAuthRole();
+    arenaId = await readArenaId();
+  } catch (e) {
+    console.error('Failed to read session cookies in layout:', e);
+  }
 
   return (
     <html lang="en">

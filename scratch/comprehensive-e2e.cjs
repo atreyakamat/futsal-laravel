@@ -359,8 +359,8 @@ async function main() {
     console.log('\n--- PHASE 7 – PAYMENT AUDITING ---');
 
     // 1. Calculate valid PayU response hash signature
-    const testKey = '';
-    const testSalt = '';
+    const testKey = process.env.PAYU_MERCHANT_KEY || '';
+    const testSalt = process.env.PAYU_MERCHANT_SALT || process.env.PAYU_SALT || '';
     const hashString = `${testSalt}|success|||||||||||${custEmail}|Customer E2E|Futsal booking|500.00|${bookingRef}|${testKey}`;
     const payuHash = crypto.createHash('sha512').update(hashString).digest('hex').toLowerCase();
 

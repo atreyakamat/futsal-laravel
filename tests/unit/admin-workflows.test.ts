@@ -7,7 +7,7 @@ import { signValue } from '../../lib/session';
 
 const BASE_URL = (process.env.BASE_URL && process.env.BASE_URL.startsWith('http'))
   ? process.env.BASE_URL
-  : 'http://localhost:3001';
+  : 'http://localhost:3000';
 
 async function getSuperAdminCookie() {
   return `fg_auth_role=${await signValue('super_admin')}; fg_auth_user=${await signValue('1')}`;

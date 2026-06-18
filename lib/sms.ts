@@ -144,6 +144,69 @@ export class GupshupProvider implements SmsProvider {
   }
 }
 
+export class AiSensyProvider implements SmsProvider {
+  private apiKey: string;
+  private campaignName: string;
+  private userName: string;
+  private source: string;
+
+  constructor() {
+    this.apiKey = process.env.AISENSY_API_KEY ?? '';
+    this.campaignName = process.env.AISENSY_CAMPAIGN_NAME ?? 'test_api';
+    this.userName = process.env.AISENSY_USERNAME ?? 'AITD Official';
+    this.source = process.env.AISENSY_SOURCE ?? 'new-landing-page form';
+  }
+
+  async sendSms(to: string, message: string): Promise<boolean> {
+    if (!this.apiKey) {
+      console.warn('[AiSensyProvider] Missing environment credentials, falling back to mock logging.');
+      console.info(`[SMS AISENSY MOCK] To: ${to} | Message: ${message}`);
+      return true;
+    }
+    try {
+      let destination = to.replace(/\+/g, '').trim();
+      if (destination.length === 10) {
+        destination = '91' + destination;
+      }
+
+      // Try to extract dynamic template parameters (e.g. OTP code if present)
+      const otpMatch = message.match(/\b\d{6}\b/);
+      const otp = otpMatch ? otpMatch[0] : '';
+      
+      // Map to template placeholders: if OTP exists, we pass it, otherwise fallback to the full message
+      const templateParams = otp ? [otp, otp, otp, otp] : [message, message, message, message];
+
+      const response = await fetch('https://backend.aisensy.com/campaign/t1/api/v2', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          apiKey: this.apiKey,
+          campaignName: this.campaignName,
+          destination: destination,
+          userName: this.userName,
+          templateParams: templateParams,
+          source: this.source,
+        }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error(`[AiSensyProvider] Failed to send WhatsApp message: ${response.status} - ${errText}`);
+        return false;
+      }
+      
+      const resData = await response.json();
+      console.info(`[AiSensyProvider] Message sent successfully to ${to}. Response:`, resData);
+      return true;
+    } catch (err) {
+      console.error('[AiSensyProvider] Error sending WhatsApp message:', err);
+      return false;
+    }
+  }
+}
+
 export function getSmsProvider(): SmsProvider {
   const providerType = (process.env.SMS_PROVIDER ?? 'mock').toLowerCase();
   switch (providerType) {
@@ -153,8 +216,12 @@ export function getSmsProvider(): SmsProvider {
       return new MSG91Provider();
     case 'gupshup':
       return new GupshupProvider();
+    case 'aisensy':
+    case 'whatsapp':
+      return new AiSensyProvider();
     case 'mock':
     default:
       return new MockProvider();
   }
 }
+

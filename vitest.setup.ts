@@ -1,5 +1,8 @@
 import '@testing-library/jest-dom/vitest';
 import { vi } from 'vitest';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 // Mock Next.js router
 vi.mock('next/navigation', () => ({

@@ -4,13 +4,21 @@ import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
-export default async function AdminApprovalsPage() {
+type Props = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function AdminApprovalsPage({ searchParams }: Props) {
   const userId = await readAuthUserId();
   const context = await getAdminContext(userId);
 
   if (!context || context.role !== 'super_admin') {
     redirect('/fg-admin/platform/dashboard');
   }
+
+  const resolvedSearchParams = await searchParams;
+  const error = typeof resolvedSearchParams.error === 'string' ? resolvedSearchParams.error : null;
+  const updated = typeof resolvedSearchParams.updated === 'string' ? resolvedSearchParams.updated : null;
 
   const requests = await listApprovalRequests({ status: 'pending' });
 
@@ -22,6 +30,26 @@ export default async function AdminApprovalsPage() {
         </h1>
         <p className="label-classic !ml-0">Review slot and entry requests from admins</p>
       </div>
+
+      {error && (
+        <div className="glass-card !p-6 border-red-500/20 bg-red-500/5 mb-8 flex items-center gap-4 text-red-500 rounded-2xl animate-fadeIn">
+          <span className="material-symbols-outlined text-2xl">error</span>
+          <div>
+            <h4 className="font-black text-xs uppercase tracking-widest">Failed to Resolve Request</h4>
+            <p className="text-white/60 text-xs mt-1">{error}</p>
+          </div>
+        </div>
+      )}
+
+      {updated && (
+        <div className="glass-card !p-6 border-primary/20 bg-primary/5 mb-8 flex items-center gap-4 text-primary rounded-2xl animate-fadeIn">
+          <span className="material-symbols-outlined text-2xl">check_circle</span>
+          <div>
+            <h4 className="font-black text-xs uppercase tracking-widest">Request Resolved Successfully</h4>
+            <p className="text-white/60 text-xs mt-1">The request has been successfully resolved.</p>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-6">
         {(requests || []).map((request) => (

@@ -11,9 +11,6 @@ const bodySchema = z.object({
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const isJson = request.headers.get('content-type')?.includes('application/json');
-  const payload = bodySchema.parse(
-    isJson ? await request.json() : Object.fromEntries((await request.formData()).entries())
-  );
   const userId = await readAuthUserId();
   const context = await getAdminContext(userId);
 
@@ -21,16 +18,33 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
   }
 
-  await resolveApprovalRequest({
-    requestId: Number(id),
-    decisionBy: context.id,
-    decision: payload.decision,
-    reason: payload.reason ?? null,
-  });
+  try {
+    const payload = bodySchema.parse(
+      isJson ? await request.json() : Object.fromEntries((await request.formData()).entries())
+    );
 
-  if (!isJson) {
-    return NextResponse.redirect(new URL('/fg-admin/platform/approvals?updated=1', request.url));
+    await resolveApprovalRequest({
+      requestId: Number(id),
+      decisionBy: context.id,
+      decision: payload.decision,
+      reason: payload.reason ?? null,
+    });
+
+    if (!isJson) {
+      return NextResponse.redirect(new URL('/fg-admin/platform/approvals?updated=1', request.url));
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error('Error resolving approval request:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
+
+    if (!isJson) {
+      return NextResponse.redirect(
+        new URL(`/fg-admin/platform/approvals?error=${encodeURIComponent(message)}`, request.url)
+      );
+    }
+
+    return NextResponse.json({ success: false, message }, { status: 400 });
   }
-
-  return NextResponse.json({ success: true });
 }
