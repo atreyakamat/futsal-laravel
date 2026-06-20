@@ -3,7 +3,9 @@ import { readAuthUserId, readGuestIdentifier } from '@/lib/session';
 import { mergeSlots, getDurationText } from '@/lib/slot-merge';
 import { getPayuConfig } from '@/lib/payment';
 import { getArenaEntryMode } from '@/lib/admin';
+import { getOrCreateCsrfToken } from '@/lib/csrf';
 import Link from 'next/link';
+
 
 type Props = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -55,14 +57,7 @@ export default async function CheckoutPage({ searchParams }: Props) {
 
   const userId = await readAuthUserId();
   const guestIdentifier = await readGuestIdentifier();
-  let defaultUser = null;
-
-  if (userId) {
-    // Fetch logged in user details if needed, but let's assume they fill it or we can pre-fill
-    // For now, let's keep it simple as per Laravel checkout
-  } else if (guestIdentifier) {
-    // Pre-fill with guest identifier (email or mobile)
-  }
+  const csrfToken = await getOrCreateCsrfToken();
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-20">
@@ -157,6 +152,7 @@ export default async function CheckoutPage({ searchParams }: Props) {
               <input type="hidden" name="arena_id" value={arena.id} />
               <input type="hidden" name="date" value={date} />
               <input type="hidden" name="slots" value={slotsJson} />
+              <input type="hidden" name="_csrf" value={csrfToken} />
 
               <div className="grid md:grid-cols-2 gap-10">
                 <div className="space-y-3">
