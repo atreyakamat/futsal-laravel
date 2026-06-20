@@ -1,8 +1,8 @@
 import { readAuthUserId, readAuthRole } from '@/lib/session';
 import { getAdminContext } from '@/lib/admin';
-import { query, getArenaById } from '@/lib/domain';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,24 +18,24 @@ export default async function ArenaAdminBookingsPage() {
   const arenaId = context.arenaId;
   const arena = await getArenaById(arenaId);
 
-  const bookings = await query<{
-    id: number;
-    ticket_number: string;
-    booking_ref: string;
-    customer_name: string;
-    customer_mobile: string;
-    booking_date: string;
-    time_slot: string;
-    payment_status: string;
-    amount: number;
-    created_at: string;
-  }>(`
-    SELECT id, ticket_number, booking_ref, customer_name, customer_mobile, booking_date, time_slot, payment_status, amount, created_at
-      FROM bookings
-     WHERE arena_id = ?
-     ORDER BY created_at DESC
-     LIMIT 50
-  `, [arenaId]);
+  // Fetch bookings from API
+  const cookieStore = await cookies();
+  const res = await fetch(`/api/fg-admin/arena/bookings`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      // Cookie will be sent automatically for same-origin requests
+    },
+  });
+
+  const data = await res.json();
+
+  if (!data.success) {
+    console.error('Bookings data fetch failed:', data.message);
+    // For now, we'll still render but with empty data
+  }
+
+  const bookings = data.data || [];
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-20 space-y-12">
