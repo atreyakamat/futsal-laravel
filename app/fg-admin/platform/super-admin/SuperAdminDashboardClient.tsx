@@ -486,10 +486,38 @@ export default function SuperAdminDashboardClient() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-950 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-400">Loading dashboard...</p>
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-950 flex flex-col">
+        {/* Skeleton Header */}
+        <header className="border-b border-white/10 p-4 flex justify-between">
+          <div className="flex gap-3">
+            <div className="w-10 h-10 rounded-lg bg-white/5 animate-pulse" />
+            <div className="space-y-2">
+              <div className="w-32 h-4 bg-white/5 animate-pulse rounded" />
+              <div className="w-24 h-3 bg-white/5 animate-pulse rounded" />
+            </div>
+          </div>
+          <div className="w-24 h-8 bg-white/5 animate-pulse rounded-lg" />
+        </header>
+        <div className="flex flex-1">
+          {/* Skeleton Sidebar */}
+          <aside className="w-64 border-r border-white/10 p-4 space-y-4">
+            {[1, 2, 3, 4, 5, 6, 7].map(i => (
+              <div key={i} className="w-full h-10 bg-white/5 animate-pulse rounded-lg" />
+            ))}
+          </aside>
+          {/* Skeleton Main */}
+          <main className="flex-1 p-8">
+            <div className="w-48 h-8 bg-white/5 animate-pulse rounded mb-8" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="h-32 bg-white/5 animate-pulse rounded-xl border border-white/10" />
+              ))}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+              <div className="col-span-1 md:col-span-2 h-64 bg-white/5 animate-pulse rounded-xl border border-white/10" />
+              <div className="col-span-1 h-64 bg-white/5 animate-pulse rounded-xl border border-white/10" />
+            </div>
+          </main>
         </div>
       </div>
     );
@@ -1252,7 +1280,21 @@ export default function SuperAdminDashboardClient() {
               </div>
 
               {approvalsLoading ? (
-                <div className="text-center py-12 text-gray-400">Loading...</div>
+                <div className="space-y-4">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="glass-card p-6 flex justify-between items-center animate-pulse">
+                      <div className="space-y-3 flex-1">
+                        <div className="w-32 h-4 bg-white/10 rounded" />
+                        <div className="w-48 h-3 bg-white/10 rounded" />
+                        <div className="w-64 h-3 bg-white/5 rounded" />
+                      </div>
+                      <div className="flex gap-3">
+                        <div className="w-24 h-10 bg-white/10 rounded" />
+                        <div className="w-24 h-10 bg-white/10 rounded" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : approvals.length === 0 ? (
                 <div className="text-center py-12 text-gray-400">
                   <span className="material-symbols-outlined text-4xl mb-4 block">check_circle</span>
