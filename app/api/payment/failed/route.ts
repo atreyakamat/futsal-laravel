@@ -79,7 +79,7 @@ export async function POST(request: Request) {
 
     // Record callback for idempotency
     await query(
-      `INSERT INTO payment_callbacks (booking_ref, gateway_id, status, raw_payload) VALUES (?, ?, 'failed', ?::json)`,
+      `INSERT INTO payment_callbacks (booking_ref, gateway_id, status, raw_payload) VALUES (?, ?, 'failed', ?)`,
       [bookingRef, gatewayId, JSON.stringify(payload)]
     );
 
