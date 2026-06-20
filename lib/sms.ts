@@ -227,16 +227,16 @@ export class AiSensyProvider implements SmsProvider {
 
       const payload: any = {
         apiKey: this.apiKey,
-        campaignName: isOtp ? 'agnel_arena_otp' : this.campaignName,
+        campaignName: isOtp ? 'agnel_arena_otp' : 'agnelarena_cofirm',
         destination: destination,
         userName: this.userName,
         templateParams: templateParams,
         source: this.source,
         media: isOtp ? {} : {
           url: pdfUrl,
-          filename: ticketNumber ? `ticket-${ticketNumber}` : "sample_media"
+          filename: ticketNumber ? `ticket-${ticketNumber}` : "booking_confirmation.pdf"
         },
-        buttons: [
+        buttons: isOtp ? [
           {
             type: "button",
             sub_type: "url",
@@ -248,7 +248,7 @@ export class AiSensyProvider implements SmsProvider {
               }
             ]
           }
-        ],
+        ] : [],
         carouselCards: [],
         location: {},
         attributes: {},
