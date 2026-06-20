@@ -45,7 +45,7 @@ export async function POST(request: Request) {
       const payloadJson = JSON.stringify(Object.fromEntries(formData.entries()));
       await query(
         `INSERT INTO payment_audit_logs (booking_ref, status, amount, mihpayid, payload, created_at)
-         VALUES (?, ?, ?, ?, ?, NOW())`,
+         VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
         [bookingRef, status, Number(amount) || 0, mihpayid || null, payloadJson]
       );
     } catch (logError) {
