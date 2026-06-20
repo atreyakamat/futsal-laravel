@@ -173,6 +173,7 @@ export class AiSensyProvider implements SmsProvider {
       let templateParams: string[] = [];
       let buttonText = 'user';
       let ticketNumber = '';
+      let isOtp = false;
 
       const otpMatch = message.match(/\b\d{6}\b/);
       const otp = otpMatch ? otpMatch[0] : '';
@@ -205,7 +206,8 @@ export class AiSensyProvider implements SmsProvider {
         templateParams = [customerName, formattedDate, startTime, endTime];
         buttonText = ticketNumber || bookingRef;
       } else if (otp) {
-        templateParams = [otp, otp, otp, otp];
+        isOtp = true;
+        templateParams = ['user']; // Map $FirstName to generic user if name not available
         buttonText = otp;
       } else {
         templateParams = [message, message, message, message];
@@ -213,7 +215,7 @@ export class AiSensyProvider implements SmsProvider {
       }
 
       // Try to extract dynamic ticket number if present (starts with TKT-)
-      if (!ticketNumber) {
+      if (!ticketNumber && !isOtp) {
         const ticketMatch = message.match(/\bTKT-[A-Z0-9-]+\b/i);
         ticketNumber = ticketMatch ? ticketMatch[0] : '';
       }
@@ -223,42 +225,44 @@ export class AiSensyProvider implements SmsProvider {
         ? `${appUrl}/api/bookings/download?ticket=${ticketNumber}`
         : "https://d3jt6ku4g6z5l8.cloudfront.net/FILE/6353da2e153a147b991dd812/4079142_dummy.pdf";
 
+      const payload: any = {
+        apiKey: this.apiKey,
+        campaignName: isOtp ? 'agnel_arena_otp' : this.campaignName,
+        destination: destination,
+        userName: this.userName,
+        templateParams: templateParams,
+        source: this.source,
+        media: isOtp ? {} : {
+          url: pdfUrl,
+          filename: ticketNumber ? `ticket-${ticketNumber}` : "sample_media"
+        },
+        buttons: [
+          {
+            type: "button",
+            sub_type: "url",
+            index: 0,
+            parameters: [
+              {
+                type: "text",
+                text: buttonText
+              }
+            ]
+          }
+        ],
+        carouselCards: [],
+        location: {},
+        attributes: {},
+        paramsFallbackValue: {
+          FirstName: "user"
+        }
+      };
+
       const response = await fetch('https://backend.aisensy.com/campaign/t1/api/v2', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          apiKey: this.apiKey,
-          campaignName: this.campaignName,
-          destination: destination,
-          userName: this.userName,
-          templateParams: templateParams,
-          source: this.source,
-          media: {
-            url: pdfUrl,
-            filename: ticketNumber ? `ticket-${ticketNumber}` : "sample_media"
-          },
-          buttons: [
-            {
-              type: "button",
-              sub_type: "URL",
-              index: 0,
-              parameters: [
-                {
-                  type: "text",
-                  text: buttonText
-                }
-              ]
-            }
-          ],
-          carouselCards: [],
-          location: {},
-          attributes: {},
-          paramsFallbackValue: {
-            FirstName: "user"
-          }
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
