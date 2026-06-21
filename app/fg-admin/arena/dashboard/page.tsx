@@ -1,7 +1,6 @@
 import { cookies } from 'next/headers';
 import { unsignValue } from '@/lib/session';
 import { getAdminContext } from '@/lib/admin';
-import { query, queryOne, getArenaById } from '@/lib/domain';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 
@@ -21,36 +20,30 @@ export default async function ArenaAdminDashboardPage() {
   }
 
   const arenaId = context.arenaId;
-  const arena = await getArenaById(arenaId);
 
-  // Fetch stats for this arena
-  const stats = await Promise.all([
-    // Confirmed Bookings
-    queryOne<{ count: number }>(
-      "SELECT COUNT(*) as count FROM bookings WHERE arena_id = ? AND payment_status = 'confirmed'",
-      [arenaId]
-    ),
-    // Total Revenue
-    queryOne<{ sum: number }>(
-      "SELECT COALESCE(SUM(amount), 0) as sum FROM bookings WHERE arena_id = ? AND payment_status = 'confirmed'",
-      [arenaId]
-    ),
-    // Unique Customers
-    queryOne<{ count: number }>(
-      "SELECT COUNT(DISTINCT customer_mobile) as count FROM bookings WHERE arena_id = ?",
-      [arenaId]
-    ),
-    // Pending Approval Requests (slot changes, entry mode, free bookings, etc.)
-    queryOne<{ count: number }>(
-      "SELECT COUNT(*) as count FROM approval_requests WHERE arena_id = ? AND status = 'pending'",
-      [arenaId]
-    )
-  ]);
+  // Fetch dashboard data from API
+  const res = await fetch(`/api/fg-admin/arena/dashboard`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
 
-  const confirmedBookings = stats[0]?.count ?? 0;
-  const totalRevenue = Number(stats[1]?.sum ?? 0);
-  const uniqueCustomers = stats[2]?.count ?? 0;
-  const pendingApprovals = stats[3]?.count ?? 0;
+  const data = await res.json();
+
+  if (!data.success) {
+    // Handle error - maybe redirect to login or show error
+    console.error('Dashboard data fetch failed:', data.message);
+    // For now, we'll still render but with empty data
+  }
+
+  const {
+    arena,
+    confirmedBookings,
+    totalRevenue,
+    uniqueCustomers,
+    pendingApprovals,
+  } = data.data || {};
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-20 space-y-12">
@@ -133,7 +126,7 @@ export default async function ArenaAdminDashboardPage() {
               <span className="font-black text-xs uppercase tracking-widest italic group-hover:text-primary transition-colors">Password & Profile</span>
             </div>
           </Link>
-          
+
           <Link href="/fg-admin/arena/notifications" className="glass-card !p-8 group hover:border-primary/50 transition-all">
             <div className="flex flex-col items-center gap-4 text-center">
               <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
