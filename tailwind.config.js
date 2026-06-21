@@ -9,20 +9,43 @@ export default {
     extend: {
       colors: {
         primary: {
-          DEFAULT: "#0df220",
-          glow: "rgba(13, 242, 32, 0.4)",
+          DEFAULT: "#FF7A00", // Electric Orange (CTA)
+          navy: "#0B1F5E",
+          gold: "#F4B400",
+          glow: "rgba(255, 122, 0, 0.4)",
         },
         dark: {
-          DEFAULT: "#050505",
-          soft: "#0a0a0a",
-          surface: "#0f0f0f",
+          DEFAULT: "#0F172A",
+          soft: "#1E293B",
+          surface: "#020617",
         },
-        "primary-glow": "rgba(13, 242, 32, 0.4)",
-        "dark-soft": "#0a0a0a",
-        "dark-surface": "#0f0f0f",
-        "text-muted": "#888888",
-        "accent-cyan": "#00f2ff",
-        "accent-purple": "#7000ff",
+        secondary: {
+          blue: "#2563EB",
+          cyan: "#06B6D4",
+          red: "#DC2626",
+          purple: "#4F46E5",
+        },
+        neutral: {
+          bg: "#F8FAFC",
+          surface: "#FFFFFF",
+          light: "#E5E7EB",
+          medium: "#6B7280",
+          dark: "#374151",
+          black: "#111827",
+        },
+        status: {
+          success: "#22C55E",
+          warning: "#F59E0B",
+          error: "#EF4444",
+          info: "#3B82F6",
+        },
+        // Kept for backward compatibility
+        "primary-glow": "rgba(255, 122, 0, 0.4)",
+        "dark-soft": "#1E293B",
+        "dark-surface": "#020617",
+        "text-muted": "#6B7280",
+        "accent-cyan": "#06B6D4",
+        "accent-purple": "#4F46E5",
       },
       fontFamily: {
         sans: ["Space Grotesk", "ui-sans-serif", "system-ui", "sans-serif"],
@@ -54,7 +77,9 @@ export default {
       },
       backgroundImage: {
         "glass-gradient": "linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%)",
-        "primary-gradient": "linear-gradient(135deg, #0df220 0%, #00f2ff 100%)",
+        "primary-gradient": "linear-gradient(135deg, #0B1F5E 0%, #1E3A8A 100%)", // Navy Hero
+        "cta-gradient": "linear-gradient(135deg, #FF7A00 0%, #F4B400 100%)", // Orange CTA
+        "accent-gradient": "linear-gradient(135deg, #2563EB 0%, #06B6D4 100%)", // Blue Accent
       },
     },
   },
