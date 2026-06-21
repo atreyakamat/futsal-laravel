@@ -1,21 +1,46 @@
 import { redirect } from 'next/navigation';
-import { getAdminContext, getNotifications, markNotificationsRead } from '@/lib/admin';
 import { readAuthUserId } from '@/lib/session';
+import { getAdminContext } from '@/lib/admin';
+import { cookies } from 'next/headers';
 
 export default async function ArenaNotificationsPage() {
   const userId = await readAuthUserId();
   const context = await getAdminContext(userId);
 
   if (!context || context.role !== 'arena_admin' || !userId) {
-    redirect('/fg-admin/login');
+    return redirect('/fg-admin/login');
   }
 
-  // Get notifications for this specific arena admin
-  const notifications = await getNotifications(userId as number, 'arena_admin');
-  
-  // Mark them as read when viewed
-  if (notifications.some(n => !n.is_read)) {
-    await markNotificationsRead(userId as number, 'arena_admin');
+  // Fetch notifications from API
+  const cookieStore = await cookies();
+  const res = await fetch(`/api/fg-admin/arena/notifications`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const data = await res.json();
+
+  if (!data.success) {
+    console.error('Notifications fetch failed:', data.message);
+    // Still render but with empty notifications
+  }
+
+  const notifications = data.data || [];
+
+  // Mark notifications as read via API
+  if (notifications.some((n: any) => !n.is_read)) {
+    const markRes = await fetch(`/api/fg-admin/arena/notifications`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!markRes.ok) {
+      console.error('Failed to mark notifications as read');
+    }
   }
 
   return (
@@ -31,7 +56,7 @@ export default async function ArenaNotificationsPage() {
           ← DASHBOARD
         </a>
       </div>
-      
+
       <div className="space-y-4 max-w-3xl">
         {notifications.length === 0 ? (
           <div className="glass-card text-center py-20">
@@ -39,7 +64,7 @@ export default async function ArenaNotificationsPage() {
             <p className="text-sm font-bold uppercase tracking-widest text-white/40">No notifications found.</p>
           </div>
         ) : (
-          notifications.map((notif) => (
+          notifications.map((notif: any) => (
             <div key={notif.id} className={`glass-card p-6 border-l-4 ${notif.is_read ? 'border-white/20' : 'border-primary'}`}>
               <div className="flex justify-between items-start mb-2">
                 <h3 className="font-black italic text-lg uppercase">{notif.title}</h3>
