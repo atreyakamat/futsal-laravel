@@ -13,7 +13,7 @@
         "db:setup": "node ./scripts/setup-local-db.cjs"
     },
     "dependencies": {
-        "@aws-sdk/client-ses": "^3.1077.0",
+        "@aws-sdk/client-ses": "^3.1079.0",
         "@prisma/client": "^7.8.0",
         "@sentry/nextjs": "^8.0.0",
         "@types/crypto-js": "^4.2.2",
