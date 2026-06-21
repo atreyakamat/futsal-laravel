@@ -1,8 +1,8 @@
 import { readAuthUserId, readAuthRole } from '@/lib/session';
-import { getAdminContext, getArenaEntryMode } from '@/lib/admin';
-import { getArenaPricing, getArenaById, query } from '@/lib/domain';
+import { getAdminContext, getArenaById } from '@/lib/admin';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,44 +17,50 @@ export default async function ArenaAdminSlotsPage() {
 
   const arenaId = context.arenaId;
   const arena = await getArenaById(arenaId);
-  const slots = await getArenaPricing(arenaId);
-  const entryMode = await getArenaEntryMode(arenaId);
 
-  // Fetch current timings
-  const timings = await query<{
-    id: number;
-    time_slot: string;
-    start_time: string;
-    end_time: string;
-    day_of_week: number | null;
-  }>(
-    'SELECT id, time_slot, start_time, end_time, day_of_week FROM slot_timings WHERE arena_id = ? ORDER BY day_of_week ASC, start_time ASC',
-    [arenaId]
-  );
+  // Fetch slots data from API
+  const cookieStore = await cookies();
+  const slotsRes = await fetch(`/api/fg-admin/arena/slots`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
 
-  // Fetch generic approval requests (slot template, entry mode updates, etc.)
-  const approvalRequests = await query<{
-    id: number;
-    request_type: string;
-    status: string;
-    notes: string | null;
-    created_at: string;
-  }>(
-    'SELECT id, request_type, status, notes, created_at FROM approval_requests WHERE arena_id = ? ORDER BY created_at DESC LIMIT 10',
-    [arenaId]
-  );
+  const slotsData = await slotsRes.json();
 
-  // Fetch free booking approvals
-  const freeBookingsRaw = await query<{
-    id: number;
-    payload_json: string;
-    status: string;
-    decision_reason: string | null;
-  }>(
-    "SELECT id, payload_json, status, decision_reason FROM approval_requests WHERE arena_id = ? AND request_type = 'FREE_BOOKING_REQUEST' ORDER BY created_at DESC LIMIT 10",
-    [arenaId]
-  );
-  const freeBookings = freeBookingsRaw.map(fb => {
+  if (!slotsData.success) {
+    console.error('Slots data fetch failed:', slotsData.message);
+  }
+
+  const slots = slotsData.data?.slots || [];
+  const entryMode = slotsData.data?.entryMode || 'open';
+
+  // Fetch timings from API
+  const timingsRes = await fetch(`/api/fg-admin/arena/timings`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const timingsData = await timingsRes.json();
+  const timings = timingsData.data || [];
+
+  // Fetch approval requests from API
+  const approvalReqRes = await fetch(`/api/fg-admin/arena/approval-requests`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const approvalReqData = await approvalReqRes.json();
+  const approvalRequests = approvalReqData.data || [];
+
+  // Filter approval requests for the template (we'll do this on the frontend for simplicity)
+  // Fetch free booking approvals from API (filter by request_type)
+  const freeBookings = approvalRequests.filter((req: any) => req.request_type === 'FREE_BOOKING_REQUEST').map((fb: any) => {
     const payload = fb.payload_json ? JSON.parse(fb.payload_json) : {};
     return {
       id: fb.id,
@@ -207,12 +213,12 @@ export default async function ArenaAdminSlotsPage() {
         {/* Active Timings & Pricings */}
         <div className="space-y-6">
           <div className="glass-card">
-            <h2 className="text-2xl font-black uppercase italic mb-6">Current Configured Timings</h2>
+            <h2 className="text-2xl font-bold uppercase italic mb-6">Current Configured Timings</h2>
             {timings.length === 0 ? (
               <p className="text-white/20 text-xs font-bold uppercase tracking-widest">No custom timings defined.</p>
             ) : (
               <div className="space-y-4">
-                {timings.map((t) => (
+                {timings.map((t: any) => (
                   <div key={t.id} className="flex justify-between items-center p-4 rounded-xl bg-white/[0.02] border border-white/5">
                     <div>
                       <span className="font-bold text-white block">{t.time_slot}</span>
@@ -228,7 +234,7 @@ export default async function ArenaAdminSlotsPage() {
           <div className="glass-card">
             <h2 className="text-2xl font-black uppercase italic mb-6">Active Pricing & Slots</h2>
             <div className="grid grid-cols-2 gap-4">
-              {slots.map((s) => (
+              {slots.map((s: any) => (
                 <div key={s.id} className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
                   <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Slot</div>
                   <div className="font-black text-white italic truncate">{s.time_slot}</div>
@@ -247,7 +253,7 @@ export default async function ArenaAdminSlotsPage() {
               <p className="text-white/20 text-xs font-bold uppercase tracking-widest">No recent requests.</p>
             ) : (
               <div className="space-y-4">
-                {approvalRequests.map((ar) => (
+                {approvalRequests.map((ar: any) => (
                   <div key={ar.id} className="flex justify-between items-center p-4 rounded-xl bg-white/[0.02] border border-white/5">
                     <div>
                       <span className="font-bold text-white block capitalize">{ar.request_type.replace(/_/g, ' ')}</span>
@@ -255,7 +261,7 @@ export default async function ArenaAdminSlotsPage() {
                       {ar.notes && <p className="text-xs text-white/60 mt-1 italic">"{ar.notes}"</p>}
                     </div>
                     <span className={`pill-status uppercase tracking-widest text-[9px] ${
-                      ar.status === 'approved' ? 'border-primary/20 text-primary' : 
+                      ar.status === 'approved' ? 'border-primary/20 text-primary' :
                       ar.status === 'rejected' ? 'border-red-500/20 text-red-400' : 'border-yellow-500/20 text-yellow-500'
                     }`}>
                       {ar.status}
@@ -272,7 +278,7 @@ export default async function ArenaAdminSlotsPage() {
               <p className="text-white/20 text-xs font-bold uppercase tracking-widest">No recent free bookings requests.</p>
             ) : (
               <div className="space-y-4">
-                {freeBookings.map((fb) => (
+                {freeBookings.map((fb: any) => (
                   <div key={fb.id} className="flex justify-between items-center p-4 rounded-xl bg-white/[0.02] border border-white/5">
                     <div>
                       <span className="font-bold text-white block">{fb.booking_date} | {fb.time_slot}</span>
@@ -280,7 +286,7 @@ export default async function ArenaAdminSlotsPage() {
                       {fb.rejection_reason && <p className="text-xs text-red-400 mt-1 italic">Rejection: "{fb.rejection_reason}"</p>}
                     </div>
                     <span className={`pill-status uppercase tracking-widest text-[9px] ${
-                      fb.status === 'approved' ? 'border-primary/20 text-primary' : 
+                      fb.status === 'approved' ? 'border-primary/20 text-primary' :
                       fb.status === 'rejected' ? 'border-red-500/20 text-red-400' : 'border-yellow-500/20 text-yellow-500'
                     }`}>
                       {fb.status}
