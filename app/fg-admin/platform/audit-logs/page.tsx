@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { redirect } from 'next/navigation';
 import { getAdminContextFromRequest } from '@/lib/admin';
 import { cookies } from 'next/headers';
