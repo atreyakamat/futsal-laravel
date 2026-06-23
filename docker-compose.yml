@@ -6,7 +6,7 @@ services:
     container_name: futsal_next_app
     restart: unless-stopped
     ports:
-      - "3333:3000"
+      - "3001:3000"
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/futsal_laravel?schema=public
       - ADMIN_EMAIL=${ADMIN_EMAIL:-superadmin@example.com}
