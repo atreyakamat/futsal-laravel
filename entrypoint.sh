@@ -1,8 +1,13 @@
 #!/bin/sh
 set -e
 
-echo "Running DB init script..."
-node ./scripts/db-init.cjs
+echo "Starting FutsalGoa container..."
 
-echo "Starting app"
+echo "Generating Prisma Client..."
+npx prisma generate
+
+echo "Applying Prisma Migrations..."
+npx prisma migrate deploy --schema=./prisma/schema.prisma || echo "Migration failed or already applied"
+
+echo "Starting Next.js Server..."
 exec node server.js
