@@ -23,7 +23,6 @@ export default function Header({ userId, role, arenaId }: HeaderProps) {
   }
 
   const isAdminPath = pathname.startsWith('/fg-admin');
-  const isSecurityPath = pathname.startsWith('/security');
 
   const handleLogout = async () => {
     try {
@@ -36,13 +35,13 @@ export default function Header({ userId, role, arenaId }: HeaderProps) {
   };
 
   // Render Admin Header
-  if (isAdminPath || isSecurityPath) {
+  if (isAdminPath) {
     const dashboardLink = role === 'super_admin' 
       ? '/fg-admin/platform/super-admin'
       : role === 'arena_admin'
       ? '/fg-admin/arena/dashboard'
       : role === 'security'
-      ? '/fg-admin/security/verify/TKT-placeholder' // or a scan page
+      ? '/fg-admin/security/scan'
       : '/fg-admin/login';
 
     return (
@@ -89,6 +88,16 @@ export default function Header({ userId, role, arenaId }: HeaderProps) {
                   </Link>
                   <Link href="/fg-admin/arena/settings" className={`text-xs font-black uppercase tracking-widest hover:text-primary transition-colors ${pathname.includes('/settings') ? 'text-primary' : 'text-white/60'}`}>
                     Settings
+                  </Link>
+                </>
+              )}
+              {role === 'security' && (
+                <>
+                  <Link href="/fg-admin/security/scan" className={`text-xs font-black uppercase tracking-widest hover:text-primary transition-colors ${pathname.includes('/scan') ? 'text-primary' : 'text-white/60'}`}>
+                    Scan Ticket
+                  </Link>
+                  <Link href="/fg-admin/security/verify" className={`text-xs font-black uppercase tracking-widest hover:text-primary transition-colors ${pathname.includes('/verify') ? 'text-primary' : 'text-white/60'}`}>
+                    Verify
                   </Link>
                 </>
               )}
