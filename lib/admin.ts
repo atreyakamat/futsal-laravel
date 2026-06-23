@@ -150,6 +150,12 @@ export async function getAdminContextFromRequest(request: NextRequest): Promise<
   return getAdminContext(userId, sessionId);
 }
 
+export async function requireSuperAdmin(request: Request): Promise<AdminContext | null> {
+  const context = await getAdminContextFromRequest(request as NextRequest);
+  if (context?.role === 'super_admin') return context;
+  return null;
+}
+
 export async function getUserRole(userId: number | null) {
   const context = await getAdminContext(userId);
   return context?.role ?? null;
