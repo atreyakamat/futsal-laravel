@@ -13,6 +13,8 @@ const ROLE_MATRIX: Record<string, string[]> = {
   '/api/fg-admin/super-admin': ['super_admin'],
   '/api/fg-admin/security': ['security'],
   '/api/fg-admin/arena': ['arena_admin'],
+  '/api/security/verify': ['security', 'super_admin'],
+  '/api/security/checkin': ['security', 'super_admin'],
 };
 
 const PROTECTED_PREFIXES = ['/fg-admin/platform', '/fg-admin/arena', '/fg-admin/security', '/arena-admin', '/api/fg-admin/platform', '/api/fg-admin/super-admin', '/api/fg-admin/security', '/api/fg-admin/arena', '/api/arena-admin'];
@@ -137,6 +139,7 @@ export const config = {
     '/api/bookings/:path*',
     '/api/slots/:path*',
     '/api/payment/:path*',
-    '/api/fg-admin/:path*',
+    '/api/dashboard/:path*',
+    '/api/security/:path*',
   ],
 };
