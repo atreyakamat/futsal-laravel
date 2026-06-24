@@ -4,14 +4,19 @@
  * Fails fast in production to prevent misconfigured deployments.
  */
 
+// Hard required — app cannot start without these
 const REQUIRED_ENV_VARS = [
   'DATABASE_URL',
   'SESSION_SECRET',
   'COOKIE_SECRET',
+];
+
+// Soft required — warn but allow startup (features degrade gracefully)
+const SOFT_REQUIRED_ENV_VARS = [
   'PAYU_MERCHANT_KEY',
   'PAYU_MERCHANT_SALT',
-  'SMS_PROVIDER',
   'RESEND_API_KEY',
+  'SMS_PROVIDER',
   'SENTRY_DSN',
 ];
 
@@ -46,6 +51,12 @@ export function validateEnv() {
     if (!process.env[envVar]) {
       missing.push(envVar);
     }
+  }
+
+  // Soft-required: always warn but never crash
+  const missingSoft = SOFT_REQUIRED_ENV_VARS.filter((v) => !process.env[v]);
+  if (missingSoft.length > 0) {
+    console.warn(`[ENV VALIDATION] Optional vars not set (features degraded): ${missingSoft.join(', ')}`);
   }
 
   if (isProduction && !isBuildPhase) {
