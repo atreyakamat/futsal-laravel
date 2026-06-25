@@ -16,8 +16,8 @@ describe('Payment Callback & Signature Validation', () => {
     // Calculate a valid hash based on the formula: salt|status|||||||||||email|firstname|productinfo|amount|txnid|key
     // Let's use test credentials. In tests, config defaults to empty strings if not configured.
     // Let's test the signature validation behavior directly.
-    const key = process.env.PAYU_MERCHANT_KEY || '';
-    const salt = process.env.PAYU_SALT || '';
+    const key = process.env.PAYU_MERCHANT_KEY ?? process.env.PAYU_KEY ?? '';
+    const salt = process.env.PAYU_MERCHANT_SALT ?? process.env.PAYU_SALT ?? '';
 
     const expectedHashSource = `${salt}|${params.status}|||||||||||${params.email}|${params.firstname}|${params.productinfo}|${params.amount}|${params.txnid}|${key}`;
     const crypto = require('crypto');
