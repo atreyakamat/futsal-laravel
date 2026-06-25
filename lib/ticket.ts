@@ -1,6 +1,7 @@
 import { getArenaById, getBookingsByRef } from '@/lib/domain';
 import { mergeSlots, getDurationText } from '@/lib/slot-merge';
 import { generateQrDataUrl } from '@/lib/qr';
+import { sendEmail, generateBookingConfirmationEmail } from '@/lib/email';
 
 export type TicketPackage = {
   bookingRef: string;
@@ -83,8 +84,20 @@ export async function sendTicketEmail(bookingRef: string) {
     return { sent: false, reason: 'No recipient email' as const };
   }
 
-  const html = await buildTicketHtml(ticket);
-  const subject = `Your FutsalGoa ticket ${bookingRef}`;
-  console.info(`[TICKET EMAIL LOG] To: ${firstBooking.customer_email}\nSubject: ${subject}\n${html}`);
-  return { sent: true, mode: 'log' as const };
+  const qrUrl = await getTicketQrUrl(ticket.ticketNumbers[0] ?? ticket.bookingRef);
+  const totalAmount = bookings.reduce((sum, b) => sum + Number(b.amount), 0);
+
+  const { subject, html, text } = generateBookingConfirmationEmail(
+    ticket.bookingRef,
+    ticket.arenaName,
+    ticket.bookingDate,
+    ticket.slots,
+    ticket.customerName,
+    totalAmount,
+    ticket.ticketNumbers,
+    qrUrl
+  );
+
+  const result = await sendEmail({ to: firstBooking.customer_email, subject, html, text });
+  return { sent: result.success, mode: 'resend' as const, error: result.error };
 }

@@ -5,10 +5,14 @@ import { storeOtp } from '@/lib/domain';
 import { GUEST_COOKIE, getCookieOptions } from '@/lib/session';
 import { canSendOtp, isLockedOut } from '@/lib/rate-limit';
 import { getSmsProvider } from '@/lib/sms';
+import { sendEmail, generateOtpEmail } from '@/lib/email';
 
 const bodySchema = z.object({
   identifier: z.string().min(3).max(100),
 });
+
+const isEmail = (identifier: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
+const isMobile = (identifier: string) => /^\+?[0-9]{10,15}$/.test(identifier.trim());
 
 export async function POST(request: Request) {
   const isJson = request.headers.get('content-type')?.includes('application/json');
@@ -34,9 +38,14 @@ export async function POST(request: Request) {
   await storeOtp(payload.identifier, otp);
   console.info(`[OTP] ${payload.identifier}: ${otp}`);
 
+  // Send email if identifier is an email
+  if (isEmail(payload.identifier)) {
+    const { subject, html, text } = generateOtpEmail(otp, payload.identifier);
+    await sendEmail({ to: payload.identifier, subject, html, text });
+  }
+
   // Trigger SMS Provider if identifier is a mobile number
-  const isMobile = /^\+?[0-9]{10,15}$/.test(payload.identifier.trim());
-  if (isMobile) {
+  if (isMobile(payload.identifier)) {
     const provider = getSmsProvider();
     try {
       await provider.sendSms(
@@ -54,5 +63,5 @@ export async function POST(request: Request) {
     return response;
   }
 
-  return NextResponse.json({ success: true, message: 'OTP generated.' });
+  return NextResponse.json({ success: true, message: 'OTP sent.' });
 }

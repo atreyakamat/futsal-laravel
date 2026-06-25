@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import ProfileMenu from './ProfileMenu';
 
 type HeaderProps = {
   userId: number | null;
@@ -95,17 +96,7 @@ export default function Header({ userId, role, arenaId }: HeaderProps) {
           </div>
 
           <div className="flex items-center gap-4">
-            <span className="hidden md:inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.03] border border-white/5 text-[10px] font-black tracking-widest uppercase text-white/60">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-              {role?.replace('_', ' ')}
-            </span>
-            <button
-              onClick={handleLogout}
-              className="btn-secondary !py-2 !px-4 !rounded-xl !text-[10px] flex items-center gap-2 hover:!border-red-500/50 hover:!text-red-500"
-            >
-              LOGOUT
-              <span className="material-symbols-outlined text-sm">logout</span>
-            </button>
+            <ProfileMenu userId={userId} role={role} arenaId={arenaId} />
           </div>
         </div>
       </header>
@@ -152,13 +143,7 @@ export default function Header({ userId, role, arenaId }: HeaderProps) {
         {/* Desktop Buttons */}
         <div className="hidden md:flex items-center gap-4">
           {userId ? (
-            <button
-              onClick={handleLogout}
-              className="btn-secondary !py-2.5 !px-5 !rounded-xl text-[10px] flex items-center gap-2 hover:!border-red-500/50 hover:!text-red-500"
-            >
-              LOGOUT
-              <span className="material-symbols-outlined text-sm">logout</span>
-            </button>
+            <ProfileMenu userId={userId} role={role} arenaId={arenaId} />
           ) : (
             <Link href="/login" className="btn-primary !py-2.5 !px-6 !rounded-xl text-[10px]">
               PLAYER LOGIN
@@ -217,16 +202,23 @@ export default function Header({ userId, role, arenaId }: HeaderProps) {
 
           <div className="pt-6 border-t border-white/5">
             {userId ? (
-              <button
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  handleLogout();
-                }}
-                className="btn-secondary w-full !py-3 !rounded-xl text-center flex items-center justify-center gap-2 hover:!border-red-500/50 hover:!text-red-500"
-              >
-                LOGOUT
-                <span className="material-symbols-outlined text-sm">logout</span>
-              </button>
+              <div className="space-y-3">
+                <div className="px-2 py-2 rounded-xl bg-white/[0.02] border border-white/5">
+                  <p className="text-xs font-black text-white/40 uppercase tracking-widest">Signed in as</p>
+                  <p className="text-sm font-black text-white capitalize">{role?.replace('_', ' ')}</p>
+                  {arenaId && <p className="text-[10px] text-white/30 uppercase tracking-widest">Arena ID: {arenaId}</p>}
+                </div>
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    handleLogout();
+                  }}
+                  className="btn-secondary w-full !py-3 !rounded-xl text-center flex items-center justify-center gap-2 hover:!border-red-500/50 hover:!text-red-500"
+                >
+                  LOGOUT
+                  <span className="material-symbols-outlined text-sm">logout</span>
+                </button>
+              </div>
             ) : (
               <Link 
                 href="/login" 

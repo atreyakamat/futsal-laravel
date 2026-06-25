@@ -4,6 +4,7 @@ import { createBookingBatch, releaseLocks } from '@/lib/domain';
 import { getCookieValueFromRequest, getWritableSessionId, persistSessionCookie, AUTH_COOKIE, signValue, readAuthUserId, getCookieOptions } from '@/lib/session';
 import { getArenaEntryMode } from '@/lib/admin';
 import { sendTicketEmail } from '@/lib/ticket';
+import { verifyCsrfMiddleware } from '@/lib/csrf-middleware';
 
 const bodySchema = z.object({
   arena_id: z.number().int().positive(),
@@ -26,6 +27,8 @@ async function readPayload(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const csrfError = await verifyCsrfMiddleware(request);
+  if (csrfError) return csrfError;
   const { isJson, raw } = await readPayload(request);
   const payloadObject = raw as Record<string, string | string[]>;
   const slots = Array.isArray(payloadObject.slots)

@@ -4,6 +4,7 @@ import type { NextRequest } from 'next/server';
 import { query, queryOne, transaction, getSetting, createBookingBatch } from '@/lib/domain';
 import { sendTicketEmail } from '@/lib/ticket';
 import { readAuthRole, getCookieValueFromRequest, unsignValue } from '@/lib/session';
+import { sendEmail, generateApprovalNotificationEmail } from '@/lib/email';
 
 export type AdminRole = 'super_admin' | 'admin' | 'arena_admin' | 'security' | 'customer';
 export type EntryMode = 'open' | 'blocked' | 'free';
@@ -702,6 +703,20 @@ export async function resolveApprovalRequest(input: {
       status: input.decision,
       approverId: input.decisionBy
     });
+
+    // Send email notification
+    const requester = await queryOne<{ email: string }>('SELECT email FROM users WHERE id = ? LIMIT 1', [request.requested_by]);
+    if (requester?.email) {
+      const arena = request.arena_id ? await queryOne<{ name: string }>('SELECT name FROM arenas WHERE id = ? LIMIT 1', [request.arena_id]) : null;
+      const arenaName = arena?.name || 'Unknown Arena';
+      const { subject, html, text } = generateApprovalNotificationEmail(
+        request.request_type,
+        arenaName,
+        input.decision,
+        input.reason ?? undefined
+      );
+      await sendEmail({ to: requester.email, subject, html, text });
+    }
   }
 
   return request;
