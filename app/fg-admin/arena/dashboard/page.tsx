@@ -1,13 +1,13 @@
 import { cookies } from 'next/headers';
 import { unsignValue } from '@/lib/session';
-import { getAdminContext } from '@/lib/admin';
+import { getAdminContext, getArenaEntryMode } from '@/lib/admin';
+import { getArenaById, query } from '@/lib/domain';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ArenaAdminDashboardPage() {
-  // Extract signed cookies
   const cookieStore = await cookies();
   const userIdSigned = cookieStore.get('fg_auth_user')?.value;
   const sessionIdSigned = cookieStore.get('fg_session_id')?.value;
@@ -20,30 +20,31 @@ export default async function ArenaAdminDashboardPage() {
   }
 
   const arenaId = context.arenaId;
+  const arena = await getArenaById(arenaId);
 
-  // Fetch dashboard data from API
-  const res = await fetch(`/api/fg-admin/arena/dashboard`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
+  const [confirmedResult, revenueResult, customersResult, pendingResult] = await Promise.all([
+    query<{ count: string }>(
+      `SELECT COUNT(*) as count FROM bookings WHERE arena_id = ? AND payment_status = 'confirmed'`,
+      [arenaId]
+    ),
+    query<{ total: string }>(
+      `SELECT COALESCE(SUM(amount), 0) as total FROM bookings WHERE arena_id = ? AND payment_status = 'confirmed'`,
+      [arenaId]
+    ),
+    query<{ count: string }>(
+      `SELECT COUNT(DISTINCT customer_mobile) as count FROM bookings WHERE arena_id = ?`,
+      [arenaId]
+    ),
+    query<{ count: string }>(
+      `SELECT COUNT(*) as count FROM approval_requests WHERE arena_id = ? AND status = 'pending'`,
+      [arenaId]
+    ),
+  ]);
 
-  const data = await res.json();
-
-  if (!data.success) {
-    // Handle error - maybe redirect to login or show error
-    console.error('Dashboard data fetch failed:', data.message);
-    // For now, we'll still render but with empty data
-  }
-
-  const {
-    arena,
-    confirmedBookings,
-    totalRevenue,
-    uniqueCustomers,
-    pendingApprovals,
-  } = data.data || {};
+  const confirmedBookings = Number(confirmedResult[0]?.count ?? 0);
+  const totalRevenue = Number(revenueResult[0]?.total ?? 0);
+  const uniqueCustomers = Number(customersResult[0]?.count ?? 0);
+  const pendingApprovals = Number(pendingResult[0]?.count ?? 0);
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-20 space-y-12">

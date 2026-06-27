@@ -1,8 +1,8 @@
 import { readAuthUserId, readAuthRole } from '@/lib/session';
-import { getAdminContext, getArenaById } from '@/lib/admin';
+import { getAdminContext, getArenaEntryMode } from '@/lib/admin';
+import { getArenaById, getArenaPricing, query } from '@/lib/domain';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,49 +17,36 @@ export default async function ArenaAdminSlotsPage() {
 
   const arenaId = context.arenaId;
   const arena = await getArenaById(arenaId);
+  const entryMode = await getArenaEntryMode(arenaId);
 
-  // Fetch slots data from API
-  const cookieStore = await cookies();
-  const slotsRes = await fetch(`/api/fg-admin/arena/slots`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
+  const [slots, timings, approvalRequests] = await Promise.all([
+    getArenaPricing(arenaId),
+    query<{ id: number; time_slot: string; start_time: string; end_time: string; day_of_week: number | null }>(
+      `SELECT id, time_slot, start_time, end_time, day_of_week
+         FROM slot_timings
+        WHERE arena_id = ?
+        ORDER BY start_time ASC`,
+      [arenaId]
+    ),
+    query<{
+      id: number;
+      request_type: string;
+      arena_id: number | null;
+      requested_by: number | null;
+      status: string;
+      notes: string | null;
+      payload_json: string | null;
+      created_at: string;
+    }>(
+      `SELECT id, request_type, arena_id, requested_by, status, notes, payload_json, created_at
+         FROM approval_requests
+        WHERE arena_id = ?
+        ORDER BY created_at DESC
+        LIMIT 50`,
+      [arenaId]
+    ),
+  ]);
 
-  const slotsData = await slotsRes.json();
-
-  if (!slotsData.success) {
-    console.error('Slots data fetch failed:', slotsData.message);
-  }
-
-  const slots = slotsData.data?.slots || [];
-  const entryMode = slotsData.data?.entryMode || 'open';
-
-  // Fetch timings from API
-  const timingsRes = await fetch(`/api/fg-admin/arena/timings`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
-
-  const timingsData = await timingsRes.json();
-  const timings = timingsData.data || [];
-
-  // Fetch approval requests from API
-  const approvalReqRes = await fetch(`/api/fg-admin/arena/approval-requests`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
-
-  const approvalReqData = await approvalReqRes.json();
-  const approvalRequests = approvalReqData.data || [];
-
-  // Filter approval requests for the template (we'll do this on the frontend for simplicity)
-  // Fetch free booking approvals from API (filter by request_type)
   const freeBookings = approvalRequests.filter((req: any) => req.request_type === 'FREE_BOOKING_REQUEST').map((fb: any) => {
     const payload = fb.payload_json ? JSON.parse(fb.payload_json) : {};
     return {

@@ -25,5 +25,5 @@ export async function GET() {
     }))
   );
 
-  return NextResponse.json({ success: true, tickets });
+  return NextResponse.json({ success: true, data: tickets });
 }

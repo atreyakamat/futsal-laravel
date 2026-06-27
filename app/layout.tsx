@@ -12,8 +12,44 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: 'FutsalGoa | Premium Turf Booking',
-  description: 'Book the best futsal turfs in Goa instantly.',
+  title: {
+    template: '%s | FutsalGoa',
+    default: 'FutsalGoa | Premium Turf Booking',
+  },
+  description: 'Book the best futsal turfs in Goa instantly. Secure your pitch with our streamlined booking engine.',
+  keywords: ['futsal', 'goa', 'turf booking', 'football', 'sports arena'],
+  authors: [{ name: 'FutsalGoa' }],
+  creator: 'FutsalGoa',
+  openGraph: {
+    title: 'FutsalGoa | Premium Turf Booking',
+    description: 'Book the best futsal turfs in Goa instantly.',
+    url: 'https://futsalgoa.com',
+    siteName: 'FutsalGoa',
+    locale: 'en_IN',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'FutsalGoa | Premium Turf Booking',
+    description: 'Book the best futsal turfs in Goa instantly.',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
+};
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
 };
 
 export default async function RootLayout({

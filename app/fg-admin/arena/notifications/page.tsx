@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation';
 import { readAuthUserId } from '@/lib/session';
-import { getAdminContext } from '@/lib/admin';
-import { cookies } from 'next/headers';
+import { getAdminContext, getNotifications, markNotificationsRead } from '@/lib/admin';
+
+export const dynamic = 'force-dynamic';
 
 export default async function ArenaNotificationsPage() {
   const userId = await readAuthUserId();
@@ -11,36 +12,10 @@ export default async function ArenaNotificationsPage() {
     return redirect('/fg-admin/login');
   }
 
-  // Fetch notifications from API
-  const cookieStore = await cookies();
-  const res = await fetch(`/api/fg-admin/arena/notifications`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
+  const notifications = await getNotifications(userId, 'arena_admin');
 
-  const data = await res.json();
-
-  if (!data.success) {
-    console.error('Notifications fetch failed:', data.message);
-    // Still render but with empty notifications
-  }
-
-  const notifications = data.data || [];
-
-  // Mark notifications as read via API
-  if (notifications.some((n: any) => !n.is_read)) {
-    const markRes = await fetch(`/api/fg-admin/arena/notifications`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!markRes.ok) {
-      console.error('Failed to mark notifications as read');
-    }
+  if (notifications.some((n) => !n.is_read)) {
+    await markNotificationsRead(userId, 'arena_admin');
   }
 
   return (
