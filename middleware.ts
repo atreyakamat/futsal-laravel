@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { unsignValue } from '@/lib/session';
 import { getClientIp, authRateLimiter, apiRateLimiter } from '@/lib/rate-limiter';
 import { getSecurityHeaders } from '@/lib/env-validate';
+import { generateCsrfToken, signCsrfToken, verifyCsrfTokenSigned, getCsrfCookieOptions } from '@/lib/csrf';
 
 const ROLE_MATRIX: Record<string, string[]> = {
   '/arena-admin': ['arena_admin'],
@@ -128,18 +129,29 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  return addSecurityHeaders(NextResponse.next());
+  // Verify or generate CSRF token
+  const csrfCookie = req.cookies.get('fg_csrf_token')?.value;
+  let response = NextResponse.next();
+  let needsCsrfCookie = true;
+
+  if (csrfCookie) {
+    if (verifyCsrfTokenSigned(csrfCookie)) {
+      needsCsrfCookie = false;
+    }
+  }
+
+  if (needsCsrfCookie) {
+    const token = generateCsrfToken();
+    const signed = signCsrfToken(token);
+    response.cookies.set('fg_csrf_token', signed, getCsrfCookieOptions());
+  }
+
+  response = addSecurityHeaders(response);
+  return response;
 }
 
 export const config = {
   matcher: [
-    '/fg-admin/:path*',
-    '/api/fg-admin/:path*',
-    '/api/auth/:path*',
-    '/api/bookings/:path*',
-    '/api/slots/:path*',
-    '/api/payment/:path*',
-    '/api/dashboard/:path*',
-    '/api/security/:path*',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

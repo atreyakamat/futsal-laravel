@@ -42,18 +42,10 @@ export async function getOrCreateCsrfToken(): Promise<string> {
     if (verified) return verified;
   }
   
-  const token = generateCsrfToken();
-  const signed = signCsrfToken(token);
-  
-  cookieStore.set(CSRF_COOKIE, signed, {
-    httpOnly: true,
-    sameSite: 'strict',
-    secure: process.env.NODE_ENV === 'production' || process.env.SECURE_COOKIES === 'true',
-    path: '/',
-    maxAge: 60 * 60 * 24,
-  });
-  
-  return token;
+  // If we reach here, middleware hasn't run yet or failed.
+  // We cannot set cookies in Server Components, so we just return a fallback.
+  // The client will get a 403 if it uses it, but middleware should always prevent this.
+  return generateCsrfToken();
 }
 
 export async function getCsrfTokenFromRequest(request: NextRequest): Promise<string | null> {
