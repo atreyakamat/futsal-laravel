@@ -1,30 +1,52 @@
-import { getSecurityBookings } from '@/lib/domain';
-import { readAuthUserId } from '@/lib/session';
-import { getAdminContext, userHasSecurityPermission } from '@/lib/admin';
-import { redirect } from 'next/navigation';
+'use client';
+import { useEffect, useState, use } from 'react';
+import { useRouter } from 'next/navigation';
 
 type Props = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export const dynamic = 'force-dynamic';
-
-export default async function SecurityVerifyPage({ searchParams }: Props) {
-  const userId = await readAuthUserId();
-  const context = await getAdminContext(userId);
-  if (!context) {
-    redirect('/fg-admin/login');
-  }
-
-  if (context.role === 'security') {
-    const canVerify = await userHasSecurityPermission(context.id, 'canVerifyTicket');
-    if (!canVerify) {
-      redirect('/fg-admin/security/scan?denied=verify');
-    }
-  }
-
-  const resolvedSearchParams = await searchParams;
+export default function SecurityVerifyPage({ searchParams }: Props) {
+  const resolvedSearchParams = use(searchParams);
   const ticketNumber = typeof resolvedSearchParams.ticket_number === 'string' ? resolvedSearchParams.ticket_number : '';
+  const router = useRouter();
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [booking, setBooking] = useState<any>(null);
+
+  useEffect(() => {
+    if (!ticketNumber) {
+      setLoading(false);
+      return;
+    }
+
+    fetch(`/api/fg-admin/security/verify/${encodeURIComponent(ticketNumber)}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data.success) {
+          setError(data.message || 'Invalid ticket');
+        } else {
+          setBooking(data.booking);
+        }
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError('Failed to verify ticket.');
+        setLoading(false);
+      });
+  }, [ticketNumber]);
+
+  if (loading) {
+    return (
+      <div className="max-w-md mx-auto mt-20 px-6 py-20 text-center text-white">
+        Loading verification...
+      </div>
+    );
+  }
 
   if (!ticketNumber) {
     return (
@@ -39,25 +61,19 @@ export default async function SecurityVerifyPage({ searchParams }: Props) {
     );
   }
 
-  const bookings = await getSecurityBookings(ticketNumber);
-
-  if (!bookings || bookings?.length === 0) {
+  if (error || !booking) {
     return (
       <div className="max-w-md mx-auto mt-20 px-6 py-20">
         <div className="glass-card text-center">
           <div className="w-20 h-20 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-8">
             <span className="material-symbols-outlined text-red-500 text-4xl">close</span>
           </div>
-          <p className="text-xl font-black uppercase italic tracking-tight text-red-400 leading-tight">Invalid ticket number.</p>
+          <p className="text-xl font-black uppercase italic tracking-tight text-red-400 leading-tight">{error || 'Invalid ticket number.'}</p>
         </div>
       </div>
     );
   }
 
-  const booking = bookings[0];
-  if (context.role === 'security' && context.arenaId && booking.arena_id !== context.arenaId) {
-    redirect('/fg-admin/security/scan?denied=arena');
-  }
   const isCheckedIn = booking.checked_in;
 
   return (
