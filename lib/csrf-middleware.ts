@@ -1,15 +1,13 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { verifyCsrfTokenSigned } from '@/lib/csrf';
-
-const CSRF_COOKIE = 'fg_csrf_token';
+import { cookies } from 'next/headers';
+import { verifyCsrfToken } from '@/lib/csrf';
 
 /**
  * Extract the CSRF token from the request.
- * Priority: x-csrf-token header → _csrf body field → cookie (double-submit pattern)
+ * Priority: x-csrf-token header → _csrf body field
  */
 async function extractCsrfToken(request: Request): Promise<string | null> {
-  const req = request as NextRequest;
   // 1. Check header (for JSON/fetch requests)
   const headerToken = request.headers.get('x-csrf-token');
   if (headerToken) return headerToken;
@@ -27,12 +25,6 @@ async function extractCsrfToken(request: Request): Promise<string | null> {
     }
   }
 
-  // 3. Fallback: read and verify the cookie itself (dev/simple flows)
-  const cookieToken = req.cookies.get(CSRF_COOKIE)?.value;
-  if (cookieToken) {
-    return verifyCsrfTokenSigned(cookieToken);
-  }
-
   return null;
 }
 
@@ -40,12 +32,7 @@ async function extractCsrfToken(request: Request): Promise<string | null> {
  * Verify CSRF: compare extracted token against the signed cookie.
  */
 async function verifyToken(request: Request, token: string | null): Promise<boolean> {
-  if (!token) return false;
-  const req = request as NextRequest;
-  const cookieToken = req.cookies.get(CSRF_COOKIE)?.value;
-  if (!cookieToken) return false;
-  const verified = verifyCsrfTokenSigned(cookieToken);
-  return verified === token;
+  return verifyCsrfToken(token);
 }
 
 export async function verifyCsrfMiddleware(request: Request): Promise<NextResponse | null> {

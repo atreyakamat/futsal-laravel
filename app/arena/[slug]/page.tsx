@@ -1,5 +1,6 @@
 import { getArenaBySlug, getArenaPricing } from '@/lib/domain';
 import BookingSystem from '@/components/BookingSystem';
+import { getOrCreateCsrfToken } from '@/lib/csrf';
 import Link from 'next/link';
 
 type Props = {
@@ -27,6 +28,7 @@ export default async function ArenaPage({ params, searchParams }: Props) {
   const safePricing = pricing || [];
   const minPrice = safePricing?.length > 0 ? Math.min(...safePricing.map(p => Number(p.price))) : 500;
   const selectedDate = typeof resolvedSearchParams.date === 'string' ? resolvedSearchParams.date : new Date().toISOString().split('T')[0];
+  const csrfToken = await getOrCreateCsrfToken();
 
   return (
     <div className="min-h-screen">
@@ -78,9 +80,8 @@ export default async function ArenaPage({ params, searchParams }: Props) {
         </div>
       </section>
 
-      {/* Main Booking UI */}
       <div className="relative z-10 -mt-8">
-        <BookingSystem arenaId={arena.id} initialDate={selectedDate} />
+        <BookingSystem arenaId={arena.id} initialDate={selectedDate} csrfToken={csrfToken} />
       </div>
     </div>
   );

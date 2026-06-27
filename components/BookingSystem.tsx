@@ -9,7 +9,7 @@ type Slot = {
   status: 'available' | 'booked' | 'locked' | 'selected';
 };
 
-export default function BookingSystem({ arenaId, initialDate }: { arenaId: number; initialDate: string }) {
+export default function BookingSystem({ arenaId, initialDate, csrfToken }: { arenaId: number; initialDate: string, csrfToken: string }) {
   // 1. All State declarations at the top
   const [date, setDate] = useState(initialDate || new Date().toISOString().split('T')[0]);
   const [slots, setSlots] = useState<Slot[]>([]);
@@ -73,14 +73,20 @@ export default function BookingSystem({ arenaId, initialDate }: { arenaId: numbe
       if (isSelected) {
         await fetch('/api/slots/unlock', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-csrf-token': csrfToken
+          },
           body: JSON.stringify({ arena_id: arenaId, date, slots: [slot.time_slot] }),
         });
         setSelectedSlots(prev => prev.filter((s) => s.time_slot !== slot.time_slot));
       } else {
         const response = await fetch('/api/slots/lock', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-csrf-token': csrfToken
+          },
           body: JSON.stringify({ arena_id: arenaId, date, slots: [slot.time_slot] }),
         });
         
@@ -108,7 +114,10 @@ export default function BookingSystem({ arenaId, initialDate }: { arenaId: numbe
     try {
       const response = await fetch('/api/slots/lock', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-csrf-token': csrfToken 
+        },
         body: JSON.stringify({ arena_id: arenaId, date, slots: slotsArr }),
       });
 
