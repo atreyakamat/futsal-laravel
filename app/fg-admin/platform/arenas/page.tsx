@@ -2,6 +2,7 @@ import { readAuthUserId } from '@/lib/session';
 import { getAdminContext, listArenas } from '@/lib/admin';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import ArenaActions from './ArenaActions';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,6 +23,9 @@ export default async function AdminArenasPage() {
     // Non-super admin without an arena assignment
     arenas = [];
   }
+
+  // Filter out deleted ones if soft-deleted
+  arenas = arenas.filter(a => a.status !== 'deleted');
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-20">
@@ -103,6 +107,10 @@ export default async function AdminArenasPage() {
                       <span className="font-black text-[10px] tracking-widest uppercase">Slots</span>
                     </div>
                   </Link>
+                  
+                  {context.role === 'super_admin' && (
+                    <ArenaActions arenaId={arena.id} status={arena.status} />
+                  )}
                 </div>
               </div>
             </div>

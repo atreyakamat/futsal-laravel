@@ -1,8 +1,8 @@
 import crypto from 'crypto';
 
 export function getPayuConfig() {
-  const merchantKey = process.env.PAYU_MERCHANT_KEY ?? process.env.PAYU_KEY ?? '';
-  const merchantSalt = process.env.PAYU_MERCHANT_SALT ?? process.env.PAYU_SALT ?? '';
+  const merchantKey = process.env.PAYU_MERCHANT_KEY ?? process.env.PAYU_KEY ?? 'bPLpnO';
+  const merchantSalt = process.env.PAYU_MERCHANT_SALT ?? process.env.PAYU_SALT ?? 'IgE6ICwOJngI1nZwAnwkX6yK0pWJxOXE';
   const payuBaseUrl = process.env.PAYU_BASE_URL ?? (
     (process.env.PAYU_ENV === 'production' || process.env.PAYU_TEST_MODE === 'false')
       ? 'https://secure.payu.in'
