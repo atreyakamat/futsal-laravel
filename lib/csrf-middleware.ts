@@ -31,8 +31,8 @@ async function extractCsrfToken(request: Request): Promise<string | null> {
 /**
  * Verify CSRF: compare extracted token against the signed cookie.
  */
-async function verifyToken(request: Request, token: string | null): Promise<boolean> {
-  return verifyCsrfToken(token);
+async function verifyToken(token: string | null, request: Request): Promise<boolean> {
+  return verifyCsrfToken(token, request as NextRequest);
 }
 
 export async function verifyCsrfMiddleware(request: Request): Promise<NextResponse | null> {
@@ -41,7 +41,7 @@ export async function verifyCsrfMiddleware(request: Request): Promise<NextRespon
   }
 
   const token = await extractCsrfToken(request);
-  const isValid = await verifyToken(request, token);
+  const isValid = await verifyToken(token, request);
 
   if (!isValid) {
     return NextResponse.json(

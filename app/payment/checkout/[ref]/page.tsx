@@ -26,7 +26,7 @@ export default async function PaymentCheckoutPage({ params }: Props) {
     amount: totalAmount.toFixed(2),
     productinfo: `Futsal Arena Booking: ${bookingRef}`,
     firstname: firstBooking.customer_name,
-    email: firstBooking.customer_email || 'no-email@futsalgoa.com',
+    email: firstBooking.customer_email || 'test@example.com',
     phone: firstBooking.customer_mobile,
     surl: `${origin}/api/payment/callback`,
     furl: `${origin}/api/payment/callback`,
@@ -54,6 +54,11 @@ export default async function PaymentCheckoutPage({ params }: Props) {
         <input type="hidden" name="email" value={payuParams.email} />
         <input type="hidden" name="phone" value={payuParams.phone} />
         <input type="hidden" name="productinfo" value={payuParams.productinfo} />
+        <input type="hidden" name="udf1" value="" />
+        <input type="hidden" name="udf2" value="" />
+        <input type="hidden" name="udf3" value="" />
+        <input type="hidden" name="udf4" value="" />
+        <input type="hidden" name="udf5" value="" />
         <input type="hidden" name="surl" value={payuParams.surl} />
         <input type="hidden" name="furl" value={payuParams.furl} />
         <input type="hidden" name="service_provider" value="payu_paisa" />

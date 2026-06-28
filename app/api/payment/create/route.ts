@@ -34,7 +34,7 @@ export async function POST(request: Request) {
       amount: totalAmount.toFixed(2),
       productinfo: `Futsal Arena Booking: ${payload.booking_ref}`,
       firstname: firstBooking.customer_name,
-      email: firstBooking.customer_email || 'no-email@futsalgoa.com',
+      email: firstBooking.customer_email || 'test@example.com',
       phone: firstBooking.customer_mobile,
       surl: `${origin}/api/payment/callback`,
       furl: `${origin}/api/payment/callback`,

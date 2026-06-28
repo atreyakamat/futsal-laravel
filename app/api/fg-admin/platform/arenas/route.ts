@@ -23,15 +23,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
   }
 
-  await query(
+  const result = await query<{ id: number }>(
     `INSERT INTO arenas (name, slug, address, status, created_at, updated_at)
-     VALUES (?, ?, ?, ?, NOW(), NOW())`,
+     VALUES (?, ?, ?, ?, NOW(), NOW()) RETURNING id`,
     [payload.name, payload.slug, payload.address ?? null, payload.status]
   );
+  
+  const newArenaId = result && result.length > 0 ? result[0].id : null;
 
   await createAdminAuditLog({
     action: 'arena_created',
     approvedBy: context.id,
+    arenaId: newArenaId,
     newValue: payload,
   });
 
@@ -39,5 +42,5 @@ export async function POST(request: Request) {
     return NextResponse.redirect(new URL('/fg-admin/platform/arenas?created=1', request.url));
   }
 
-  return NextResponse.json({ success: true, message: 'Arena created successfully' });
+  return NextResponse.json({ success: true, message: 'Arena created successfully', arena_id: newArenaId });
 }

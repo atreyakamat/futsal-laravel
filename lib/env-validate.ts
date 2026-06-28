@@ -111,8 +111,8 @@ export function getSecurityHeaders() {
       "img-src 'self' data: https: blob:",
       "connect-src 'self' https://api.resend.com https://sentry.io https://*.payu.in",
       "frame-src https://www.google.com https://test.payu.in https://secure.payu.in",
+      "form-action 'self' https://test.payu.in https://secure.payu.in",
       "base-uri 'self'",
-      "form-action 'self'",
     ].join('; '),
   };
 }

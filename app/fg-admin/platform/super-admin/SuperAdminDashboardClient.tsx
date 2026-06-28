@@ -56,23 +56,31 @@ export default function SuperAdminDashboardClient() {
   const [activeTab, setActiveTab] = useState('overview');
   const [approvals, setApprovals] = useState<any[]>([]);
   const [approvalsLoading, setApprovalsLoading] = useState(false);
+  const [stats, setStats] = useState<any>(null);
   const router = useRouter();
 
   // Form states
   const [showArenaForm, setShowArenaForm] = useState(false);
+  const [editingArenaId, setEditingArenaId] = useState<number | null>(null);
   const [arenaName, setArenaName] = useState('');
   const [arenaSlug, setArenaSlug] = useState('');
   const [arenaAddress, setArenaAddress] = useState('');
+  const [arenaCoverImage, setArenaCoverImage] = useState('');
+  const [arenaLogoUrl, setArenaLogoUrl] = useState('');
   
   const [showAdminForm, setShowAdminForm] = useState(false);
+  const [editingAdminId, setEditingAdminId] = useState<number | null>(null);
   const [selectedArenaId, setSelectedArenaId] = useState<number | null>(null);
   const [adminName, setAdminName] = useState('');
   const [adminEmail, setAdminEmail] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
   
   const [showSecurityForm, setShowSecurityForm] = useState(false);
+  const [editingSecurityId, setEditingSecurityId] = useState<number | null>(null);
   const [securityName, setSecurityName] = useState('');
   const [securityEmail, setSecurityEmail] = useState('');
   const [securityPhone, setSecurityPhone] = useState('');
+  const [securityPassword, setSecurityPassword] = useState('');
 
   const [arenaAdmins, setArenaAdmins] = useState<AdminUser[]>([]);
   const [securityStaff, setSecurityStaff] = useState<SecurityStaff[]>([]);
@@ -112,6 +120,32 @@ export default function SuperAdminDashboardClient() {
     }
   }, [activeTab, fetchApprovals]);
 
+  const handleRemoveAdmin = async (id: number) => {
+    if (!selectedArenaId) return;
+    if (!confirm('Are you sure you want to remove this admin?')) return;
+    try {
+      const res = await fetch(`/api/fg-admin/super-admin/admins/${id}?arena_id=${selectedArenaId}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) fetchArenaDetails(selectedArenaId);
+    } catch (err) {
+      console.error('Failed to remove admin:', err);
+    }
+  };
+
+  const handleRemoveSecurity = async (id: number) => {
+    if (!selectedArenaId) return;
+    if (!confirm('Are you sure you want to remove this security staff?')) return;
+    try {
+      const res = await fetch(`/api/fg-admin/super-admin/security/${id}?arena_id=${selectedArenaId}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) fetchArenaDetails(selectedArenaId);
+    } catch (err) {
+      console.error('Failed to remove security:', err);
+    }
+  };
+
   const handleResolveRequest = async (id: number, decision: 'approved' | 'rejected') => {
     try {
       const res = await fetch(`/api/fg-admin/platform/approvals/${id}`, {
@@ -146,6 +180,12 @@ export default function SuperAdminDashboardClient() {
       if (arenasRes.ok) {
         const arenasData = await arenasRes.json();
         setArenas(arenasData.data || []);
+      }
+
+      const statsRes = await fetch('/api/fg-admin/super-admin/stats');
+      if (statsRes.ok) {
+        const statsData = await statsRes.json();
+        setStats(statsData.data || null);
       }
     } catch (err) {
       setError('Failed to load dashboard data');
@@ -194,96 +234,175 @@ export default function SuperAdminDashboardClient() {
     setSuccess('');
     
     try {
-      const res = await fetch('/api/fg-admin/super-admin/arenas', {
-        method: 'POST',
+      const url = editingArenaId 
+        ? `/api/fg-admin/super-admin/arenas/${editingArenaId}`
+        : '/api/fg-admin/super-admin/arenas';
+      const method = editingArenaId ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: arenaName,
           slug: arenaSlug,
-          address: arenaAddress
+          address: arenaAddress,
+          cover_image: arenaCoverImage,
+          logo_url: arenaLogoUrl
         })
       });
       
       const data = await res.json();
       if (data.success) {
-        setSuccess('Arena created successfully!');
+        setSuccess(`Arena ${editingArenaId ? 'updated' : 'created'} successfully!`);
         setArenaName('');
         setArenaSlug('');
         setArenaAddress('');
+        setArenaCoverImage('');
+        setArenaLogoUrl('');
+        setEditingArenaId(null);
         setShowArenaForm(false);
         fetchInitialData();
       } else {
         setError(data.message);
       }
     } catch (err) {
-      setError('Failed to create arena');
+      setError(`Failed to ${editingArenaId ? 'update' : 'create'} arena`);
     }
+  };
+
+  const openArenaForm = (arena?: Arena) => {
+    if (arena) {
+      setEditingArenaId(arena.id);
+      setArenaName(arena.name);
+      setArenaSlug(arena.slug);
+      setArenaAddress(arena.address || '');
+      setArenaCoverImage((arena as any).cover_image || '');
+      setArenaLogoUrl((arena as any).logo_url || '');
+    } else {
+      setEditingArenaId(null);
+      setArenaName('');
+      setArenaSlug('');
+      setArenaAddress('');
+      setArenaCoverImage('');
+      setArenaLogoUrl('');
+    }
+    setShowArenaForm(true);
+  };
+
+  const openAdminForm = (admin?: AdminUser) => {
+    if (admin) {
+      setEditingAdminId(admin.id);
+      setAdminName(admin.first_name + ' ' + (admin.last_name || ''));
+      setAdminEmail(admin.email);
+      setAdminPassword('');
+    } else {
+      setEditingAdminId(null);
+      setAdminName('');
+      setAdminEmail('');
+      setAdminPassword('');
+    }
+    setShowAdminForm(true);
   };
 
   const handleCreateAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedArenaId) return;
+    if (!selectedArenaId && !editingAdminId) return;
     setError('');
     setSuccess('');
 
     try {
-      const res = await fetch('/api/fg-admin/super-admin/admins', {
-        method: 'POST',
+      const url = editingAdminId 
+        ? `/api/fg-admin/super-admin/admins/${editingAdminId}` 
+        : '/api/fg-admin/super-admin/admins';
+      const method = editingAdminId ? 'PUT' : 'POST';
+      const bodyPayload: any = { name: adminName, email: adminEmail };
+      if (!editingAdminId) bodyPayload.arena_id = selectedArenaId;
+      if (adminPassword) bodyPayload.password = adminPassword;
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          arena_id: selectedArenaId,
-          name: adminName,
-          email: adminEmail
-        })
+        body: JSON.stringify(bodyPayload)
       });
       
       const data = await res.json();
       if (data.success) {
-        setSuccess(`Admin created! Temporary password: ${data.data.credentials.tempPassword}`);
+        if (editingAdminId) {
+          setSuccess('Admin updated successfully!');
+        } else {
+          setSuccess(`Admin created! Temporary password: ${data.data.credentials.tempPassword}`);
+        }
         setAdminName('');
         setAdminEmail('');
+        setAdminPassword('');
+        setEditingAdminId(null);
         setShowAdminForm(false);
-        fetchArenaDetails(selectedArenaId);
+        if (selectedArenaId) fetchArenaDetails(selectedArenaId);
       } else {
         setError(data.message);
       }
     } catch (err) {
-      setError('Failed to create admin');
+      setError(`Failed to ${editingAdminId ? 'update' : 'create'} admin`);
     }
+  };
+
+  const openSecurityForm = (security?: SecurityStaff) => {
+    if (security) {
+      setEditingSecurityId(security.id);
+      setSecurityName(security.first_name + ' ' + (security.last_name || ''));
+      setSecurityEmail(security.email);
+      setSecurityPhone(security.phone || '');
+      setSecurityPassword('');
+    } else {
+      setEditingSecurityId(null);
+      setSecurityName('');
+      setSecurityEmail('');
+      setSecurityPhone('');
+      setSecurityPassword('');
+    }
+    setShowSecurityForm(true);
   };
 
   const handleCreateSecurity = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedArenaId) return;
+    if (!selectedArenaId && !editingSecurityId) return;
     setError('');
     setSuccess('');
 
     try {
-      const res = await fetch('/api/fg-admin/super-admin/security', {
-        method: 'POST',
+      const url = editingSecurityId 
+        ? `/api/fg-admin/super-admin/admins/${editingSecurityId}` 
+        : '/api/fg-admin/super-admin/security';
+      const method = editingSecurityId ? 'PUT' : 'POST';
+      const bodyPayload: any = { name: securityName, email: securityEmail, phone: securityPhone };
+      if (!editingSecurityId) bodyPayload.arena_id = selectedArenaId;
+      if (securityPassword) bodyPayload.password = securityPassword;
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          arena_id: selectedArenaId,
-          name: securityName,
-          email: securityEmail,
-          phone: securityPhone,
-          permissions: ['verify_ticket', 'confirm_entry']
-        })
+        body: JSON.stringify(bodyPayload)
       });
       
       const data = await res.json();
       if (data.success) {
-        setSuccess(`Security staff created! Temporary password: ${data.data.credentials.tempPassword}`);
+        if (editingSecurityId) {
+          setSuccess('Security staff updated successfully!');
+        } else {
+          setSuccess(`Security staff created! Temporary password: ${data.data.credentials.tempPassword}`);
+        }
         setSecurityName('');
         setSecurityEmail('');
         setSecurityPhone('');
+        setSecurityPassword('');
+        setEditingSecurityId(null);
         setShowSecurityForm(false);
-        fetchArenaDetails(selectedArenaId);
+        if (selectedArenaId) fetchArenaDetails(selectedArenaId);
       } else {
         setError(data.message);
       }
     } catch (err) {
-      setError('Failed to create security staff');
+      setError(`Failed to ${editingSecurityId ? 'update' : 'create'} security staff`);
     }
   };
 
@@ -486,20 +605,113 @@ export default function SuperAdminDashboardClient() {
                   </p>
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="glass-card">
-                  <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-2">Total Arenas</p>
-                  <p className="text-4xl font-black italic text-white">{safeArenas?.length}</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="glass-card relative overflow-hidden group">
+                  <div className="absolute inset-0 bg-primary/5 group-hover:bg-primary/10 transition-colors" />
+                  <div className="relative">
+                    <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-2 flex items-center justify-between">
+                      Total Bookings
+                      <span className="material-symbols-outlined text-primary text-sm">calendar_month</span>
+                    </p>
+                    <p className="text-4xl font-black italic text-white">{stats?.totalBookings || 0}</p>
+                    <p className="text-[10px] text-green-400 font-bold uppercase tracking-widest mt-2 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[10px]">trending_up</span> Overall Success
+                    </p>
+                  </div>
                 </div>
-                <div className="glass-card">
-                  <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-2">Account Email</p>
-                  <p className="text-sm font-bold truncate">{settings.email}</p>
+
+                <div className="glass-card relative overflow-hidden group">
+                  <div className="absolute inset-0 bg-green-500/5 group-hover:bg-green-500/10 transition-colors" />
+                  <div className="relative">
+                    <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-2 flex items-center justify-between">
+                      Total Revenue
+                      <span className="material-symbols-outlined text-green-400 text-sm">payments</span>
+                    </p>
+                    <p className="text-4xl font-black italic text-white flex items-baseline gap-1">
+                      <span className="text-2xl text-green-400">₹</span>
+                      {(stats?.totalRevenue || 0).toLocaleString()}
+                    </p>
+                    <p className="text-[10px] text-green-400 font-bold uppercase tracking-widest mt-2">
+                      Gross Collected
+                    </p>
+                  </div>
                 </div>
+
+                <div className="glass-card relative overflow-hidden group">
+                  <div className="absolute inset-0 bg-blue-500/5 group-hover:bg-blue-500/10 transition-colors" />
+                  <div className="relative">
+                    <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-2 flex items-center justify-between">
+                      Unique Customers
+                      <span className="material-symbols-outlined text-blue-400 text-sm">group</span>
+                    </p>
+                    <p className="text-4xl font-black italic text-white">{stats?.totalCustomers || 0}</p>
+                    <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest mt-2">
+                      Verified Contacts
+                    </p>
+                  </div>
+                </div>
+
+                <div className="glass-card relative overflow-hidden group">
+                  <div className="absolute inset-0 bg-purple-500/5 group-hover:bg-purple-500/10 transition-colors" />
+                  <div className="relative">
+                    <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-2 flex items-center justify-between">
+                      Platform Arenas
+                      <span className="material-symbols-outlined text-purple-400 text-sm">stadium</span>
+                    </p>
+                    <p className="text-4xl font-black italic text-white">{safeArenas?.length || 0}</p>
+                    <p className="text-[10px] text-purple-400 font-bold uppercase tracking-widest mt-2 flex gap-2">
+                      <span>{stats?.totalAdmins || 0} Admins</span>
+                      <span>•</span>
+                      <span>{stats?.totalSecurity || 0} Security</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+                <div className="glass-card col-span-1 md:col-span-2">
+                  <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-gray-500 mb-4">Platform Growth (Illustrative)</h3>
+                  <div className="h-48 flex items-end justify-between gap-2 px-2">
+                    {[30, 45, 25, 60, 75, 40, 85].map((h, i) => (
+                      <div key={i} className="w-full bg-primary/20 hover:bg-primary/50 transition-colors rounded-t-sm relative group" style={{ height: `${h}%` }}>
+                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-bold text-white bg-black/80 px-2 py-1 rounded">
+                          +{h}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex justify-between mt-2 px-2 text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+                    <span>Mon</span>
+                    <span>Tue</span>
+                    <span>Wed</span>
+                    <span>Thu</span>
+                    <span>Fri</span>
+                    <span>Sat</span>
+                    <span>Sun</span>
+                  </div>
+                </div>
+
                 <div className="glass-card">
-                  <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-2">System Status</p>
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                    <p className="text-sm font-bold text-green-400 uppercase tracking-widest">Operational</p>
+                  <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-gray-500 mb-4">System Status</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-bold uppercase tracking-widest text-white">Payment Gateway</p>
+                      <span className="px-2 py-1 bg-green-500/20 text-green-400 text-[10px] font-black uppercase rounded-full flex items-center gap-1">
+                        <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                        Online
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-bold uppercase tracking-widest text-white">Database</p>
+                      <span className="px-2 py-1 bg-green-500/20 text-green-400 text-[10px] font-black uppercase rounded-full flex items-center gap-1">
+                        <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                        Online
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-bold uppercase tracking-widest text-white">Account Email</p>
+                      <p className="text-[10px] font-bold text-gray-400 truncate max-w-[120px]">{settings.email}</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -531,7 +743,7 @@ export default function SuperAdminDashboardClient() {
               <div className="flex items-center justify-between">
                 <h2 className="text-3xl font-bold italic tracking-tighter uppercase">Arena & <span className="text-primary">Staff Management</span></h2>
                 <button
-                  onClick={() => setShowArenaForm(true)}
+                  onClick={() => openArenaForm()}
                   className="btn-primary text-xs"
                 >
                   <span className="material-symbols-outlined text-sm">add</span>
@@ -542,8 +754,8 @@ export default function SuperAdminDashboardClient() {
               {/* Arena Creation Modal/Form */}
               {showArenaForm && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                  <div className="glass-card w-full max-w-md">
-                    <h3 className="text-xl font-black italic uppercase mb-6">Create New <span className="text-primary">Arena</span></h3>
+                  <div className="glass-card w-full max-w-md max-h-[90vh] overflow-y-auto">
+                    <h3 className="text-xl font-black italic uppercase mb-6">{editingArenaId ? 'Edit' : 'Create New'} <span className="text-primary">Arena</span></h3>
                     <form onSubmit={handleCreateArena} className="space-y-4">
                       <div>
                         <label className="label-classic">Arena Name</label>
@@ -574,8 +786,26 @@ export default function SuperAdminDashboardClient() {
                           placeholder="Full address"
                         />
                       </div>
+                      <div>
+                        <label className="label-classic">Cover Image URL</label>
+                        <input 
+                          className="input-field" 
+                          value={arenaCoverImage} 
+                          onChange={e => setArenaCoverImage(e.target.value)}
+                          placeholder="https://example.com/cover.jpg"
+                        />
+                      </div>
+                      <div>
+                        <label className="label-classic">Logo URL</label>
+                        <input 
+                          className="input-field" 
+                          value={arenaLogoUrl} 
+                          onChange={e => setArenaLogoUrl(e.target.value)}
+                          placeholder="https://example.com/logo.png"
+                        />
+                      </div>
                       <div className="flex gap-4 pt-4">
-                        <button type="submit" className="btn-primary flex-1">CREATE</button>
+                        <button type="submit" className="btn-primary flex-1">{editingArenaId ? 'UPDATE' : 'CREATE'}</button>
                         <button type="button" onClick={() => setShowArenaForm(false)} className="btn-secondary flex-1">CANCEL</button>
                       </div>
                     </form>
@@ -589,16 +819,26 @@ export default function SuperAdminDashboardClient() {
                   <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500 mb-4">Select Arena</h3>
                   <div className="max-h-[600px] overflow-y-auto pr-2 space-y-3 custom-scrollbar">
                     {safeArenas.map((arena) => (
-                      <button
+                      <div
                         key={arena.id}
                         onClick={() => setSelectedArenaId(arena.id)}
-                        className={`w-full glass-card !p-4 text-left transition-all ${
+                        className={`w-full glass-card !p-4 transition-all flex flex-col cursor-pointer ${
                           selectedArenaId === arena.id ? 'border-primary bg-primary/5' : 'hover:border-white/20'
                         }`}
                       >
-                        <h4 className="font-bold uppercase italic tracking-tight">{arena.name}</h4>
-                        <p className="text-[10px] text-gray-500 font-bold tracking-widest">{arena.slug}</p>
-                      </button>
+                        <div className="flex justify-between items-start w-full">
+                          <div className="text-left">
+                            <h4 className="font-bold uppercase italic tracking-tight">{arena.name}</h4>
+                            <p className="text-[10px] text-gray-500 font-bold tracking-widest">{arena.slug}</p>
+                          </div>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); openArenaForm(arena); }}
+                            className="w-6 h-6 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-[14px]">edit</span>
+                          </button>
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -615,14 +855,15 @@ export default function SuperAdminDashboardClient() {
                       <section className="space-y-6">
                         <div className="flex items-center justify-between border-b border-white/10 pb-4">
                           <h3 className="text-lg font-black italic uppercase tracking-tight">Arena <span className="text-primary">Admins</span></h3>
-                          <button onClick={() => setShowAdminForm(true)} className="text-xs font-bold uppercase tracking-widest text-primary hover:text-white transition-colors">
+                          <button onClick={() => openAdminForm()} className="text-xs font-bold uppercase tracking-widest text-primary hover:text-white transition-colors">
                             + ADD ADMIN
                           </button>
                         </div>
 
                         {showAdminForm && (
                           <div className="glass-card !bg-white/5 border-primary/30">
-                            <form onSubmit={handleCreateAdmin} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <h4 className="text-sm font-bold uppercase mb-4">{editingAdminId ? 'Edit Admin' : 'New Admin'}</h4>
+                            <form onSubmit={handleCreateAdmin} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <input 
                                 className="input-field" 
                                 value={adminName} 
@@ -638,8 +879,15 @@ export default function SuperAdminDashboardClient() {
                                 placeholder="Email Address"
                                 required
                               />
+                              <input 
+                                className="input-field" 
+                                type="password"
+                                value={adminPassword} 
+                                onChange={e => setAdminPassword(e.target.value)}
+                                placeholder={editingAdminId ? "New Password (optional)" : "Password (auto-generated if empty)"}
+                              />
                               <div className="flex gap-2">
-                                <button type="submit" className="btn-primary flex-1 !py-0">ADD</button>
+                                <button type="submit" className="btn-primary flex-1 !py-0">{editingAdminId ? 'UPDATE' : 'ADD'}</button>
                                 <button type="button" onClick={() => setShowAdminForm(false)} className="btn-secondary !py-0">X</button>
                               </div>
                             </form>
@@ -648,14 +896,28 @@ export default function SuperAdminDashboardClient() {
 
                         <div className="grid gap-3">
                           {safeAdmins.map(admin => (
-                            <div key={admin.id} className="glass-card !p-4 flex items-center justify-between">
+                            <div key={admin.id} className="glass-card !p-4 flex items-center justify-between group hover:border-white/20 transition-all">
                               <div>
                                 <p className="font-bold uppercase italic tracking-tight">{admin.first_name} {admin.last_name}</p>
                                 <p className="text-[10px] text-gray-500 font-bold tracking-widest uppercase">{admin.email}</p>
                               </div>
-                              <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${admin.is_active ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
-                                {admin.is_active ? 'Active' : 'Inactive'}
-                              </span>
+                              <div className="flex items-center gap-4">
+                                <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${admin.is_active ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                                  {admin.is_active ? 'Active' : 'Inactive'}
+                                </span>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); openAdminForm(admin); }}
+                                  className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-primary/20 hover:text-primary transition-colors opacity-0 group-hover:opacity-100"
+                                >
+                                  <span className="material-symbols-outlined text-[14px]">edit</span>
+                                </button>
+                                <button
+                                  onClick={() => handleRemoveAdmin(admin.id)}
+                                  className="w-8 h-8 flex items-center justify-center rounded-full bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors opacity-0 group-hover:opacity-100"
+                                >
+                                  <span className="material-symbols-outlined text-[14px]">delete</span>
+                                </button>
+                              </div>
                             </div>
                           ))}
                           {safeAdmins?.length === 0 && (
@@ -668,14 +930,15 @@ export default function SuperAdminDashboardClient() {
                       <section className="space-y-6">
                         <div className="flex items-center justify-between border-b border-white/10 pb-4">
                           <h3 className="text-lg font-black italic uppercase tracking-tight">Security <span className="text-primary">Staff</span></h3>
-                          <button onClick={() => setShowSecurityForm(true)} className="text-xs font-bold uppercase tracking-widest text-primary hover:text-white transition-colors">
+                          <button onClick={() => openSecurityForm()} className="text-xs font-bold uppercase tracking-widest text-primary hover:text-white transition-colors">
                             + ADD SECURITY
                           </button>
                         </div>
 
                         {showSecurityForm && (
                           <div className="glass-card !bg-white/5 border-primary/30">
-                            <form onSubmit={handleCreateSecurity} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <h4 className="text-sm font-bold uppercase mb-4">{editingSecurityId ? 'Edit Security' : 'New Security'}</h4>
+                            <form onSubmit={handleCreateSecurity} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <input 
                                 className="input-field" 
                                 value={securityName} 
@@ -688,17 +951,25 @@ export default function SuperAdminDashboardClient() {
                                 type="email"
                                 value={securityEmail} 
                                 onChange={e => setSecurityEmail(e.target.value)}
-                                placeholder="Email"
+                                placeholder="Email Address"
                                 required
                               />
                               <input 
                                 className="input-field" 
+                                type="tel"
                                 value={securityPhone} 
                                 onChange={e => setSecurityPhone(e.target.value)}
-                                placeholder="Phone"
+                                placeholder="Phone Number"
                               />
-                              <div className="flex gap-2">
-                                <button type="submit" className="btn-primary flex-1 !py-0">ADD</button>
+                              <input 
+                                className="input-field" 
+                                type="password"
+                                value={securityPassword} 
+                                onChange={e => setSecurityPassword(e.target.value)}
+                                placeholder={editingSecurityId ? "New Password (optional)" : "Password (auto-generated if empty)"}
+                              />
+                              <div className="flex gap-2 md:col-span-2">
+                                <button type="submit" className="btn-primary flex-1 !py-0">{editingSecurityId ? 'UPDATE' : 'ADD'}</button>
                                 <button type="button" onClick={() => setShowSecurityForm(false)} className="btn-secondary !py-0">X</button>
                               </div>
                             </form>
@@ -707,17 +978,31 @@ export default function SuperAdminDashboardClient() {
 
                         <div className="grid gap-3">
                           {safeSecurity.map(staff => (
-                            <div key={staff.id} className="glass-card !p-4 flex items-center justify-between">
+                            <div key={staff.id} className="glass-card !p-4 flex items-center justify-between group hover:border-white/20 transition-all">
                               <div>
                                 <p className="font-bold uppercase italic tracking-tight">{staff.first_name} {staff.last_name}</p>
-                                <div className="flex gap-4">
+                                <div className="flex gap-3">
                                   <p className="text-[10px] text-gray-500 font-bold tracking-widest uppercase">{staff.email}</p>
                                   {staff.phone && <p className="text-[10px] text-gray-500 font-bold tracking-widest uppercase">{staff.phone}</p>}
                                 </div>
                               </div>
-                              <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${staff.is_active ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
-                                {staff.is_active ? 'Active' : 'Inactive'}
-                              </span>
+                              <div className="flex items-center gap-4">
+                                <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${staff.is_active ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                                  {staff.is_active ? 'Active' : 'Inactive'}
+                                </span>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); openSecurityForm(staff); }}
+                                  className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-primary/20 hover:text-primary transition-colors opacity-0 group-hover:opacity-100"
+                                >
+                                  <span className="material-symbols-outlined text-[14px]">edit</span>
+                                </button>
+                                <button
+                                  onClick={() => handleRemoveSecurity(staff.id)}
+                                  className="w-8 h-8 flex items-center justify-center rounded-full bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors opacity-0 group-hover:opacity-100"
+                                >
+                                  <span className="material-symbols-outlined text-[14px]">delete</span>
+                                </button>
+                              </div>
                             </div>
                           ))}
                           {safeSecurity?.length === 0 && (

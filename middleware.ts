@@ -88,10 +88,27 @@ export async function middleware(req: NextRequest) {
     }
   }
 
+  // Verify or generate CSRF token
+  const csrfCookie = req.cookies.get('fg_csrf_token')?.value;
+  let response = NextResponse.next();
+  let needsCsrfCookie = true;
+
+  if (csrfCookie) {
+    if (verifyCsrfTokenSigned(csrfCookie)) {
+      needsCsrfCookie = false;
+    }
+  }
+
+  if (needsCsrfCookie) {
+    const token = generateCsrfToken();
+    const signed = signCsrfToken(token);
+    response.cookies.set('fg_csrf_token', signed, getCsrfCookieOptions());
+  }
+
   // Check if path requires protection
   const requiresProtection = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
   if (!requiresProtection) {
-    return addSecurityHeaders(NextResponse.next());
+    return addSecurityHeaders(response);
   }
 
   // Read and verify cookies
@@ -127,23 +144,6 @@ export async function middleware(req: NextRequest) {
       if (isApiRoute) return jsonError('Forbidden: arena assignment required', 403);
       return NextResponse.redirect(new URL('/fg-admin/login', req.url));
     }
-  }
-
-  // Verify or generate CSRF token
-  const csrfCookie = req.cookies.get('fg_csrf_token')?.value;
-  let response = NextResponse.next();
-  let needsCsrfCookie = true;
-
-  if (csrfCookie) {
-    if (verifyCsrfTokenSigned(csrfCookie)) {
-      needsCsrfCookie = false;
-    }
-  }
-
-  if (needsCsrfCookie) {
-    const token = generateCsrfToken();
-    const signed = signCsrfToken(token);
-    response.cookies.set('fg_csrf_token', signed, getCsrfCookieOptions());
   }
 
   response = addSecurityHeaders(response);

@@ -61,13 +61,16 @@ export async function getCsrfTokenFromRequest(request: NextRequest): Promise<str
   return null;
 }
 
-export async function verifyCsrfToken(token: string | null): Promise<boolean> {
+export async function verifyCsrfToken(token: string | null, request?: NextRequest): Promise<boolean> {
   if (!token) return false;
-  
-  const cookieStore = await cookies();
-  const cookieToken = cookieStore.get(CSRF_COOKIE)?.value;
+
+  // Accept either request object (from middleware/client) or cookie store (server component)
+  const cookieToken = request
+    ? request.cookies.get(CSRF_COOKIE)?.value
+    : (await cookies()).get(CSRF_COOKIE)?.value;
+
   if (!cookieToken) return false;
-  
+
   const verified = verifyCsrfTokenSigned(cookieToken);
   return verified === token;
 }

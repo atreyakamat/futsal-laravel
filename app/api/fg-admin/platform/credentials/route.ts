@@ -43,7 +43,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: 'Current password is incorrect.' }, { status: 400 });
     }
 
-    await updateUserPassword(context.id, payload.new_password);
+    if (context.role === 'super_admin') {
+      await updateUserPassword(context.id, payload.new_password);
+    } else {
+      // Create approval request for Arena Admins and Security
+      if (!context.arenaId) {
+        return NextResponse.json({ success: false, message: 'Arena assignment missing' }, { status: 400 });
+      }
+      
+      const { createApprovalRequest } = await import('@/lib/admin');
+      
+      await createApprovalRequest({
+        arenaId: context.arenaId,
+        requestedBy: context.id,
+        requestType: 'password_change',
+        payload: {
+          userId: context.id,
+          role: context.role,
+          newPassword: payload.new_password,
+        },
+        notes: `Password change request for ${context.role} - ${context.name}`,
+      });
+    }
   }
 
   if (payload.security_passcode) {

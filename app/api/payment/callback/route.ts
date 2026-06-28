@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { confirmPayment, markPaymentFailed, getBookingsByRef, query } from '@/lib/domain';
-import { verifyPayuResponseHash } from '@/lib/payment';
+import { verifyPayuResponseHash, verifyPaymentWithPayu } from '@/lib/payment';
 import { sendTicketEmail } from '@/lib/ticket';
 
 export async function POST(request: Request) {
@@ -62,6 +62,13 @@ export async function POST(request: Request) {
     }
 
     if (status === 'success') {
+      // Double check status using the postservice API as requested
+      const verificationDetails = await verifyPaymentWithPayu(bookingRef);
+      if (!verificationDetails || verificationDetails.status !== 'success') {
+        console.error('PayU postservice verification failed or returned non-success for txnid:', bookingRef);
+        return NextResponse.json({ success: false, message: 'Payment verification failed at gateway.' }, { status: 400 });
+      }
+
       const booking = await confirmPayment(bookingRef, mihpayid || null);
       if (!booking) {
         return NextResponse.json({ success: false, message: 'Booking not found.' }, { status: 404 });

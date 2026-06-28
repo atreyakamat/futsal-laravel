@@ -456,19 +456,26 @@ export async function createAdminAuditLog(input: {
   newValue?: unknown;
   reason?: string | null;
 }) {
+  const superAdminId = input.approvedBy || input.requestedBy || 1;
+  const changes = {
+    requestedBy: input.requestedBy,
+    approvedBy: input.approvedBy,
+    fieldChanged: input.fieldChanged,
+    oldValue: input.oldValue,
+    newValue: input.newValue,
+    reason: input.reason
+  };
+
   await query(
     `INSERT INTO system_audit_logs (
-       action, requested_by, approved_by, arena_id, field_changed, old_value, new_value, reason, created_at
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+       super_admin_id, action, entity_type, entity_id, changes, created_at
+     ) VALUES (?, ?, ?, ?, ?, NOW())`,
     [
+      superAdminId,
       input.action,
-      input.requestedBy ?? null,
-      input.approvedBy ?? null,
-      input.arenaId ?? null,
-      input.fieldChanged ?? null,
-      input.oldValue != null ? JSON.stringify(input.oldValue) : null,
-      input.newValue != null ? JSON.stringify(input.newValue) : null,
-      input.reason ?? null,
+      input.arenaId ? 'arena' : 'system',
+      input.arenaId || null,
+      JSON.stringify(changes)
     ]
   );
 }
@@ -632,6 +639,36 @@ export async function resolveApprovalRequest(input: {
         newValue: payload,
         reason: input.reason
       });
+    }
+
+    if (request.request_type === 'password_change') {
+      const passwordPayload = payload as { userId: number; role: string; newPasswordHash?: string; newPassword?: string };
+      if (passwordPayload.userId && (passwordPayload.newPasswordHash || passwordPayload.newPassword)) {
+        let finalHash = passwordPayload.newPasswordHash;
+        if (!finalHash && passwordPayload.newPassword) {
+          finalHash = await bcrypt.hash(passwordPayload.newPassword, 12);
+        }
+        if (finalHash) {
+          // Update in users table
+          await query('UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?', [finalHash, passwordPayload.userId]);
+          // Also update legacy tables if needed
+          if (passwordPayload.role === 'arena_admin') {
+            await query('UPDATE arena_admins SET password_hash = ?, updated_at = NOW() WHERE id = ?', [finalHash, passwordPayload.userId]);
+          } else if (passwordPayload.role === 'security') {
+            await query('UPDATE security_staff SET password_hash = ?, updated_at = NOW() WHERE id = ?', [finalHash, passwordPayload.userId]);
+          }
+
+          await createAdminAuditLog({
+            action: 'PASSWORD_CHANGE',
+            requestedBy: request.requested_by,
+            approvedBy: input.decisionBy,
+            arenaId: request.arena_id,
+            fieldChanged: 'Password',
+            newValue: 'CONFIDENTIAL',
+            reason: input.reason
+          });
+        }
+      }
     }
 
     if (request.request_type === 'FREE_BOOKING_REQUEST' || request.request_type === 'admin_free_booking') {

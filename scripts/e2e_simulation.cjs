@@ -16,7 +16,7 @@ class Session {
       'Cookie': cookieHeader
     };
 
-    const res = await fetch(`http://127.0.0.1:3000${url}`, { ...options, headers });
+    const res = await fetch(`http://127.0.0.1:3001${url}`, { ...options, headers });
     
     // Save new cookies
     const setCookie = res.headers.get('set-cookie');
@@ -33,11 +33,11 @@ class Session {
       }
     }
 
+    const text = await res.text();
     try {
-      const data = await res.json();
-      return { status: res.status, data };
+      return { status: res.status, data: JSON.parse(text) };
     } catch {
-      return { status: res.status, text: await res.text() };
+      return { status: res.status, text };
     }
   }
 }
@@ -51,7 +51,7 @@ async function runE2E() {
   let healthy = false;
   for (let i = 0; i < 15; i++) {
     try {
-      const res = await fetch('http://127.0.0.1:3000/api/health');
+      const res = await fetch('http://127.0.0.1:3001/api/health');
       if (res.ok) { healthy = true; break; }
     } catch (e) {}
     await sleep(2000);
@@ -70,9 +70,12 @@ async function runE2E() {
   let res = await superSession.fetch('/api/auth/super-admin/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'superadmin@example.com', password: 'Admin@123456' })
+    body: JSON.stringify({ email: 'superadmin@example.com', password: 'SuperAdmin@123' })
   });
-  if (res.status !== 200) throw new Error("Super admin login failed");
+  if (res.status !== 200) {
+    console.error(res);
+    throw new Error("Super admin login failed");
+  }
   console.log("✅ Super Admin Login Successful");
 
   const arenaSlug = `arena-${Date.now()}`;
@@ -81,7 +84,10 @@ async function runE2E() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name: 'E2E Test Arena', slug: arenaSlug, contact_phone: '1234567890' })
   });
-  if (res.status !== 200 || !res.data.success) throw new Error("Create arena failed");
+  if (res.status !== 200 || !res.data.success) {
+    console.error(res);
+    throw new Error("Create arena failed");
+  }
   const arenaId = res.data.arena_id;
   console.log("✅ Created Arena:", arenaId);
 
@@ -92,22 +98,32 @@ async function runE2E() {
   });
   console.log("✅ Created Arena Admin");
 
-
   // Flow 2: Customer Booking
   console.log("\n=== FLOW 2: CUSTOMER BOOKING ===");
-  // We'll directly hit checkout processing
   const customerSession = new Session();
-  // Get CSRF Token (mocked via standard form request or fetch)
-  // Actually, /api/bookings/process uses CSRF. For test script, let's just bypass by using a raw query, or fetch CSRF from page.
-  const pageRes = await fetch('http://127.0.0.1:3000/booking/checkout?arena_id=' + arenaId + '&date=2026-07-01&slots=["09:00"]');
-  const html = await pageRes.text();
-  const csrfMatch = html.match(/name="_csrf"\s+value="([^"]+)"/);
-  const csrfToken = csrfMatch ? csrfMatch[1] : '';
+  
+  // Get CSRF Token via a simple fetch that returns the cookie
+  const pageRes = await customerSession.fetch('/api/health'); // Just to get the global CSRF cookie
+  
+  const rawCookie = customerSession.cookies.get('fg_csrf_token');
+  if (!rawCookie) throw new Error("No CSRF cookie set by middleware");
+  // The token is the first part of the signed cookie
+  const csrfToken = rawCookie.split('.')[0];
+  console.log("CSRF Token extracted:", csrfToken);
 
   res = await customerSession.fetch('/api/bookings/process', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `arena_id=${arenaId}&date=2026-07-01&slots=["09:00"]&_csrf=${csrfToken}&customer_name=John Doe&customer_mobile=+919876543210`
+    headers: { 
+      'Content-Type': 'application/json',
+      'x-csrf-token': csrfToken
+    },
+    body: JSON.stringify({
+      arena_id: arenaId,
+      date: '2026-07-01',
+      slots: ['09:00'],
+      customer_name: 'John Doe',
+      customer_mobile: '+919876543210'
+    })
   });
   
   if (res.status !== 200) throw new Error("Booking failed: " + JSON.stringify(res));
@@ -116,15 +132,28 @@ async function runE2E() {
   
   // Flow 3: Payment Callback
   console.log("\n=== FLOW 3: PAYMENT CALLBACK ===");
-  res = await customerSession.fetch('/api/payment/success', {
+  const txnid = bookingRef;
+  const amount = "500.00";
+  const productinfo = "Futsal Booking";
+  const firstname = "John Doe";
+  const email = "customer@example.com";
+  const status = "success";
+  const key = "bPLpnO";
+  const salt = "IgE6ICwOJngI1nZwAnwkX6yK0pWJxOXE";
+
+  const hashString = `${salt}|${status}|||||||||||${email}|${firstname}|${productinfo}|${amount}|${txnid}|${key}`;
+  const hash = crypto.createHash('sha512').update(hashString).digest('hex').toLowerCase();
+
+  res = await customerSession.fetch('/api/payment/callback', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `txnid=${bookingRef}&mihpayid=MOCK123&status=success`
+    body: `txnid=${txnid}&amount=${amount}&productinfo=${productinfo}&firstname=${firstname}&email=${email}&status=${status}&hash=${hash}&mihpayid=MOCK123`
   });
   
-  if (res.status === 200 || res.status === 302) {
+  if (res.status === 200 || res.status === 302 || res.status === 303 || res.status === 307) {
     console.log("✅ Payment marked successful!");
   } else {
+    console.error(res);
     throw new Error("Payment success route failed");
   }
 
@@ -145,7 +174,6 @@ async function runE2E() {
   });
   console.log("✅ Security Logged In");
 
-  // We need the ticket number. We can get it by querying the DB.
   console.log("✅ All Manual End-to-End simulation steps passed!");
   process.exit(0);
 }
