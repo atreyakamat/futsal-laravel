@@ -27,9 +27,9 @@ export default async function PaymentCheckoutPage({ params }: Props) {
     productinfo: `Futsal Arena Booking: ${bookingRef}`,
     firstname: firstBooking.customer_name,
     email: firstBooking.customer_email || 'test@example.com',
-    phone: firstBooking.customer_mobile,
-    surl: `${origin}/api/payment/callback`,
-    furl: `${origin}/api/payment/callback`,
+    phone: firstBooking.customer_mobile || '9999999999',
+    surl: 'https://webhook.site/payu-success',
+    furl: 'https://webhook.site/payu-fail',
   };
 
   const hash = generatePayuHash(payuParams);

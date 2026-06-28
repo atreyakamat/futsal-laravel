@@ -23,8 +23,26 @@ export function generatePayuHash(params: {
 }) {
   const { merchantKey, merchantSalt } = getPayuConfig();
 
-  // PayU Prebuilt Checkout hash format requires exactly 10 empty pipes between email and salt if udf1-udf5 are empty.
-  const hashString = `${merchantKey}|${params.txnid}|${params.amount}|${params.productinfo}|${params.firstname}|${params.email}|||||||||||${merchantSalt}`;
+  const hashSequence = [
+    merchantKey,
+    params.txnid,
+    params.amount,
+    params.productinfo,
+    params.firstname,
+    params.email,
+    '', // udf1
+    '', // udf2
+    '', // udf3
+    '', // udf4
+    '', // udf5
+    '', // udf6
+    '', // udf7
+    '', // udf8
+    '', // udf9
+    '', // udf10
+    merchantSalt
+  ];
+  const hashString = hashSequence.join('|');
   return crypto.createHash('sha512').update(hashString).digest('hex').toLowerCase();
 }
 
