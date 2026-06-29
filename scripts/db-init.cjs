@@ -12,7 +12,7 @@ if (!DATABASE_URL) {
 }
 
 if (process.env.NODE_ENV === 'production') {
-  const requiredEnv = ['COOKIE_SECRET', 'PAYU_MERCHANT_KEY', 'PAYU_SALT'];
+  const requiredEnv = ['COOKIE_SECRET', 'PAYU_MERCHANT_KEY', 'PAYU_MERCHANT_SALT'];
   const missing = [];
   for (const key of requiredEnv) {
     if (!process.env[key]) {
