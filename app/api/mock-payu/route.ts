@@ -3,6 +3,10 @@ import crypto from 'crypto';
 import { getPayuConfig } from '@/lib/payment';
 
 export async function POST(request: Request) {
+  if (process.env.NODE_ENV !== 'development') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+
   const formData = await request.formData();
   
   const txnid = formData.get('txnid') as string;
@@ -16,7 +20,27 @@ export async function POST(request: Request) {
   // Create reverse hash to send back to our callback
   const { merchantKey, merchantSalt } = getPayuConfig();
   const status = 'success';
-  const hashString = `${merchantSalt}|${status}|||||||||||${email}|${firstname}|${productinfo}|${amount}|${txnid}|${merchantKey}`;
+  const expectedSequence = [
+    merchantSalt,
+    status,
+    '', // udf10
+    '', // udf9
+    '', // udf8
+    '', // udf7
+    '', // udf6
+    '', // udf5
+    '', // udf4
+    '', // udf3
+    '', // udf2
+    '', // udf1
+    email,
+    firstname,
+    productinfo,
+    amount,
+    txnid,
+    merchantKey
+  ];
+  const hashString = expectedSequence.join('|');
   const reverseHash = crypto.createHash('sha512').update(hashString).digest('hex').toLowerCase();
 
   const html = `

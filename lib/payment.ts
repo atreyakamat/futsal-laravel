@@ -26,15 +26,16 @@ export function generatePayuHash(params: {
   email: string;
   phone?: string;
 }) {
+  const sanitize = (str: string) => str.replace(/\|/g, '');
   const { merchantKey, merchantSalt } = getPayuConfig();
 
   const hashSequence = [
     merchantKey,
     params.txnid,
     params.amount,
-    params.productinfo,
-    params.firstname,
-    params.email,
+    sanitize(params.productinfo),
+    sanitize(params.firstname),
+    sanitize(params.email),
     '', // udf1
     '', // udf2
     '', // udf3
@@ -63,14 +64,35 @@ export function verifyPayuResponseHash(params: {
   const { merchantKey, merchantSalt } = getPayuConfig();
   if (!params.hash) return false;
 
-  const hashString = `${merchantSalt}|${params.status}|||||||||||${params.email}|${params.firstname}|${params.productinfo}|${params.amount}|${params.txnid}|${merchantKey}`;
+  const expectedSequence = [
+    merchantSalt,
+    params.status,
+    '', // udf10
+    '', // udf9
+    '', // udf8
+    '', // udf7
+    '', // udf6
+    '', // udf5
+    '', // udf4
+    '', // udf3
+    '', // udf2
+    '', // udf1
+    params.email,
+    params.firstname,
+    params.productinfo,
+    params.amount,
+    params.txnid,
+    merchantKey
+  ];
+  
+  const hashString = expectedSequence.join('|');
   const expectedHash = crypto.createHash('sha512').update(hashString).digest('hex').toLowerCase();
   return expectedHash === params.hash.toLowerCase();
 }
 
-export async function verifyPaymentWithPayu(txnid: string, requestUrl?: string) {
-  // If we are testing locally and routed through the Mock PayU, we bypass S2S verification
-  if (process.env.NODE_ENV === 'development' || (requestUrl && (requestUrl.includes('localhost') || requestUrl.includes('127.0.0.1')))) {
+export async function verifyPaymentWithPayu(txnid: string) {
+  // If we are strictly in development mode, we bypass S2S verification for the mock gateway
+  if (process.env.NODE_ENV === 'development') {
     console.log('Mock PayU S2S Verification Bypassed for:', txnid);
     return { status: 'success', txnid };
   }

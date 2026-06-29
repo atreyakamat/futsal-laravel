@@ -35,17 +35,10 @@ export default async function PaymentCheckoutPage({ params }: Props) {
   const hash = generatePayuHash(payuParams);
   let { payuUrl, merchantKey } = getPayuConfig();
 
-  // If we are on localhost, route to our Mock PayU gateway to bypass strict PayU URL restrictions for local testing
-  if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+  // If we are on localhost AND strictly in development mode, route to our Mock PayU gateway
+  if (process.env.NODE_ENV === 'development' && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
     payuUrl = `${origin}/api/mock-payu`;
   }
-
-  console.log('--- PAYU CHECKOUT INITIATED ---');
-  console.log('Params:', payuParams);
-  console.log('Merchant Key:', merchantKey);
-  console.log('Generated Hash:', hash);
-  console.log('Target URL:', payuUrl);
-  console.log('-------------------------------');
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-dark text-white px-6 text-center">
