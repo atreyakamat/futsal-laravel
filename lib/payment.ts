@@ -91,15 +91,9 @@ export function verifyPayuResponseHash(params: {
 }
 
 export async function verifyPaymentWithPayu(txnid: string) {
-  // If we are strictly in development mode, we bypass S2S verification for the mock gateway
-  if (process.env.NODE_ENV === 'development') {
-    console.log('Mock PayU S2S Verification Bypassed for:', txnid);
-    return { status: 'success', txnid };
-  }
-
   const { merchantKey, merchantSalt } = getPayuConfig();
   const command = 'verify_payment';
-  
+
   // Hash formula: sha512(key|command|var1|SALT)
   const hashString = `${merchantKey}|${command}|${txnid}|${merchantSalt}`;
   const hash = crypto.createHash('sha512').update(hashString).digest('hex').toLowerCase();

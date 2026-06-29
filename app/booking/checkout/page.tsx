@@ -220,24 +220,6 @@ export default async function CheckoutPage({ searchParams }: Props) {
                   </div>
                 )}
 
-                <div className="flex items-center justify-center gap-8 opacity-20 grayscale hover:opacity-40 transition-opacity">
-                  <img
-                    src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Visa.svg/1200px-Visa.svg.png"
-                    className="h-5"
-                    alt="Visa"
-                  />
-                  <img
-                    src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Mastercard-logo.svg/1280px-Mastercard-logo.svg.png"
-                    className="h-8"
-                    alt="Mastercard"
-                  />
-                  <img
-                    src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/UPI-Logo-vector.svg/1200px-UPI-Logo-vector.svg.png"
-                    className="h-5"
-                    alt="UPI"
-                  />
-                </div>
-
                 <p className="text-center text-[9px] text-white/10 uppercase tracking-[0.4em] font-black">
                   End-to-End Encrypted Secure Checkout
                 </p>

@@ -62,6 +62,9 @@ export default function BookingSystem({ arenaId, initialDate, csrfToken }: { are
     if (retryCount > 0 && retryCount < 5) {
       const timer = setTimeout(fetchSlots, 2000 * retryCount);
       return () => clearTimeout(timer);
+    } else if (retryCount >= 5) {
+      setLoading(false);
+      setError('System offline. Cannot reach booking servers. Please refresh the page manually.');
     }
   }, [retryCount, fetchSlots]);
 
