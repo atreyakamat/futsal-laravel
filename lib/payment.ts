@@ -1,14 +1,19 @@
 import crypto from 'crypto';
 
 export function getPayuConfig() {
-  const merchantKey = process.env.PAYU_MERCHANT_KEY ?? process.env.PAYU_KEY ?? 'bPLpnO';
-  const merchantSalt = process.env.PAYU_MERCHANT_SALT ?? process.env.PAYU_SALT ?? 'IgE6ICwOJngI1nZwAnwkX6yK0pWJxOXE';
-  const payuBaseUrl = process.env.PAYU_BASE_URL ?? (
-    (process.env.PAYU_ENV === 'production' || process.env.PAYU_TEST_MODE === 'false')
-      ? 'https://secure.payu.in'
-      : 'https://test.payu.in'
-  );
-  const payuUrl = `${payuBaseUrl.replace(/\/$/, '')}/_payment`;
+  const isProd = process.env.PAYU_ENV === 'production' || process.env.PAYU_TEST_MODE === 'false';
+  
+  // If we are in test mode, always use the test credentials provided by the user unless explicitly overridden with test-specific env vars.
+  const merchantKey = isProd 
+    ? (process.env.PAYU_MERCHANT_KEY || process.env.PAYU_KEY || '') 
+    : (process.env.PAYU_TEST_KEY || 'bPLpnO');
+    
+  const merchantSalt = isProd 
+    ? (process.env.PAYU_MERCHANT_SALT || process.env.PAYU_SALT || '') 
+    : (process.env.PAYU_TEST_SALT || 'IgE6ICwOJngI1nZwAnwkX6yK0pWJxOXE');
+
+  const payuBaseUrl = isProd ? 'https://secure.payu.in' : 'https://test.payu.in';
+  const payuUrl = `${payuBaseUrl}/_payment`;
 
   return { merchantKey, merchantSalt, payuUrl };
 }
@@ -63,7 +68,13 @@ export function verifyPayuResponseHash(params: {
   return expectedHash === params.hash.toLowerCase();
 }
 
-export async function verifyPaymentWithPayu(txnid: string) {
+export async function verifyPaymentWithPayu(txnid: string, requestUrl?: string) {
+  // If we are testing locally and routed through the Mock PayU, we bypass S2S verification
+  if (process.env.NODE_ENV === 'development' || (requestUrl && (requestUrl.includes('localhost') || requestUrl.includes('127.0.0.1')))) {
+    console.log('Mock PayU S2S Verification Bypassed for:', txnid);
+    return { status: 'success', txnid };
+  }
+
   const { merchantKey, merchantSalt } = getPayuConfig();
   const command = 'verify_payment';
   

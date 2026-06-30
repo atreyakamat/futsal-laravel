@@ -24,7 +24,7 @@ export default async function PaymentCheckoutPage({ params }: Props) {
   const payuParams = {
     txnid: bookingRef,
     amount: totalAmount.toFixed(2),
-    productinfo: `Futsal Arena Booking: ${bookingRef}`,
+    productinfo: `FutsalBooking_${bookingRef}`,
     firstname: firstBooking.customer_name,
     email: firstBooking.customer_email || 'test@example.com',
     phone: firstBooking.customer_mobile || '9999999999',
@@ -33,7 +33,19 @@ export default async function PaymentCheckoutPage({ params }: Props) {
   };
 
   const hash = generatePayuHash(payuParams);
-  const { payuUrl, merchantKey } = getPayuConfig();
+  let { payuUrl, merchantKey } = getPayuConfig();
+
+  // If we are on localhost, route to our Mock PayU gateway to bypass strict PayU URL restrictions for local testing
+  if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+    payuUrl = `${origin}/api/mock-payu`;
+  }
+
+  console.log('--- PAYU CHECKOUT INITIATED ---');
+  console.log('Params:', payuParams);
+  console.log('Merchant Key:', merchantKey);
+  console.log('Generated Hash:', hash);
+  console.log('Target URL:', payuUrl);
+  console.log('-------------------------------');
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-dark text-white px-6 text-center">
@@ -54,14 +66,8 @@ export default async function PaymentCheckoutPage({ params }: Props) {
         <input type="hidden" name="email" value={payuParams.email} />
         <input type="hidden" name="phone" value={payuParams.phone} />
         <input type="hidden" name="productinfo" value={payuParams.productinfo} />
-        <input type="hidden" name="udf1" value="" />
-        <input type="hidden" name="udf2" value="" />
-        <input type="hidden" name="udf3" value="" />
-        <input type="hidden" name="udf4" value="" />
-        <input type="hidden" name="udf5" value="" />
         <input type="hidden" name="surl" value={payuParams.surl} />
         <input type="hidden" name="furl" value={payuParams.furl} />
-        <input type="hidden" name="service_provider" value="payu_paisa" />
       </form>
 
       <script

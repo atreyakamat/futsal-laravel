@@ -63,7 +63,7 @@ export async function POST(request: Request) {
 
     if (status === 'success') {
       // Double check status using the postservice API as requested
-      const verificationDetails = await verifyPaymentWithPayu(bookingRef);
+      const verificationDetails = await verifyPaymentWithPayu(bookingRef, request.url);
       if (!verificationDetails || verificationDetails.status !== 'success') {
         console.error('PayU postservice verification failed or returned non-success for txnid:', bookingRef);
         return NextResponse.json({ success: false, message: 'Payment verification failed at gateway.' }, { status: 400 });
