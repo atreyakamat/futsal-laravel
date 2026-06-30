@@ -53,8 +53,8 @@ describe('Super Admin Functionality', () => {
   describe('Arena Management', () => {
     it('should validate arena slug uniqueness', async () => {
       // This test verifies that duplicate slugs are rejected
-      const slug1 = 'futsal-arena-1';
-      const slug2 = 'futsal-arena-1';
+      const slug1 = 'agnel-arena-1';
+      const slug2 = 'agnel-arena-1';
       expect(slug1).toBe(slug2); // Should fail on creation
     });
 

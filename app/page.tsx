@@ -14,7 +14,7 @@ export default async function Home() {
         
         <div className="max-w-7xl mx-auto px-6 relative z-10 text-center">
           <div className="inline-block px-4 py-1.5 mb-8 rounded-full border border-primary/20 bg-primary/5">
-            <span className="text-[10px] font-bold tracking-[0.3em] text-primary uppercase">The Future of Futsal</span>
+            <span className="text-[10px] font-bold tracking-[0.3em] text-primary uppercase">The Future of Agnel</span>
           </div>
           
           <h1 className="text-6xl md:text-8xl font-black mb-8 tracking-tighter italic uppercase leading-[0.9]">
@@ -47,7 +47,7 @@ export default async function Home() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(0,183,255,0.03)_0,transparent_50%)]" />
         <div className="max-w-7xl mx-auto px-6 relative z-10">
           <div className="text-center mb-20">
-            <span className="text-[10px] font-bold text-primary uppercase tracking-[0.3em] block mb-4">Why FutsalGoa</span>
+            <span className="text-[10px] font-bold text-primary uppercase tracking-[0.3em] block mb-4">Why AgnelArena</span>
             <h2 className="text-4xl md:text-6xl font-black uppercase tracking-tighter italic">
               ENGINEERED FOR <span className="text-primary text-stroke">THE PITCH</span>
             </h2>
@@ -228,9 +228,9 @@ export default async function Home() {
           __html: JSON.stringify({
             '@context': 'https://schema.org',
             '@type': 'SportsActivityLocation',
-            'name': 'FutsalGoa',
-            'description': 'Premium futsal turf booking platform in Goa with instant slot locking and digital QR ticketing.',
-            'url': 'https://futsalgoa.com',
+            'name': 'AgnelArena',
+            'description': 'Premium agnel turf booking platform in Goa with instant slot locking and digital QR ticketing.',
+            'url': 'https://agnelarena.com',
             'address': {
               '@type': 'PostalAddress',
               'addressLocality': 'Goa',

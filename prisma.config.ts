@@ -9,6 +9,6 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: process.env["DATABASE_URL"] ?? "postgresql://postgres:postgres@postgres:5432/futsal_laravel?schema=public",
+    url: process.env["DATABASE_URL"] ?? "postgresql://postgres:postgres@postgres:5432/agnel_laravel?schema=public",
   },
 });

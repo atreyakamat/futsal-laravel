@@ -2,7 +2,7 @@ import { MetadataRoute } from 'next';
 import { listArenas } from '@/lib/admin';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = 'https://futsalgoa.com';
+  const baseUrl = 'https://agnelarena.com';
 
   const defaultUrls: MetadataRoute.Sitemap = [
     {

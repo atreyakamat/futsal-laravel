@@ -58,7 +58,7 @@ export async function POST(request: Request) {
       slots: slotsToBlock,
       customerName: 'System Block (Super Admin)',
       customerMobile: '0000000000',
-      customerEmail: 'system@futsalgoa.com',
+      customerEmail: 'system@agnelarena.com',
       userId: null,
       sessionId: `super-admin-block-${Date.now()}`,
       freeBooking: true,

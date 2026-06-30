@@ -66,7 +66,7 @@ export default function UnifiedLogin() {
         <div className="text-center mb-10">
           <Link href="/" className="inline-block">
             <span className="text-3xl font-black uppercase tracking-tighter italic">
-              Futsal<span className="text-primary">Goa</span>
+              Agnel<span className="text-primary">Goa</span>
             </span>
           </Link>
           <h1 className="text-xl font-bold uppercase tracking-widest text-white/50 mt-4">

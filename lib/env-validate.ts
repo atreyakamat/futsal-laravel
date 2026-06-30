@@ -25,7 +25,7 @@ const PRODUCTION_REQUIRED_VARS = [
 ];
 
 function validateCookieSecret(secret: string): { valid: boolean; reason?: string } {
-  if (secret === 'futsalgoa-super-secret-key-change-me-in-prod') {
+  if (secret === 'agnelarena-super-secret-key-change-me-in-prod') {
     return { valid: false, reason: 'COOKIE_SECRET uses default insecure value' };
   }
   if (secret.length < 32) {

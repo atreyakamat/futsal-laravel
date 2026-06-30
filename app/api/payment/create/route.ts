@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     const payuParams = {
       txnid: payload.booking_ref,
       amount: totalAmount.toFixed(2),
-      productinfo: `Futsal Arena Booking: ${payload.booking_ref}`,
+      productinfo: `Agnel Arena Booking: ${payload.booking_ref}`,
       firstname: firstBooking.customer_name,
       email: firstBooking.customer_email || 'test@example.com',
       phone: firstBooking.customer_mobile,

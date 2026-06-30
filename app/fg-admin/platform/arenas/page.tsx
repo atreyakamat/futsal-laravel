@@ -50,7 +50,7 @@ export default async function AdminArenasPage() {
             <span className="material-symbols-outlined text-5xl text-white/10">stadium</span>
           </div>
           <h2 className="text-2xl font-black uppercase mb-4 italic">No Arenas Yet</h2>
-          <p className="text-white/40 mb-10 max-w-sm mx-auto">Start building your network by adding your first futsal arena.</p>
+          <p className="text-white/40 mb-10 max-w-sm mx-auto">Start building your network by adding your first agnel arena.</p>
           <Link
             href="/fg-admin/platform/arenas/create"
             className="btn-primary"

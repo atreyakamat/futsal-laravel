@@ -8,7 +8,7 @@ describe('Payment Callback & Signature Validation', () => {
       status: 'success',
       txnid: 'REF-BOOK-12345',
       amount: '500.00',
-      productinfo: 'Futsal booking',
+      productinfo: 'Agnel booking',
       firstname: 'Player',
       email: 'player@example.com',
     };

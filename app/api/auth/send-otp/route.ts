@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     try {
       await provider.sendSms(
         payload.identifier.trim(),
-        `Your OTP for FutsalGoa is ${otp}. Valid for 10 minutes.`
+        `Your OTP for AgnelArena is ${otp}. Valid for 10 minutes.`
       );
     } catch (smsErr) {
       console.error('[SMS] Failed to send SMS via provider:', smsErr);

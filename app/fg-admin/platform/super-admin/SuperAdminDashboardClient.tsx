@@ -763,7 +763,7 @@ export default function SuperAdminDashboardClient() {
                           className="input-field" 
                           value={arenaName} 
                           onChange={e => setArenaName(e.target.value)}
-                          placeholder="e.g. Angle Futsal Central"
+                          placeholder="e.g. Angle Agnel Central"
                           required
                         />
                       </div>
@@ -773,7 +773,7 @@ export default function SuperAdminDashboardClient() {
                           className="input-field" 
                           value={arenaSlug} 
                           onChange={e => setArenaSlug(e.target.value)}
-                          placeholder="e.g. angle-futsal-central"
+                          placeholder="e.g. angle-agnel-central"
                           required
                         />
                       </div>

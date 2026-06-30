@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     const settings = {
       platformFee: 5.0,
       maintenanceMode: false,
-      supportEmail: 'support@futsalgoa.com'
+      supportEmail: 'support@agnelarena.com'
     };
     return NextResponse.json({ success: true, settings });
   } catch (error) {

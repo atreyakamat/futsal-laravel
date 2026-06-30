@@ -25,7 +25,7 @@ export async function sendEmail(options: EmailOptions): Promise<{ success: boole
     if (!resend) throw new Error('Resend client not initialized');
     
     const { data, error } = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL || 'FutsalGoa <noreply@futsalgoa.com>',
+      from: process.env.RESEND_FROM_EMAIL || 'AgnelArena <noreply@agnelarena.com>',
       to: options.to,
       subject: options.subject,
       html: options.html,
@@ -46,7 +46,7 @@ export async function sendEmail(options: EmailOptions): Promise<{ success: boole
 }
 
 export function generateOtpEmail(otp: string, identifier: string): { subject: string; html: string; text: string } {
-  const subject = `Your FutsalGoa OTP: ${otp}`;
+  const subject = `Your AgnelArena OTP: ${otp}`;
   const html = `
     <!DOCTYPE html>
     <html>
@@ -56,7 +56,7 @@ export function generateOtpEmail(otp: string, identifier: string): { subject: st
     </head>
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="background: #0df220; padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
-        <h1 style="color: #050505; margin: 0; font-size: 28px; font-weight: 900;">FUTSAL<span style="color: #050505;">GOA</span></h1>
+        <h1 style="color: #050505; margin: 0; font-size: 28px; font-weight: 900;">AGNEL<span style="color: #050505;">ARENA</span></h1>
       </div>
       <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e5e5; border-top: none; border-radius: 0 0 12px 12px;">
         <h2 style="color: #1a1a1a; margin-top: 0;">Your Verification Code</h2>
@@ -66,12 +66,12 @@ export function generateOtpEmail(otp: string, identifier: string): { subject: st
         </div>
         <p style="color: #666; font-size: 14px;">This code expires in 10 minutes. If you didn't request this, please ignore this email.</p>
         <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 20px 0;">
-        <p style="color: #999; font-size: 12px;">FutsalGoa - Premium Turf Booking in Goa</p>
+        <p style="color: #999; font-size: 12px;">AgnelArena - Premium Turf Booking in Goa</p>
       </div>
     </body>
     </html>
   `;
-  const text = `Your FutsalGoa OTP is: ${otp}. Valid for 10 minutes.`;
+  const text = `Your AgnelArena OTP is: ${otp}. Valid for 10 minutes.`;
   return { subject, html, text };
 }
 
@@ -96,7 +96,7 @@ export function generateBookingConfirmationEmail(
     </head>
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="background: #0df220; padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
-        <h1 style="color: #050505; margin: 0; font-size: 28px; font-weight: 900;">FUTSAL<span style="color: #050505;">GOA</span></h1>
+        <h1 style="color: #050505; margin: 0; font-size: 28px; font-weight: 900;">AGNEL<span style="color: #050505;">ARENA</span></h1>
         <p style="color: #050505; margin: 10px 0 0; font-size: 14px;">Booking Confirmed!</p>
       </div>
       <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e5e5; border-top: none; border-radius: 0 0 12px 12px;">
@@ -124,7 +124,7 @@ export function generateBookingConfirmationEmail(
         </div>
 
         <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 20px 0;">
-        <p style="color: #999; font-size: 12px; text-align: center;">FutsalGoa - Premium Turf Booking in Goa</p>
+        <p style="color: #999; font-size: 12px; text-align: center;">AgnelArena - Premium Turf Booking in Goa</p>
       </div>
     </body>
     </html>
@@ -153,7 +153,7 @@ export function generateApprovalNotificationEmail(
     </head>
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="background: ${statusColor}; padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
-        <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 900;">FUTSAL<span style="color: white;">GOA</span></h1>
+        <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 900;">AGNEL<span style="color: white;">ARENA</span></h1>
         <p style="color: white; margin: 10px 0 0; font-size: 14px;">Request ${statusText}</p>
       </div>
       <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e5e5; border-top: none; border-radius: 0 0 12px 12px;">
@@ -167,7 +167,7 @@ export function generateApprovalNotificationEmail(
         ` : ''}
 
         <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 20px 0;">
-        <p style="color: #999; font-size: 12px; text-align: center;">FutsalGoa - Platform Administration</p>
+        <p style="color: #999; font-size: 12px; text-align: center;">AgnelArena - Platform Administration</p>
       </div>
     </body>
     </html>

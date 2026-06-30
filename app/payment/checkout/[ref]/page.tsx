@@ -24,7 +24,7 @@ export default async function PaymentCheckoutPage({ params }: Props) {
   const payuParams = {
     txnid: bookingRef,
     amount: totalAmount.toFixed(2),
-    productinfo: `FutsalBooking_${bookingRef}`,
+    productinfo: `AgnelBooking_${bookingRef}`,
     firstname: firstBooking.customer_name,
     email: firstBooking.customer_email || 'test@example.com',
     phone: firstBooking.customer_mobile || '9999999999',

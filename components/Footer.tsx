@@ -26,7 +26,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
           <div className="md:col-span-2 space-y-6">
             <span className="text-2xl font-black italic tracking-tighter text-white">
-              FUTSAL<span className="text-primary">GOA</span>
+              AGNEL<span className="text-primary">ARENA</span>
             </span>
             <p className="text-white/40 text-sm max-w-sm leading-relaxed font-medium">
               Goa's premier digital arena booking network. Experience premium synthetic pitches, instant slot locking, and seamless digital access controls.
@@ -56,7 +56,7 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <a href="mailto:contact@futsalgoa.com" className="text-xs font-bold text-white/50 hover:text-primary transition-colors uppercase tracking-widest">
+                <a href="mailto:contact@agnelarena.com" className="text-xs font-bold text-white/50 hover:text-primary transition-colors uppercase tracking-widest">
                   Contact Us
                 </a>
               </li>
@@ -83,7 +83,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link href="/about" className="text-xs font-bold text-white/50 hover:text-primary transition-colors uppercase tracking-widest">
-                  About FutsalGoa
+                  About AgnelArena
                 </Link>
               </li>
             </ul>
@@ -92,7 +92,7 @@ export default function Footer() {
 
         <div className="pt-12 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-6">
           <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em]">
-            © {new Date().getFullYear()} FUTSALGOA. ALL RIGHTS RESERVED.
+            © {new Date().getFullYear()} AGNELARENA. ALL RIGHTS RESERVED.
           </p>
           <div className="flex items-center gap-6">
             <span className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em] flex items-center gap-2">

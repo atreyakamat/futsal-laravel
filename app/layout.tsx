@@ -13,25 +13,25 @@ const spaceGrotesk = Space_Grotesk({
 
 export const metadata: Metadata = {
   title: {
-    template: '%s | FutsalGoa',
-    default: 'FutsalGoa | Premium Turf Booking',
+    template: '%s | AgnelArena',
+    default: 'AgnelArena | Premium Turf Booking',
   },
-  description: 'Book the best futsal turfs in Goa instantly. Secure your pitch with our streamlined booking engine.',
-  keywords: ['futsal', 'goa', 'turf booking', 'football', 'sports arena'],
-  authors: [{ name: 'FutsalGoa' }],
-  creator: 'FutsalGoa',
+  description: 'Book the best agnel turfs in Goa instantly. Secure your pitch with our streamlined booking engine.',
+  keywords: ['agnel', 'goa', 'turf booking', 'football', 'sports arena'],
+  authors: [{ name: 'AgnelArena' }],
+  creator: 'AgnelArena',
   openGraph: {
-    title: 'FutsalGoa | Premium Turf Booking',
-    description: 'Book the best futsal turfs in Goa instantly.',
-    url: 'https://futsalgoa.com',
-    siteName: 'FutsalGoa',
+    title: 'AgnelArena | Premium Turf Booking',
+    description: 'Book the best agnel turfs in Goa instantly.',
+    url: 'https://agnelarena.com',
+    siteName: 'AgnelArena',
     locale: 'en_IN',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'FutsalGoa | Premium Turf Booking',
-    description: 'Book the best futsal turfs in Goa instantly.',
+    title: 'AgnelArena | Premium Turf Booking',
+    description: 'Book the best agnel turfs in Goa instantly.',
   },
   robots: {
     index: true,

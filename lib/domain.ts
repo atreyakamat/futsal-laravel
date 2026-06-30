@@ -250,7 +250,7 @@ export async function createBookingBatch(params: {
     if (!effectiveUserId) {
       const [userRows] = await connection.execute(
         `SELECT id FROM users WHERE customer_mobile = ? OR email = ? LIMIT 1`,
-        [params.customerMobile, params.customerEmail || 'no-email@futsalgoa.com']
+        [params.customerMobile, params.customerEmail || 'no-email@agnelarena.com']
       );
       
       const existingUser = (userRows as any[])[0];
@@ -261,7 +261,7 @@ export async function createBookingBatch(params: {
           `INSERT INTO users (name, email, customer_mobile, role, created_at, updated_at)
            VALUES (?, ?, ?, 'customer', NOW(), NOW())
            RETURNING id`,
-          [params.customerName, params.customerEmail || `user-${crypto.randomUUID().slice(0, 8)}@futsalgoa.com`, params.customerMobile]
+          [params.customerName, params.customerEmail || `user-${crypto.randomUUID().slice(0, 8)}@agnelarena.com`, params.customerMobile]
         );
         effectiveUserId = (newUserRows as any[])[0].id;
       }

@@ -5,7 +5,7 @@ export const SESSION_COOKIE = 'fg_session_id';
 export const AUTH_COOKIE = 'fg_auth_user';
 export const GUEST_COOKIE = 'fg_guest_identifier';
 
-const COOKIE_SECRET = process.env.COOKIE_SECRET || 'futsalgoa-super-secret-key-change-me-in-prod';
+const COOKIE_SECRET = process.env.COOKIE_SECRET || 'agnelarena-super-secret-key-change-me-in-prod';
 
 export function signValue(value: string): string {
   const signature = CryptoJS.HmacSHA256(value, COOKIE_SECRET).toString(CryptoJS.enc.Base64url);

@@ -1,6 +1,6 @@
-# Futsal Booking Platform (Next.js + PostgreSQL)
+# Agnel Booking Platform (Next.js + PostgreSQL)
 
-Next.js 15 application for futsal arena booking with OTP auth, slot locking, payment callback handling, ticket verification, and admin/security views.
+Next.js 15 application for agnel arena booking with OTP auth, slot locking, payment callback handling, ticket verification, and admin/security views.
 
 ## Stack
 
@@ -27,7 +27,7 @@ cp .env.example .env
 3. Set `DATABASE_URL` in `.env` (PostgreSQL):
 
 ```bash
-DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/futsal_laravel?schema=public
+DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/agnel_laravel?schema=public
 ```
 
 4. Sync Prisma schema and generate client:

@@ -24,7 +24,7 @@ export async function buildTicketHtml(ticket: TicketPackage): Promise<string> {
 
   return `
       <div class="card">
-        <div class="muted">FutsalGoa Ticket</div>
+        <div class="muted">AgnelArena Ticket</div>
         <h1 class="title">${ticket.bookingRef}</h1>
         <div class="row">
           <div>

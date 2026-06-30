@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import CryptoJS from 'crypto-js';
 
 const CSRF_COOKIE = 'fg_csrf_token';
-const COOKIE_SECRET = process.env.COOKIE_SECRET || 'futsalgoa-super-secret-key-change-me-in-prod';
+const COOKIE_SECRET = process.env.COOKIE_SECRET || 'agnelarena-super-secret-key-change-me-in-prod';
 
 export function generateCsrfToken(): string {
   return CryptoJS.lib.WordArray.random(32).toString(CryptoJS.enc.Base64url);

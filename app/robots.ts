@@ -5,6 +5,6 @@ export default function robots() {
       allow: '/',
       disallow: ['/api/', '/fg-admin/', '/dashboard/', '/payment/'],
     },
-    sitemap: 'https://futsalgoa.com/sitemap.xml',
+    sitemap: 'https://agnelarena.com/sitemap.xml',
   }
 }
