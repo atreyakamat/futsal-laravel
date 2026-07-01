@@ -156,9 +156,27 @@ export default function BookingSystem({ arenaId, initialDate, csrfToken }: { are
   });
 
   return (
-    <section className="py-20 max-w-7xl mx-auto px-6">
-      <div className="grid lg:grid-cols-12 gap-12">
-        <div className="lg:col-span-8 space-y-12">
+    <section className="py-6 sm:py-12 lg:py-20 max-w-7xl mx-auto px-4 sm:px-6">
+      {/* Mobile summary bar */}
+      {selectedSlots.length > 0 && (
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-dark/95 backdrop-blur-xl border-t border-white/10 px-4 py-4 flex items-center justify-between gap-4">
+          <div>
+            <div className="text-[10px] font-black text-white/40 uppercase tracking-widest">{selectedSlots.length} slot{selectedSlots.length > 1 ? 's' : ''} selected</div>
+            <div className="text-2xl font-black text-primary italic">₹{total}</div>
+          </div>
+          <button
+            onClick={handleProceed}
+            disabled={processing}
+            className="btn-primary !py-3 !px-6 flex items-center gap-2"
+          >
+            {processing ? <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" /> : null}
+            {processing ? 'LOCKING...' : 'CHECKOUT'}
+            {!processing && <span className="material-symbols-outlined text-lg">arrow_forward</span>}
+          </button>
+        </div>
+      )}
+      <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 pb-24 lg:pb-0">
+        <div className="lg:col-span-8 space-y-10 lg:space-y-12">
           {/* Date Picker */}
           <div>
             <div className="flex items-center justify-between mb-10">
@@ -169,7 +187,7 @@ export default function BookingSystem({ arenaId, initialDate, csrfToken }: { are
                 1. Choose <span className="text-primary text-stroke">Date</span>
               </h2>
             </div>
-            <div className="flex gap-4 overflow-x-auto pb-8 -mx-4 px-4 no-scrollbar">
+            <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-4 sm:pb-8 -mx-4 px-4 no-scrollbar">
               {dates.map((d) => {
                 const dateObj = new Date(d);
                 const isActive = d === date;
@@ -180,15 +198,15 @@ export default function BookingSystem({ arenaId, initialDate, csrfToken }: { are
                       setDate(d);
                       setSelectedSlots([]);
                     }}
-                    className={`date-card flex-shrink-0 flex flex-col items-center justify-center w-24 h-28 rounded-[1.5rem] border glass transition-all duration-300 ${
-                      isActive ? 'bg-primary text-black border-primary -translate-y-2 shadow-[0_10px_30px_rgba(13,242,32,0.3)]' : 'border-white/5 hover:border-primary/30'
+                    className={`date-card flex-shrink-0 flex flex-col items-center justify-center w-16 h-20 sm:w-24 sm:h-28 rounded-2xl sm:rounded-[1.5rem] border glass transition-all duration-300 ${
+                      isActive ? 'bg-primary text-black border-primary -translate-y-1 sm:-translate-y-2 shadow-[0_10px_30px_rgba(13,242,32,0.3)]' : 'border-white/5 hover:border-primary/30'
                     }`}
                   >
-                    <span className={`text-[10px] font-black uppercase mb-1 tracking-widest ${isActive ? 'text-black/60' : 'text-white/40'}`}>
+                    <span className={`text-[9px] sm:text-[10px] font-black uppercase mb-0.5 sm:mb-1 tracking-widest ${isActive ? 'text-black/60' : 'text-white/40'}`}>
                       {dateObj.toLocaleDateString('en-US', { weekday: 'short' })}
                     </span>
-                    <span className="text-3xl font-black mb-1 leading-none">{dateObj.getDate()}</span>
-                    <span className={`text-[10px] font-black uppercase tracking-widest ${isActive ? 'text-black/60' : 'text-white/40'}`}>
+                    <span className="text-xl sm:text-3xl font-black mb-0.5 sm:mb-1 leading-none">{dateObj.getDate()}</span>
+                    <span className={`text-[9px] sm:text-[10px] font-black uppercase tracking-widest ${isActive ? 'text-black/60' : 'text-white/40'}`}>
                       {dateObj.toLocaleDateString('en-US', { month: 'short' })}
                     </span>
                   </button>
@@ -228,7 +246,7 @@ export default function BookingSystem({ arenaId, initialDate, csrfToken }: { are
                     {error}
                   </div>
                 )}
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 sm:gap-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
                   {(slots || []).map((slot) => {
                     const isSelected = selectedSlots.some((s) => s.time_slot === slot.time_slot);
                     const isBooked = slot.status === 'booked';
@@ -239,21 +257,21 @@ export default function BookingSystem({ arenaId, initialDate, csrfToken }: { are
                         key={slot.time_slot}
                         onClick={() => toggleSlot(slot)}
                         disabled={isBooked || isLocked}
-                        className={`slot-card p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl border transition-all duration-300 group relative overflow-hidden ${
+                        className={`slot-card p-3 sm:p-5 lg:p-8 rounded-xl sm:rounded-2xl lg:rounded-3xl border transition-all duration-300 group relative overflow-hidden text-left ${
                           isBooked ? 'opacity-20 grayscale cursor-not-allowed bg-white/[0.02] border-white/5' : ''
                         } ${isLocked ? 'opacity-40 cursor-not-allowed border-white/5' : ''} ${
                           isSelected 
-                            ? 'border-primary bg-primary/10 text-primary shadow-[0_0_30px_rgba(13,242,32,0.15)] scale-105' 
+                            ? 'border-primary bg-primary/10 text-primary shadow-[0_0_30px_rgba(13,242,32,0.15)] scale-[1.03]' 
                             : 'bg-white/[0.02] border-white/5 hover:border-primary/50 hover:bg-white/[0.04] hover:scale-[1.02]'
                         }`}
                       >
-                        <div className="text-xl font-black tracking-tight mb-2 uppercase italic">{slot.time_slot}</div>
-                        <div className={`text-[10px] font-black uppercase tracking-[0.2em] ${isSelected ? 'text-primary' : 'text-white/40'}`}>
+                        <div className="text-sm sm:text-base lg:text-xl font-black tracking-tight mb-1 sm:mb-2 uppercase italic leading-tight">{slot.time_slot}</div>
+                        <div className={`text-[9px] sm:text-[10px] font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] ${isSelected ? 'text-primary' : 'text-white/40'}`}>
                           {slot.status === 'available' || isSelected ? `₹${slot.price}` : slot.status}
                         </div>
                         {isSelected && (
-                          <div className="absolute top-3 right-3 text-primary animate-pulse">
-                            <span className="material-symbols-outlined text-lg">check_circle</span>
+                          <div className="absolute top-2 right-2 sm:top-3 sm:right-3 text-primary animate-pulse">
+                            <span className="material-symbols-outlined text-base sm:text-lg">check_circle</span>
                           </div>
                         )}
                       </button>
@@ -270,9 +288,9 @@ export default function BookingSystem({ arenaId, initialDate, csrfToken }: { are
           </div>
         </div>
 
-        {/* Sidebar Summary */}
-        <div className="lg:col-span-4">
-          <div className="glass-card sticky top-28 !p-6 sm:!p-8 lg:!p-10">
+        {/* Sidebar Summary — desktop only */}
+        <div className="hidden lg:block lg:col-span-4">
+          <div className="glass-card sticky top-28 !p-10">
             <h3 className="text-2xl font-black uppercase tracking-tighter mb-10 italic">
               Booking <span className="text-primary text-stroke">Summary</span>
             </h3>

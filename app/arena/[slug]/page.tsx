@@ -33,7 +33,7 @@ export default async function ArenaPage({ params, searchParams }: Props) {
   return (
     <div className="min-h-screen">
       {/* Hero Header */}
-      <section className="relative h-[50vh] min-h-[400px] flex items-end pb-16 overflow-hidden">
+      <section className="relative h-[45vh] sm:h-[50vh] min-h-[320px] sm:min-h-[400px] flex items-end pb-8 sm:pb-16 overflow-hidden">
         <div className="absolute inset-0 z-0">
           <img
             src={arena.cover_image || 'https://images.unsplash.com/photo-1575361204480-aadea25e6e68?w=1920'}
@@ -44,43 +44,43 @@ export default async function ArenaPage({ params, searchParams }: Props) {
           <div className="absolute inset-0 hero-gradient opacity-80" />
         </div>
 
-        <div className="max-w-7xl mx-auto px-6 relative z-10 w-full">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10 w-full">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-10">
             <div>
               <Link
                 href="/"
-                className="btn-secondary !py-2 !px-4 !rounded-full mb-8 inline-flex items-center gap-2 group"
+                className="btn-secondary !py-2 !px-4 !rounded-full mb-4 sm:mb-8 inline-flex items-center gap-2 group"
               >
                 <span className="material-symbols-outlined text-sm group-hover:-translate-x-1 transition-transform">
                   arrow_back
                 </span>
                 BACK TO EXPLORE
               </Link>
-              <h1 className="text-5xl md:text-7xl font-black tracking-tighter uppercase mb-6 italic">{arena.name}</h1>
-              <div className="flex flex-wrap items-center gap-6">
-                <span className="flex items-center gap-2.5 text-white/60 font-black uppercase tracking-widest text-xs">
-                  <span className="material-symbols-outlined text-primary text-xl">location_on</span>
+              <h1 className="text-4xl sm:text-5xl md:text-7xl font-black tracking-tighter uppercase mb-3 sm:mb-6 italic">{arena.name}</h1>
+              <div className="flex flex-wrap items-center gap-3 sm:gap-6">
+                <span className="flex items-center gap-2 text-white/60 font-black uppercase tracking-widest text-[10px] sm:text-xs">
+                  <span className="material-symbols-outlined text-primary text-lg sm:text-xl">location_on</span>
                   {arena.address}
                 </span>
-                <span className="w-1.5 h-1.5 rounded-full bg-primary/40 shadow-[0_0_10px_rgba(13,242,32,0.5)]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-primary/40 shadow-[0_0_10px_rgba(13,242,32,0.5)] hidden sm:block" />
                 <span className="pill-status">
                   <span className="material-symbols-outlined text-lg">verified</span>
                   Premium Grade Turf
                 </span>
               </div>
             </div>
-            <div className="glass-card !p-6 md:!p-8 text-right md:min-w-[240px] md:scale-110 origin-bottom-right">
-              <span className="label-classic !ml-0 mb-2">Starts From</span>
-              <span className="text-4xl font-black text-primary italic text-stroke">
+            <div className="glass-card !p-4 sm:!p-6 md:!p-8 text-right md:min-w-[200px] lg:min-w-[240px] md:scale-110 origin-bottom-right self-end">
+              <span className="label-classic !ml-0 mb-1 sm:mb-2">Starts From</span>
+              <span className="text-3xl sm:text-4xl font-black text-primary italic text-stroke">
                 ₹{new Intl.NumberFormat().format(minPrice)}
-                <small className="text-white text-xs font-normal not-italic ml-2 tracking-tighter">/HR</small>
+                <small className="text-white text-[10px] sm:text-xs font-normal not-italic ml-1 sm:ml-2 tracking-tighter">/HR</small>
               </span>
             </div>
           </div>
         </div>
       </section>
 
-      <div className="relative z-10 -mt-8">
+      <div className="relative z-10 -mt-4 sm:-mt-8">
         <BookingSystem arenaId={arena.id} initialDate={selectedDate} csrfToken={csrfToken} />
       </div>
     </div>
