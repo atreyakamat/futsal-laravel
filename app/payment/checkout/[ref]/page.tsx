@@ -2,6 +2,7 @@ import { getBookingsByRef } from '@/lib/domain';
 import { getPayuConfig, generatePayuHash } from '@/lib/payment';
 import { readRequestOrigin } from '@/lib/session';
 import { redirect } from 'next/navigation';
+import PaymentRedirector from '@/components/PaymentRedirector';
 
 type Props = {
   params: Promise<{ ref: string }>;
@@ -45,22 +46,12 @@ export default async function PaymentCheckoutPage({ params }: Props) {
         Please wait while we connect you to our secure payment gateway. Do not refresh or close this window.
       </p>
 
-      <form action={payuUrl} method="post" id="payu-form" className="hidden">
-        <input type="hidden" name="key" value={merchantKey} />
-        <input type="hidden" name="hash" value={hash} />
-        <input type="hidden" name="txnid" value={payuParams.txnid} />
-        <input type="hidden" name="amount" value={payuParams.amount} />
-        <input type="hidden" name="firstname" value={payuParams.firstname} />
-        <input type="hidden" name="email" value={payuParams.email} />
-        <input type="hidden" name="phone" value={payuParams.phone} />
-        <input type="hidden" name="productinfo" value={payuParams.productinfo} />
-        <input type="hidden" name="surl" value={payuParams.surl} />
-        <input type="hidden" name="furl" value={payuParams.furl} />
-      </form>
-
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `document.getElementById('payu-form').submit();`,
+      <PaymentRedirector
+        payuUrl={payuUrl}
+        params={{
+          ...payuParams,
+          key: merchantKey,
+          hash,
         }}
       />
     </div>

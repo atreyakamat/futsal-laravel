@@ -71,11 +71,6 @@ async function seedDemoData(client) {
   }
 
   const arenaId = arenaRows[0].id;
-  const { rows: userRows } = await client.query(
-    'SELECT id FROM users WHERE email = $1 LIMIT 1',
-    ['player@example.com']
-  );
-  const demoUserId = userRows.length ? userRows[0].id : null;
   const demoPassword = await bcrypt.hash('AngleFutsal123!', 10);
   const today = new Date();
   const bookingOne = new Date(today);
@@ -103,6 +98,7 @@ async function seedDemoData(client) {
 
   console.log(`✓ Admin user created/updated: ${adminEmail}`);
 
+  let demoUserId = null;
   // Seed super_admins table linked to this user
   const { rows: superAdminUserRows } = await client.query(
     'SELECT id FROM users WHERE email = $1 LIMIT 1',
@@ -110,6 +106,7 @@ async function seedDemoData(client) {
   );
   if (superAdminUserRows.length > 0) {
     const superAdminUserId = superAdminUserRows[0].id;
+    demoUserId = superAdminUserId;
     await client.query(
       `INSERT INTO super_admins (user_id, email, password_hash, first_name, last_name, is_active, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, TRUE, NOW(), NOW())

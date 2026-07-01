@@ -786,23 +786,91 @@ export default function SuperAdminDashboardClient() {
                           placeholder="Full address"
                         />
                       </div>
-                      <div>
+                       <div>
                         <label className="label-classic">Cover Image URL</label>
-                        <input 
-                          className="input-field" 
-                          value={arenaCoverImage} 
-                          onChange={e => setArenaCoverImage(e.target.value)}
-                          placeholder="https://example.com/cover.jpg"
-                        />
+                        <div className="flex gap-2">
+                          <input 
+                            className="input-field flex-1" 
+                            value={arenaCoverImage} 
+                            onChange={e => setArenaCoverImage(e.target.value)}
+                            placeholder="https://example.com/cover.jpg"
+                          />
+                          {editingArenaId && (
+                            <label className="btn-secondary !p-4 flex items-center justify-center cursor-pointer">
+                              <span className="material-symbols-outlined text-base">upload</span>
+                              <input 
+                                type="file" 
+                                className="hidden" 
+                                accept="image/*"
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  const formData = new FormData();
+                                  formData.append('type', 'cover');
+                                  formData.append('file', file);
+                                  try {
+                                    const res = await fetch(`/api/fg-admin/super-admin/arenas/${editingArenaId}/upload-image`, {
+                                      method: 'POST',
+                                      body: formData
+                                    });
+                                    const data = await res.json();
+                                    if (data.success) {
+                                      setArenaCoverImage(data.url);
+                                      alert('Cover image uploaded successfully!');
+                                    } else {
+                                      alert(data.message || 'Upload failed');
+                                    }
+                                  } catch (err) {
+                                    alert('Failed to upload image');
+                                  }
+                                }}
+                              />
+                            </label>
+                          )}
+                        </div>
                       </div>
                       <div>
                         <label className="label-classic">Logo URL</label>
-                        <input 
-                          className="input-field" 
-                          value={arenaLogoUrl} 
-                          onChange={e => setArenaLogoUrl(e.target.value)}
-                          placeholder="https://example.com/logo.png"
-                        />
+                        <div className="flex gap-2">
+                          <input 
+                            className="input-field flex-1" 
+                            value={arenaLogoUrl} 
+                            onChange={e => setArenaLogoUrl(e.target.value)}
+                            placeholder="https://example.com/logo.png"
+                          />
+                          {editingArenaId && (
+                            <label className="btn-secondary !p-4 flex items-center justify-center cursor-pointer">
+                              <span className="material-symbols-outlined text-base">upload</span>
+                              <input 
+                                type="file" 
+                                className="hidden" 
+                                accept="image/*"
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  const formData = new FormData();
+                                  formData.append('type', 'logo');
+                                  formData.append('file', file);
+                                  try {
+                                    const res = await fetch(`/api/fg-admin/super-admin/arenas/${editingArenaId}/upload-image`, {
+                                      method: 'POST',
+                                      body: formData
+                                    });
+                                    const data = await res.json();
+                                    if (data.success) {
+                                      setArenaLogoUrl(data.url);
+                                      alert('Logo uploaded successfully!');
+                                    } else {
+                                      alert(data.message || 'Upload failed');
+                                    }
+                                  } catch (err) {
+                                    alert('Failed to upload image');
+                                  }
+                                }}
+                              />
+                            </label>
+                          )}
+                        </div>
                       </div>
                       <div className="flex gap-4 pt-4">
                         <button type="submit" className="btn-primary flex-1">{editingArenaId ? 'UPDATE' : 'CREATE'}</button>

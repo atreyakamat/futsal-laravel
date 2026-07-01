@@ -1,12 +1,20 @@
-import { Resend } from 'resend';
+import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 
-let resendClient: Resend | null = null;
-function getResend() {
-  if (!resendClient && process.env.RESEND_API_KEY) {
-    resendClient = new Resend(process.env.RESEND_API_KEY);
+let sesClient: SESClient | null = null;
+
+function getSES() {
+  if (!sesClient && process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+    sesClient = new SESClient({
+      region: process.env.AWS_DEFAULT_REGION || 'us-east-1',
+      credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+      },
+    });
   }
-  return resendClient;
+  return sesClient;
 }
+
 interface EmailOptions {
   to: string;
   subject: string;
@@ -15,28 +23,43 @@ interface EmailOptions {
 }
 
 export async function sendEmail(options: EmailOptions): Promise<{ success: boolean; error?: string }> {
-  if (!process.env.RESEND_API_KEY) {
-    console.warn('[EMAIL] RESEND_API_KEY not configured, skipping email send');
+  const fromEmail = process.env.AWS_FROM_EMAIL || 'no-reply@aiemgoa.ac.in';
+
+  if (!process.env.AWS_ACCESS_KEY_ID) {
+    console.warn('[EMAIL] AWS_ACCESS_KEY_ID not configured, skipping email send');
     return { success: false, error: 'Email service not configured' };
   }
 
   try {
-    const resend = getResend();
-    if (!resend) throw new Error('Resend client not initialized');
-    
-    const { data, error } = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL || 'AgnelArena <noreply@agnelarena.com>',
-      to: options.to,
-      subject: options.subject,
-      html: options.html,
-      text: options.text,
+    const ses = getSES();
+    if (!ses) throw new Error('SES client not initialized');
+
+    const command = new SendEmailCommand({
+      Source: `AgnelArena <${fromEmail}>`,
+      Destination: {
+        ToAddresses: [options.to],
+      },
+      Message: {
+        Subject: {
+          Data: options.subject,
+          Charset: 'UTF-8',
+        },
+        Body: {
+          Html: {
+            Data: options.html,
+            Charset: 'UTF-8',
+          },
+          ...(options.text ? {
+            Text: {
+              Data: options.text,
+              Charset: 'UTF-8',
+            }
+          } : {})
+        },
+      },
     });
 
-    if (error) {
-      console.error('[EMAIL] Resend error:', error);
-      return { success: false, error: error.message };
-    }
-
+    await ses.send(command);
     console.info(`[EMAIL] Sent to ${options.to}: ${options.subject}`);
     return { success: true };
   } catch (err) {

@@ -228,7 +228,7 @@ export default function BookingSystem({ arenaId, initialDate, csrfToken }: { are
                     {error}
                   </div>
                 )}
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 sm:gap-6">
                   {(slots || []).map((slot) => {
                     const isSelected = selectedSlots.some((s) => s.time_slot === slot.time_slot);
                     const isBooked = slot.status === 'booked';
@@ -239,7 +239,7 @@ export default function BookingSystem({ arenaId, initialDate, csrfToken }: { are
                         key={slot.time_slot}
                         onClick={() => toggleSlot(slot)}
                         disabled={isBooked || isLocked}
-                        className={`slot-card p-8 rounded-3xl border transition-all duration-300 group relative overflow-hidden ${
+                        className={`slot-card p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl border transition-all duration-300 group relative overflow-hidden ${
                           isBooked ? 'opacity-20 grayscale cursor-not-allowed bg-white/[0.02] border-white/5' : ''
                         } ${isLocked ? 'opacity-40 cursor-not-allowed border-white/5' : ''} ${
                           isSelected 
@@ -272,7 +272,7 @@ export default function BookingSystem({ arenaId, initialDate, csrfToken }: { are
 
         {/* Sidebar Summary */}
         <div className="lg:col-span-4">
-          <div className="glass-card sticky top-28 !p-10">
+          <div className="glass-card sticky top-28 !p-6 sm:!p-8 lg:!p-10">
             <h3 className="text-2xl font-black uppercase tracking-tighter mb-10 italic">
               Booking <span className="text-primary text-stroke">Summary</span>
             </h3>

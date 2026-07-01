@@ -3,16 +3,11 @@ import crypto from 'crypto';
 export function getPayuConfig() {
   const isProd = process.env.PAYU_ENV === 'production' || process.env.PAYU_TEST_MODE === 'false';
   
-  // If we are in test mode, always use the test credentials provided by the user unless explicitly overridden with test-specific env vars.
-  const merchantKey = isProd 
-    ? (process.env.PAYU_MERCHANT_KEY || process.env.PAYU_KEY || '') 
-    : (process.env.PAYU_TEST_KEY || 'bPLpnO');
-    
-  const merchantSalt = isProd 
-    ? (process.env.PAYU_MERCHANT_SALT || process.env.PAYU_SALT || '') 
-    : (process.env.PAYU_TEST_SALT || 'IgE6ICwOJngI1nZwAnwkX6yK0pWJxOXE');
+  // Use user-defined credentials if present (regardless of env mode), otherwise fallback to sandbox defaults.
+  const merchantKey = process.env.PAYU_MERCHANT_KEY || process.env.PAYU_KEY || process.env.PAYU_TEST_KEY || 'bPLpnO';
+  const merchantSalt = process.env.PAYU_MERCHANT_SALT || process.env.PAYU_SALT || process.env.PAYU_TEST_SALT || 'IgE6ICwOJngI1nZwAnwkX6yK0pWJxOXE';
 
-  const payuBaseUrl = isProd ? 'https://secure.payu.in' : 'https://test.payu.in';
+  const payuBaseUrl = process.env.PAYU_BASE_URL || (isProd ? 'https://secure.payu.in' : 'https://test.payu.in');
   const payuUrl = `${payuBaseUrl}/_payment`;
 
   return { merchantKey, merchantSalt, payuUrl };

@@ -394,14 +394,32 @@ export async function removeOtp(identifier: string) {
 }
 
 export async function findUserByIdentifier(identifier: string) {
-  return queryOne<{ id: number; name: string; email: string; customer_mobile: string | null }>(
-    `SELECT id, name, email, customer_mobile
+  return queryOne<{ id: number; name: string; email: string; customer_mobile: string | null; role: string }>(
+    `SELECT id, name, email, customer_mobile, role
        FROM users
       WHERE email = ?
          OR customer_mobile = ?
       LIMIT 1`,
     [identifier, identifier]
   );
+}
+
+export async function findOrCreateUserByIdentifier(identifier: string) {
+  const existingUser = await findUserByIdentifier(identifier);
+  if (existingUser) return existingUser;
+
+  const isEmail = identifier.includes('@');
+  const name = isEmail ? identifier.split('@')[0] : 'Player';
+  const email = isEmail ? identifier : `user-${crypto.randomUUID().slice(0, 8)}@agnelarena.com`;
+  const mobile = isEmail ? null : identifier;
+
+  await query(
+    `INSERT INTO users (name, email, customer_mobile, role, created_at, updated_at)
+     VALUES (?, ?, ?, 'player', NOW(), NOW())`,
+    [name, email, mobile]
+  );
+  
+  return findUserByIdentifier(identifier);
 }
 
 export async function getSecurityBookings(ticketNumber: string) {

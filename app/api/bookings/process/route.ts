@@ -5,6 +5,7 @@ import { getCookieValueFromRequest, getWritableSessionId, persistSessionCookie, 
 import { getArenaEntryMode } from '@/lib/admin';
 import { sendTicketEmail } from '@/lib/ticket';
 import { verifyCsrfMiddleware } from '@/lib/csrf-middleware';
+import { normalizePhoneNumber } from '@/lib/phone';
 
 const bodySchema = z.object({
   arena_id: z.number().int().positive(),
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
     date: String(payloadObject.date),
     slots,
     customer_name: String(payloadObject.customer_name),
-    customer_mobile: String(payloadObject.customer_mobile),
+    customer_mobile: normalizePhoneNumber(String(payloadObject.customer_mobile)),
     customer_email: payloadObject.customer_email ? String(payloadObject.customer_email) : null,
   });
 
@@ -84,7 +85,7 @@ export async function POST(request: Request) {
         bookingRef: result.bookingRef,
         redirectTo: redirectTarget,
       })
-    : NextResponse.redirect(new URL(redirectTarget, request.url));
+    : NextResponse.redirect(new URL(redirectTarget, request.url), 303);
 
   const cookieOpts = getCookieOptions();
   if (result.userId) {

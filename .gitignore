@@ -27,3 +27,4 @@ Thumbs.db
 
 /generated/prisma
 db_data/
+temp_pg_data/

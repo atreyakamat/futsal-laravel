@@ -1,7 +1,7 @@
 import { getArenaById, getBookingsByRef } from '@/lib/domain';
 import { mergeSlots, getDurationText } from '@/lib/slot-merge';
-import { generateQrDataUrl } from '@/lib/qr';
 import { sendEmail, generateBookingConfirmationEmail } from '@/lib/email';
+import { getSmsProvider } from '@/lib/sms';
 
 export type TicketPackage = {
   bookingRef: string;
@@ -80,24 +80,44 @@ export async function sendTicketEmail(bookingRef: string) {
 
   const bookings = await getBookingsByRef(bookingRef);
   const firstBooking = bookings?.[0];
-  if (!firstBooking || !firstBooking.customer_email) {
-    return { sent: false, reason: 'No recipient email' as const };
+  if (!firstBooking) {
+    return { sent: false, reason: 'No recipient booking found' as const };
   }
 
-  const qrUrl = await getTicketQrUrl(ticket.ticketNumbers[0] ?? ticket.bookingRef);
-  const totalAmount = bookings.reduce((sum, b) => sum + Number(b.amount), 0);
+  // 1. Send SMS / WhatsApp Notification (contains ticket details to map template)
+  if (firstBooking.customer_mobile) {
+    const provider = getSmsProvider();
+    try {
+      const mergedSlots = mergeSlots(ticket.slots);
+      const timeRange = mergedSlots.join(', '); // e.g. "17:00-18:00"
+      await provider.sendSms(
+        firstBooking.customer_mobile,
+        `CONFIRMED|${ticket.bookingDate}|${timeRange}|${ticket.ticketNumbers[0] || ticket.bookingRef}|${bookingRef}|${ticket.customerName}`
+      );
+    } catch (smsErr) {
+      console.error('[WhatsApp Ticket] Failed to send ticket via WhatsApp:', smsErr);
+    }
+  }
 
-  const { subject, html, text } = generateBookingConfirmationEmail(
-    ticket.bookingRef,
-    ticket.arenaName,
-    ticket.bookingDate,
-    ticket.slots,
-    ticket.customerName,
-    totalAmount,
-    ticket.ticketNumbers,
-    qrUrl
-  );
+  // 2. Send Email Notification
+  if (firstBooking.customer_email) {
+    const qrUrl = await getTicketQrUrl(ticket.ticketNumbers[0] ?? ticket.bookingRef);
+    const totalAmount = bookings.reduce((sum, b) => sum + Number(b.amount), 0);
 
-  const result = await sendEmail({ to: firstBooking.customer_email, subject, html, text });
-  return { sent: result.success, mode: 'resend' as const, error: result.error };
+    const { subject, html, text } = generateBookingConfirmationEmail(
+      ticket.bookingRef,
+      ticket.arenaName,
+      ticket.bookingDate,
+      ticket.slots,
+      ticket.customerName,
+      totalAmount,
+      ticket.ticketNumbers,
+      qrUrl
+    );
+
+    const result = await sendEmail({ to: firstBooking.customer_email, subject, html, text });
+    return { sent: result.success, mode: 'resend' as const, error: result.error };
+  }
+
+  return { sent: true };
 }

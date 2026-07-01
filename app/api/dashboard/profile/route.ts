@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { readAuthUserId } from '@/lib/session';
 import { query, queryOne } from '@/lib/db';
+import { normalizePhoneNumber } from '@/lib/phone';
 
 const profileSchema = z.object({
   name: z.string().min(2).max(100),
@@ -45,6 +46,9 @@ export async function PUT(request: Request) {
 
   try {
     const body = await request.json();
+    if (body && typeof body.customer_mobile === 'string') {
+      body.customer_mobile = normalizePhoneNumber(body.customer_mobile);
+    }
     const payload = profileSchema.parse(body);
 
     await query(

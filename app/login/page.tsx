@@ -11,7 +11,7 @@ export default function LoginPage() {
   const router = useRouter();
 
   async function handleSendOtp() {
-    if (!identifier) return alert('Please enter email or mobile');
+    if (!identifier) return alert('Please enter your mobile number');
     setLoading(true);
 
     try {
@@ -23,7 +23,7 @@ export default function LoginPage() {
 
       if (response.ok) {
         setStep(2);
-        alert('OTP sent! (Check logs for testing)');
+        alert('OTP sent via WhatsApp!');
       } else {
         alert('Failed to send OTP');
       }
@@ -77,19 +77,19 @@ export default function LoginPage() {
           <div className="space-y-8">
             <div className="space-y-3">
               <label className="label-classic" htmlFor="identifier">
-                Email or Mobile Number
+                Mobile Number
               </label>
               <div className="relative group">
                 <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-primary transition-colors text-xl">
-                  person
+                  phone_android
                 </span>
                 <input
                   className="input-field pl-12"
                   id="identifier"
-                  type="text"
+                  type="tel"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
-                  placeholder="Enter Email or Mobile"
+                  placeholder="e.g. +91 98765 43210"
                 />
               </div>
             </div>

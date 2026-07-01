@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { removeOtp, findUserByIdentifier, verifyOtp as verifyOtpHash, query, queryOne } from '@/lib/domain';
 import { AUTH_COOKIE, signValue, getCookieOptions } from '@/lib/session';
+import { normalizePhoneNumber } from '@/lib/phone';
 
 const bodySchema = z.object({
   identifier: z.string().min(3).max(100),
@@ -13,7 +14,12 @@ export async function POST(request: Request) {
   const payload = bodySchema.parse(
     isJson ? await request.json() : Object.fromEntries((await request.formData()).entries())
   );
-  const isValid = await verifyOtpHash(payload.identifier, payload.otp);
+  
+  const cleanIdentifier = payload.identifier.includes('@') 
+    ? payload.identifier 
+    : normalizePhoneNumber(payload.identifier);
+
+  const isValid = await verifyOtpHash(cleanIdentifier, payload.otp);
 
   if (!isValid) {
     return NextResponse.json({ success: false, message: 'Invalid or expired OTP.' }, { status: 400 });
@@ -21,7 +27,7 @@ export async function POST(request: Request) {
 
   const user = await query<{ id: number; email: string; role: string }>(
     'SELECT id, email, role FROM users WHERE (email = ? OR customer_mobile = ?) LIMIT 1',
-    [payload.identifier, payload.identifier]
+    [payload.identifier, cleanIdentifier]
   );
 
   if (!user || user?.length === 0 || !user[0]) {
@@ -32,7 +38,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, message: 'Unauthorized. Admin access required.' }, { status: 403 });
   }
 
-  await removeOtp(payload.identifier);
+  await removeOtp(cleanIdentifier);
 
   const response = NextResponse.json({ success: true, userExists: true, role: user[0].role });
   

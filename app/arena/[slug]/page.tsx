@@ -69,7 +69,7 @@ export default async function ArenaPage({ params, searchParams }: Props) {
                 </span>
               </div>
             </div>
-            <div className="glass-card !p-8 text-right md:min-w-[240px] scale-110 origin-bottom-right">
+            <div className="glass-card !p-6 md:!p-8 text-right md:min-w-[240px] md:scale-110 origin-bottom-right">
               <span className="label-classic !ml-0 mb-2">Starts From</span>
               <span className="text-4xl font-black text-primary italic text-stroke">
                 ₹{new Intl.NumberFormat().format(minPrice)}

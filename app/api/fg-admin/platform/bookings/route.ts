@@ -4,6 +4,7 @@ import { createApprovalRequest, getAdminContext } from '@/lib/admin';
 import { createBookingBatch } from '@/lib/domain';
 import { readAuthUserId } from '@/lib/session';
 import { sendTicketEmail } from '@/lib/ticket';
+import { normalizePhoneNumber } from '@/lib/phone';
 
 const bodySchema = z.object({
   arena_id: z.coerce.number().int().positive(),
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
     date: String(payloadObject.date),
     slots,
     customer_name: String(payloadObject.customer_name),
-    customer_mobile: String(payloadObject.customer_mobile),
+    customer_mobile: normalizePhoneNumber(String(payloadObject.customer_mobile)),
     customer_email: payloadObject.customer_email ? String(payloadObject.customer_email) : null,
     free_booking: String(payloadObject.free_booking ?? 'false') === 'true' || payloadObject.free_booking === 'on' || payloadObject.free_booking === '1',
     notes: payloadObject.notes ? String(payloadObject.notes) : null,
