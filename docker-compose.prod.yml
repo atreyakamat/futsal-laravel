@@ -1,0 +1,51 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: futsal_next_app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://arena_user:Xk9Pn3Wq7Ym2Bc5Zt8RjLvQm@arena-db:5432/arena_db?schema=public
+      - NEXT_PUBLIC_APP_URL=https://agnelarenagoa.com
+
+      # PayU (TEST — swap for production keys when going live)
+      - PAYU_MERCHANT_KEY=gtKFFx
+      - PAYU_MERCHANT_SALT=4R38IvwiV57FwVpsgOvTXBdLE4tHUXFW
+      - PAYU_SALT=4R38IvwiV57FwVpsgOvTXBdLE4tHUXFW
+      - PAYU_BASE_URL=https://test.payu.in
+
+      # AiSensy WhatsApp
+      - AISENSY_API_KEY=${AISENSY_API_KEY}
+      - AISENSY_CAMPAIGN_NAME=test_api
+      - AISENSY_CAMPAIGN_NAME_OTP=${AISENSY_CAMPAIGN_NAME_OTP:-test_api}
+      - AISENSY_CAMPAIGN_NAME_BOOKING=${AISENSY_CAMPAIGN_NAME_BOOKING:-test_api}
+      - AISENSY_USERNAME=${AISENSY_USERNAME:-AITD Official}
+      - AISENSY_SOURCE=new-landing-page form
+
+      # Session / Cookie security — CHANGE THESE to strong random values
+      - SESSION_SECRET=${SESSION_SECRET}
+      - COOKIE_SECRET=${COOKIE_SECRET}
+      - SMS_PROVIDER=whatsapp
+
+      # Super admin bootstrap
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-superadmin@agnelarenagoa.com}
+      - ADMIN_MOBILE=${ADMIN_MOBILE:-+919999999999}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+
+      # AWS SES (email delivery)
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
+      - AWS_FROM_EMAIL=${AWS_FROM_EMAIL:-no-reply@aiemgoa.ac.in}
+
+    extra_hosts:
+      - "arena-db:host-gateway"
+
+networks:
+  default:
+    external: true
+    name: agnel-arena-net
