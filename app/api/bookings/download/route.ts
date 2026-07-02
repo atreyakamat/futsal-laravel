@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBookingByTicket, getBookingsByRef, getArenaById } from '@/lib/domain';
-import { generateTicketPdfBuffer } from '@/lib/pdf.ts';
+import { generateTicketPdfBuffer } from '@/lib/pdf';
 
 export async function GET(request: NextRequest) {
   try {
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
 
     const pdfBuffer = await generateTicketPdfBuffer(booking, arenaName, arenaAddress);
 
-    return new Response(pdfBuffer, {
+    return new Response(pdfBuffer as any, {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="ticket-${booking.ticket_number}.pdf"`,

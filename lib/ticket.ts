@@ -2,6 +2,7 @@ import { getArenaById, getBookingsByRef } from '@/lib/domain';
 import { mergeSlots, getDurationText } from '@/lib/slot-merge';
 import { sendEmail, generateBookingConfirmationEmail } from '@/lib/email';
 import { getSmsProvider } from '@/lib/sms';
+import { generateQrDataUrl } from '@/lib/qr';
 
 export type TicketPackage = {
   bookingRef: string;

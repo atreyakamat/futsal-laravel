@@ -1,4 +1,4 @@
-import { sendEmail } from '../lib/email.ts';
+import { sendEmail } from '../lib/email';
 import dotenv from 'dotenv';
 
 dotenv.config();

@@ -1,5 +1,5 @@
 import PDFDocument from 'pdfkit';
-import { generateQrDataUrl } from './qr.ts';
+import { generateQrDataUrl } from './qr';
 
 interface BookingData {
   ticket_number: string;
