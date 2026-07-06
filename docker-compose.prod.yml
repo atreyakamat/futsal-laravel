@@ -12,11 +12,11 @@ services:
       - DATABASE_URL=postgresql://arena_user:Xk9Pn3Wq7Ym2Bc5Zt8RjLvQm@arena-db:5432/arena_db?schema=public
       - NEXT_PUBLIC_APP_URL=https://agnelarenagoa.com
 
-      # PayU (TEST — swap for production keys when going live)
-      - PAYU_MERCHANT_KEY=gtKFFx
-      - PAYU_MERCHANT_SALT=4R38IvwiV57FwVpsgOvTXBdLE4tHUXFW
-      - PAYU_SALT=4R38IvwiV57FwVpsgOvTXBdLE4tHUXFW
-      - PAYU_BASE_URL=https://test.payu.in
+      # PayU Credentials
+      - PAYU_MERCHANT_KEY=${PAYU_MERCHANT_KEY}
+      - PAYU_MERCHANT_SALT=${PAYU_MERCHANT_SALT}
+      - PAYU_SALT=${PAYU_MERCHANT_SALT}
+      - PAYU_BASE_URL=${PAYU_BASE_URL:-https://secure.payu.in}
 
       # AiSensy WhatsApp
       - AISENSY_API_KEY=${AISENSY_API_KEY}
