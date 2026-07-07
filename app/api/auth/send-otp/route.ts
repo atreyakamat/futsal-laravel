@@ -51,12 +51,6 @@ export async function POST(request: Request) {
   await storeOtp(cleanIdentifier, otp);
   console.info(`[OTP] ${cleanIdentifier}: ${otp}`);
 
-  // Send email if identifier is an email
-  if (isEmail(cleanIdentifier)) {
-    const { subject, html, text } = generateOtpEmail(otp, cleanIdentifier);
-    await sendEmail({ to: cleanIdentifier, subject, html, text });
-  }
-
   // Trigger SMS/WhatsApp Provider if identifier is a mobile number
   if (isMobileNum) {
     const provider = getSmsProvider();
@@ -68,7 +62,20 @@ export async function POST(request: Request) {
     } catch (smsErr) {
       console.error('[SMS] Failed to send SMS via provider:', smsErr);
     }
+    
+    // Look up user to see if they have an email on file to send backup OTP
+    try {
+      const { findUserByIdentifier } = await import('@/lib/domain');
+      const user = await findUserByIdentifier(cleanIdentifier);
+      if (user && user.email) {
+        const { subject, html, text } = generateOtpEmail(otp, user.email);
+        await sendEmail({ to: user.email, subject, html, text });
+      }
+    } catch (err) {
+      console.error('[OTP] Failed to send backup email:', err);
+    }
   }
+
 
   if (!isJson) {
     const response = NextResponse.redirect(new URL(`/verify-otp?identifier=${encodeURIComponent(cleanIdentifier)}`, request.url), 303);
