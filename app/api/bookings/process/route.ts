@@ -57,17 +57,35 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, message: 'This arena is temporarily blocked for bookings.' }, { status: 403 });
   }
 
-  const result = await createBookingBatch({
-    arenaId: payload.arena_id,
-    bookingDate: payload.date,
-    slots: payload.slots,
-    customerName: payload.customer_name,
-    customerMobile: payload.customer_mobile,
-    customerEmail: payload.customer_email ?? null,
-    userId: authUserId,
-    sessionId,
-    freeBooking: entryMode === 'free',
-  });
+  let result;
+  try {
+    result = await createBookingBatch({
+      arenaId: payload.arena_id,
+      bookingDate: payload.date,
+      slots: payload.slots,
+      customerName: payload.customer_name,
+      customerMobile: payload.customer_mobile,
+      customerEmail: payload.customer_email ?? null,
+      userId: authUserId,
+      sessionId,
+      freeBooking: entryMode === 'free',
+    });
+  } catch (error) {
+    console.error('[Booking Process Error]:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to process booking.';
+    
+    // Release locks in case of failure
+    await releaseLocks(sessionId, payload.arena_id, payload.date, payload.slots);
+    
+    if (isJson) {
+      return NextResponse.json({ success: false, message: errorMessage }, { status: 400 });
+    }
+    
+    const referer = request.headers.get('referer') || `/booking/checkout?arena_id=${payload.arena_id}&date=${payload.date}&slots=${encodeURIComponent(JSON.stringify(payload.slots))}`;
+    const url = new URL(referer, request.url);
+    url.searchParams.set('error', errorMessage);
+    return NextResponse.redirect(url, 303);
+  }
 
   await releaseLocks(sessionId, payload.arena_id, payload.date, payload.slots);
 

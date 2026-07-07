@@ -104,14 +104,14 @@ export function getSecurityHeaders() {
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
     'Content-Security-Policy': [
-      "default-src 'self'",
+      "default-src 'self' https://agnelarenagoa.com https://www.agnelarenagoa.com",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://www.google.com https://www.gstatic.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: https: blob:",
-      "connect-src 'self' https://api.resend.com https://sentry.io https://*.payu.in",
+      "connect-src 'self' https://api.resend.com https://sentry.io https://*.payu.in https://agnelarenagoa.com https://www.agnelarenagoa.com",
       "frame-src https://www.google.com https://test.payu.in https://secure.payu.in",
-      "form-action 'self' https://test.payu.in https://secure.payu.in https://*.payu.in",
+      "form-action 'self' https://test.payu.in https://secure.payu.in https://*.payu.in https://agnelarenagoa.com https://www.agnelarenagoa.com",
       "base-uri 'self'",
     ].join('; '),
   };
