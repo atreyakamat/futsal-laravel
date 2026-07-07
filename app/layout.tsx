@@ -1,5 +1,5 @@
 export const dynamic = 'force-dynamic';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Space_Grotesk } from 'next/font/google';
 import './globals.css';
 import '@/lib/env-validate';
@@ -47,10 +47,12 @@ export const metadata: Metadata = {
   },
 };
 
-export const viewport = {
+export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 5,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: '#0F172A',
 };
 
 export default async function RootLayout({
