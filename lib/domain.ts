@@ -446,3 +446,7 @@ export async function confirmEntryByTicket(ticketNumber: string, checkedInByUser
 
   return { success: true, message: 'Entry confirmed.' };
 }
+
+export async function findUserById(id: number) {
+  return queryOne<{ id: number; name: string; email: string; customer_mobile: string; role: string }>('SELECT id, name, email, customer_mobile, role FROM users WHERE id = ? LIMIT 1', [id]);
+}
