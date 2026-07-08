@@ -26,7 +26,8 @@ export async function POST(request: Request) {
   response.cookies.delete(SESSION_COOKIE);
 
   if (request.headers.get('accept')?.includes('text/html')) {
-    const redirectResponse = NextResponse.redirect(new URL('/', request.url));
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.url;
+    const redirectResponse = NextResponse.redirect(new URL('/', baseUrl));
     redirectResponse.cookies.delete(AUTH_COOKIE);
     redirectResponse.cookies.delete('fg_auth_role');
     redirectResponse.cookies.delete('fg_arena_id');

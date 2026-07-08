@@ -22,10 +22,12 @@ export async function POST(request: Request) {
     : payload.identifier;
 
   const isLocked = await isLockedOut(cleanIdentifier);
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.url;
+  
   if (isLocked) {
     const msg = 'Too many failed attempts. You are locked out for 15 minutes.';
     if (!isJson) {
-      return NextResponse.redirect(new URL(`/verify-otp?identifier=${encodeURIComponent(cleanIdentifier)}&error=${encodeURIComponent(msg)}`, request.url));
+      return NextResponse.redirect(new URL(`/verify-otp?identifier=${encodeURIComponent(cleanIdentifier)}&error=${encodeURIComponent(msg)}`, baseUrl));
     }
     return NextResponse.json({ success: false, message: msg }, { status: 403 });
   }
@@ -40,7 +42,7 @@ export async function POST(request: Request) {
       : `Invalid OTP. ${remaining} attempts remaining.`;
 
     if (!isJson) {
-      return NextResponse.redirect(new URL(`/verify-otp?identifier=${encodeURIComponent(cleanIdentifier)}&error=${encodeURIComponent(msg)}`, request.url));
+      return NextResponse.redirect(new URL(`/verify-otp?identifier=${encodeURIComponent(cleanIdentifier)}&error=${encodeURIComponent(msg)}`, baseUrl));
     }
 
     return NextResponse.json({ success: false, message: msg }, { status: 400 });
@@ -51,7 +53,7 @@ export async function POST(request: Request) {
   await removeOtp(cleanIdentifier);
 
   const response = NextResponse.json({ success: true, userExists: Boolean(user) });
-  let redirectResponse = NextResponse.redirect(new URL('/', request.url), 303);
+  let redirectResponse = NextResponse.redirect(new URL('/', baseUrl), 303);
   const cookieOpts = getCookieOptions();
 
   if (user) {

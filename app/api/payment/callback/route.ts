@@ -5,6 +5,7 @@ import { sendTicketEmail } from '@/lib/ticket';
 
 export async function POST(request: Request) {
   try {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.url;
     const formData = await request.formData();
     const status = String(formData.get('status') ?? '');
     const bookingRef = String(formData.get('txnid') ?? '');
@@ -31,13 +32,13 @@ export async function POST(request: Request) {
     });
 
     if (!isValidHash) {
-      return NextResponse.redirect(new URL(`/booking/payment-failed/${bookingRef}`, request.url));
+      return NextResponse.redirect(new URL(`/booking/payment-failed/${bookingRef}`, baseUrl));
     }
 
     // Load bookings and verify existence
     const bookings = await getBookingsByRef(bookingRef);
     if (!bookings || bookings.length === 0) {
-      return NextResponse.redirect(new URL(`/`, request.url));
+      return NextResponse.redirect(new URL(`/`, baseUrl));
     }
 
     // Log the callback details to payment_audit_logs
@@ -55,10 +56,10 @@ export async function POST(request: Request) {
     // Callback idempotency checking
     const currentStatus = bookings[0].payment_status;
     if (currentStatus === 'confirmed') {
-      return NextResponse.redirect(new URL(`/booking/success/${bookingRef}`, request.url));
+      return NextResponse.redirect(new URL(`/booking/success/${bookingRef}`, baseUrl));
     }
     if (currentStatus === 'failed') {
-      return NextResponse.redirect(new URL(`/booking/payment-failed/${bookingRef}`, request.url));
+      return NextResponse.redirect(new URL(`/booking/payment-failed/${bookingRef}`, baseUrl));
     }
 
     if (status === 'success') {
@@ -66,22 +67,22 @@ export async function POST(request: Request) {
       const verificationDetails = await verifyPaymentWithPayu(bookingRef);
       if (!verificationDetails || verificationDetails.status !== 'success') {
         console.error('PayU postservice verification failed or returned non-success for txnid:', bookingRef);
-        return NextResponse.redirect(new URL(`/booking/payment-failed/${bookingRef}`, request.url));
+        return NextResponse.redirect(new URL(`/booking/payment-failed/${bookingRef}`, baseUrl));
       }
 
       const booking = await confirmPayment(bookingRef, mihpayid || null);
       if (!booking) {
-        return NextResponse.redirect(new URL(`/booking/payment-failed/${bookingRef}`, request.url));
+        return NextResponse.redirect(new URL(`/booking/payment-failed/${bookingRef}`, baseUrl));
       }
 
       await sendTicketEmail(bookingRef);
 
-      return NextResponse.redirect(new URL(`/booking/success/${bookingRef}`, request.url));
+      return NextResponse.redirect(new URL(`/booking/success/${bookingRef}`, baseUrl));
     }
 
     // Mark failed
     await markPaymentFailed(bookingRef);
-    return NextResponse.redirect(new URL(`/booking/payment-failed/${bookingRef}`, request.url));
+    return NextResponse.redirect(new URL(`/booking/payment-failed/${bookingRef}`, baseUrl));
   } catch (error) {
     console.error('Payment callback handler error:', error);
     return NextResponse.json({ success: false, message: 'Internal server error' }, { status: 500 });
