@@ -15,12 +15,21 @@ interface BookingData {
 }
 
 export async function generateTicketPdfBuffer(
-  booking: BookingData,
+  bookings: BookingData[],
   arenaName: string,
   arenaAddress: string
 ): Promise<Buffer> {
   return new Promise(async (resolve, reject) => {
     try {
+      if (!bookings || bookings.length === 0) {
+        throw new Error('No bookings provided');
+      }
+      
+      const primaryBooking = bookings[0];
+      const allSlots = bookings.map(b => b.time_slot).join(', ');
+      const totalAmount = bookings.reduce((sum, b) => sum + Number(b.amount), 0);
+      const allTicketNumbers = bookings.map(b => b.ticket_number).join(', ');
+
       const doc = new PDFDocument({ size: 'A4', margin: 40 });
       const chunks: Buffer[] = [];
 
@@ -48,8 +57,8 @@ export async function generateTicketPdfBuffer(
       doc.fillColor('#ffffff')
         .fontSize(9)
         .font('Helvetica')
-        .text(`Ref: ${booking.booking_ref}`, 400, 45, { align: 'right' })
-        .text(`Issued: ${new Date(booking.created_at).toLocaleDateString('en-GB')}`, 400, 60, { align: 'right' });
+        .text(`Ref: ${primaryBooking.booking_ref}`, 400, 45, { align: 'right' })
+        .text(`Issued: ${new Date(primaryBooking.created_at).toLocaleDateString('en-GB')}`, 400, 60, { align: 'right' });
 
       // 3. Ticket Layout Body Section
       let y = 140;
@@ -94,14 +103,14 @@ export async function generateTicketPdfBuffer(
         boxY += 36;
       };
 
-      drawMetaRow('Customer Name', booking.customer_name);
-      drawMetaRow('Contact Mobile', booking.customer_mobile);
+      drawMetaRow('Customer Name', primaryBooking.customer_name);
+      drawMetaRow('Contact Mobile', primaryBooking.customer_mobile);
       drawMetaRow('Arena / Venue', arenaName);
-      drawMetaRow('Date & Time Slot', `${new Date(booking.booking_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })} | ${booking.time_slot}`);
-      drawMetaRow('Payment Status', `${booking.payment_status.toUpperCase()} - (₹${Number(booking.amount).toFixed(2)})`);
+      drawMetaRow('Date & Time Slots', `${new Date(primaryBooking.booking_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })} | ${allSlots}`);
+      drawMetaRow('Payment Status', `${primaryBooking.payment_status.toUpperCase()} - (Total: ₹${totalAmount.toFixed(2)})`);
 
       // 4. QR Code & Scan verification on the right
-      const qrLink = `https://agnelarenagoa.com/verify-ticket?ticket=${booking.ticket_number}`;
+      const qrLink = `https://agnelarenagoa.com/verify-ticket?ticket=${primaryBooking.ticket_number}`;
       const qrDataUrl = await generateQrDataUrl(qrLink);
       const base64Data = qrDataUrl.replace(/^data:image\/png;base64,/, '');
       const qrBuffer = Buffer.from(base64Data, 'base64');
@@ -116,7 +125,7 @@ export async function generateTicketPdfBuffer(
       doc.fillColor('#050505')
         .fontSize(10)
         .font('Helvetica-Bold')
-        .text(booking.ticket_number, 390, y + 195, { align: 'center', width: 160 });
+        .text(primaryBooking.ticket_number, 390, y + 195, { align: 'center', width: 160 });
 
       y += 260;
 

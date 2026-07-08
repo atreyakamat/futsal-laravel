@@ -15,18 +15,17 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    let booking: any = null;
+    let bookingsForPdf: any[] = [];
 
     if (ticketNumber) {
-      booking = await getBookingByTicket(ticketNumber);
+      const b = await getBookingByTicket(ticketNumber);
+      if (b) bookingsForPdf = [b];
     } else if (bookingRef) {
-      const bookings = await getBookingsByRef(bookingRef);
-      if (bookings && bookings.length > 0) {
-        booking = bookings[0];
-      }
+      const b = await getBookingsByRef(bookingRef);
+      if (b && b.length > 0) bookingsForPdf = b;
     }
 
-    if (!booking) {
+    if (bookingsForPdf.length === 0) {
       return NextResponse.json(
         { success: false, message: 'Booking/ticket not found.' },
         { status: 404 }
@@ -34,16 +33,16 @@ export async function GET(request: NextRequest) {
     }
 
     // Retrieve arena info for the ticket
-    const arena = await getArenaById(booking.arena_id);
+    const arena = await getArenaById(bookingsForPdf[0].arena_id);
     const arenaName = arena?.name || 'Futsal Arena';
     const arenaAddress = arena?.address || 'Assagao, Goa';
 
-    const pdfBuffer = await generateTicketPdfBuffer(booking, arenaName, arenaAddress);
+    const pdfBuffer = await generateTicketPdfBuffer(bookingsForPdf, arenaName, arenaAddress);
 
     return new Response(pdfBuffer as any, {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="ticket-${booking.ticket_number}.pdf"`,
+        'Content-Disposition': `attachment; filename="ticket-${bookingsForPdf[0].ticket_number}.pdf"`,
         'Cache-Control': 'no-store, max-age=0',
       },
     });
