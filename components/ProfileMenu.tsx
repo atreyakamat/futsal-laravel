@@ -8,9 +8,10 @@ type ProfileMenuProps = {
   userId: number | null;
   role: string | null;
   arenaId: number | null;
+  userName?: string | null;
 };
 
-export default function ProfileMenu({ userId, role, arenaId }: ProfileMenuProps) {
+export default function ProfileMenu({ userId, role, arenaId, userName }: ProfileMenuProps) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -47,11 +48,11 @@ export default function ProfileMenu({ userId, role, arenaId }: ProfileMenuProps)
         aria-expanded={open}
         aria-haspopup="true"
       >
-        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-black text-sm">
-          {role === 'super_admin' ? 'SA' : role === 'arena_admin' ? 'AA' : role === 'security' ? 'SC' : 'US'}
+        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-black text-sm uppercase">
+          {userName ? userName.slice(0, 2) : (role === 'super_admin' ? 'SA' : role === 'arena_admin' ? 'AA' : role === 'security' ? 'SC' : 'US')}
         </div>
-        <span className="hidden sm:block text-xs font-black uppercase tracking-widest text-white/80">
-          {role?.replace('_', ' ')}
+        <span className="hidden sm:block text-xs font-black uppercase tracking-widest text-white/80 truncate max-w-[100px]">
+          {userName || role?.replace('_', ' ')}
         </span>
         <span className="material-symbols-outlined text-white/60 text-sm transition-transform duration-200 {open ? 'rotate-180' : ''}">
           expand_more
@@ -62,14 +63,14 @@ export default function ProfileMenu({ userId, role, arenaId }: ProfileMenuProps)
         <div className="absolute right-0 mt-2 w-56 glass-card !p-3 rounded-2xl border border-white/10 shadow-2xl shadow-black/50 animate-fadeIn z-50">
           <div className="px-3 py-2 border-b border-white/5 mb-2">
             <p className="text-xs font-black text-white/40 uppercase tracking-widest">Signed in as</p>
-            <p className="text-sm font-black text-white truncate capitalize">{role?.replace('_', ' ')}</p>
+            <p className="text-sm font-black text-white truncate capitalize">{userName || role?.replace('_', ' ')}</p>
             {arenaId && (
               <p className="text-[10px] text-white/30 uppercase tracking-widest">Arena ID: {arenaId}</p>
             )}
           </div>
 
           <nav className="space-y-1">
-            {role === 'customer' && (
+            {(role === 'customer' || role === 'player') && (
               <>
                 <Link
                   href="/dashboard"

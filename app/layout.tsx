@@ -64,10 +64,20 @@ export default async function RootLayout({
   let role: string | null = null;
   let arenaId: number | null = null;
 
+  let userName: string | null = null;
+
   try {
     userId = await readAuthUserId();
     role = await readAuthRole();
     arenaId = await readArenaId();
+    
+    if (userId) {
+      const { findUserById } = await import('@/lib/domain');
+      const user = await findUserById(userId);
+      if (user) {
+        userName = user.name;
+      }
+    }
   } catch (e) {
     console.error('Failed to read session cookies in layout:', e);
   }
@@ -81,7 +91,7 @@ export default async function RootLayout({
         />
       </head>
       <body className={spaceGrotesk.className}>
-        <Header userId={userId} role={role} arenaId={arenaId} />
+        <Header userId={userId} role={role} arenaId={arenaId} userName={userName} />
         {children}
         <FloatingContact />
         <Footer />

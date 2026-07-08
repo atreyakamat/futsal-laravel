@@ -52,14 +52,22 @@ export async function POST(request: Request) {
   const user = await findOrCreateUserByIdentifier(cleanIdentifier);
   await removeOtp(cleanIdentifier);
 
-  const response = NextResponse.json({ success: true, userExists: Boolean(user) });
-  let redirectResponse = NextResponse.redirect(new URL('/', baseUrl), 303);
+  const redirectUrl = user?.role === 'super_admin' ? '/fg-admin/platform/super-admin' 
+    : user?.role === 'arena_admin' ? '/fg-admin/arena/dashboard'
+    : user?.role === 'security' ? '/fg-admin/security/scan'
+    : '/dashboard';
+
+  const response = NextResponse.json({ success: true, userExists: Boolean(user), redirect: redirectUrl });
+  let redirectResponse = NextResponse.redirect(new URL(redirectUrl, baseUrl), 303);
   const cookieOpts = getCookieOptions();
 
   if (user) {
     const signedUserId = await signValue(String(user.id));
+    const signedRole = await signValue(String(user.role));
     response.cookies.set(AUTH_COOKIE, signedUserId, cookieOpts);
+    response.cookies.set('fg_auth_role', signedRole, cookieOpts);
     redirectResponse.cookies.set(AUTH_COOKIE, signedUserId, cookieOpts);
+    redirectResponse.cookies.set('fg_auth_role', signedRole, cookieOpts);
     redirectResponse.cookies.delete(GUEST_COOKIE);
   } else {
     response.cookies.set(GUEST_COOKIE, payload.identifier, cookieOpts);

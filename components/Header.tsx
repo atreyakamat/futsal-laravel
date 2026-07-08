@@ -9,9 +9,10 @@ type HeaderProps = {
   userId: number | null;
   role: string | null;
   arenaId: number | null;
+  userName?: string | null;
 };
 
-export default function Header({ userId, role, arenaId }: HeaderProps) {
+export default function Header({ userId, role, arenaId, userName }: HeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -105,7 +106,7 @@ export default function Header({ userId, role, arenaId }: HeaderProps) {
           </div>
 
           <div className="flex items-center gap-4">
-            <ProfileMenu userId={userId} role={role} arenaId={arenaId} />
+            <ProfileMenu userId={userId} role={role} arenaId={arenaId} userName={userName} />
           </div>
         </div>
       </header>
@@ -128,7 +129,7 @@ export default function Header({ userId, role, arenaId }: HeaderProps) {
             Explore Arenas
           </Link>
           {userId ? (
-            role === 'customer' ? (
+            role === 'customer' || role === 'player' ? (
               <Link href="/dashboard" className="text-xs font-black uppercase tracking-widest hover:text-primary text-white/60 transition-colors">
                 My Bookings
               </Link>
@@ -152,7 +153,7 @@ export default function Header({ userId, role, arenaId }: HeaderProps) {
         {/* Desktop Buttons */}
         <div className="hidden md:flex items-center gap-4">
           {userId ? (
-            <ProfileMenu userId={userId} role={role} arenaId={arenaId} />
+            <ProfileMenu userId={userId} role={role} arenaId={arenaId} userName={userName} />
           ) : (
             <Link href="/login" className="btn-primary !py-2.5 !px-6 !rounded-xl text-[10px]">
               PLAYER LOGIN
@@ -183,7 +184,7 @@ export default function Header({ userId, role, arenaId }: HeaderProps) {
               Explore Arenas
             </Link>
             {userId ? (
-              role === 'customer' ? (
+              role === 'customer' || role === 'player' ? (
                 <Link 
                   href="/dashboard"
                   onClick={() => setMobileMenuOpen(false)}
