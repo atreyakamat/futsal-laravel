@@ -25,8 +25,9 @@ export async function POST(request: Request) {
   const isMobileNum = isMobile(payload.identifier);
   if (!isMobileNum) {
     const msg = 'Only mobile number login is supported. Please enter a valid mobile number.';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.url;
     if (!isJson) {
-      return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(msg)}`, request.url));
+      return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(msg)}`, baseUrl));
     }
     return NextResponse.json({ success: false, message: msg }, { status: 400 });
   }
@@ -40,8 +41,9 @@ export async function POST(request: Request) {
       ? 'Too many failed attempts. You are locked out for 15 minutes.'
       : 'Please wait 60 seconds before requesting another OTP.';
 
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.url;
     if (!isJson) {
-      return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(msg)}`, request.url));
+      return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(msg)}`, baseUrl));
     }
     return NextResponse.json({ success: false, message: msg }, { status: 429 });
   }
@@ -78,7 +80,8 @@ export async function POST(request: Request) {
 
 
   if (!isJson) {
-    const response = NextResponse.redirect(new URL(`/verify-otp?identifier=${encodeURIComponent(cleanIdentifier)}`, request.url), 303);
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.url;
+    const response = NextResponse.redirect(new URL(`/verify-otp?identifier=${encodeURIComponent(cleanIdentifier)}`, baseUrl), 303);
     response.cookies.set(GUEST_COOKIE, cleanIdentifier, getCookieOptions());
     return response;
   }

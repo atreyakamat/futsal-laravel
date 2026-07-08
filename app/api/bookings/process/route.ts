@@ -82,7 +82,8 @@ export async function POST(request: Request) {
     }
     
     const referer = request.headers.get('referer') || `/booking/checkout?arena_id=${payload.arena_id}&date=${payload.date}&slots=${encodeURIComponent(JSON.stringify(payload.slots))}`;
-    const url = new URL(referer, request.url);
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.url;
+    const url = new URL(referer, baseUrl);
     url.searchParams.set('error', errorMessage);
     return NextResponse.redirect(url, 303);
   }
@@ -97,13 +98,14 @@ export async function POST(request: Request) {
     ? `/booking/success/${result.bookingRef}`
     : `/payment/checkout/${result.bookingRef}`;
 
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.url;
   const response = isJson
     ? NextResponse.json({
         success: true,
         bookingRef: result.bookingRef,
         redirectTo: redirectTarget,
       })
-    : NextResponse.redirect(new URL(redirectTarget, request.url), 303);
+    : NextResponse.redirect(new URL(redirectTarget, baseUrl), 303);
 
   const cookieOpts = getCookieOptions();
   if (result.userId) {
