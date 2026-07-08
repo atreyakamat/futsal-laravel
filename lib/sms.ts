@@ -168,6 +168,11 @@ export class AiSensyProvider implements SmsProvider {
       if (destination.length === 10) {
         destination = '91' + destination;
       }
+      
+      // Ensure it starts with a + sign as requested
+      if (!destination.startsWith('+')) {
+        destination = '+' + destination;
+      }
 
       // Try to parse structured confirmation or OTP message
       let templateParams: string[] = [];
