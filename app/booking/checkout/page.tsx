@@ -148,7 +148,7 @@ export default async function CheckoutPage({ searchParams }: Props) {
         {/* Checkout Form */}
         <div className="lg:col-span-7">
           <div className="glass-card !p-12">
-            <form action="/api/bookings/process" method="POST" className="space-y-10">
+            <form action={`${process.env.NEXT_PUBLIC_APP_URL}/api/bookings/process`} method="POST" className="space-y-10">
               <input type="hidden" name="arena_id" value={arena.id} />
               <input type="hidden" name="date" value={date} />
               <input type="hidden" name="slots" value={slotsJson} />
