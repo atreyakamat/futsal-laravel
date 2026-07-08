@@ -82,7 +82,9 @@ export async function POST(request: Request) {
     }
     
     const referer = request.headers.get('referer') || `/booking/checkout?arena_id=${payload.arena_id}&date=${payload.date}&slots=${encodeURIComponent(JSON.stringify(payload.slots))}`;
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.url;
+    const proto = request.headers.get('x-forwarded-proto') || 'http';
+    const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'localhost:3000';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `${proto}://${host}`;
     const url = new URL(referer, baseUrl);
     url.searchParams.set('error', errorMessage);
     return NextResponse.redirect(url, 303);
@@ -98,7 +100,9 @@ export async function POST(request: Request) {
     ? `/booking/success/${result.bookingRef}`
     : `/payment/checkout/${result.bookingRef}`;
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.url;
+  const proto = request.headers.get('x-forwarded-proto') || 'http';
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'localhost:3000';
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `${proto}://${host}`;
   const response = isJson
     ? NextResponse.json({
         success: true,

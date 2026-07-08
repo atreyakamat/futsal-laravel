@@ -107,16 +107,31 @@ export async function readGuestIdentifier() {
   return (await cookies()).get(GUEST_COOKIE)?.value ?? null;
 }
 
+export function getBaseUrl(request?: Request) {
+  if (request) {
+    const proto = request.headers.get('x-forwarded-proto') || 'http';
+    const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'localhost:3000';
+    return process.env.NEXT_PUBLIC_APP_URL || `${proto}://${host}`;
+  }
+  return process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+}
+
 export async function readRequestOrigin(request?: Request) {
   if (request) {
     const origin = request.headers.get('origin');
     if (origin) {
       return origin;
     }
+    return getBaseUrl(request);
   }
 
   const headerList = await headers();
-  return headerList.get('origin') ?? process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+  const origin = headerList.get('origin');
+  if (origin) return origin;
+  
+  const proto = headerList.get('x-forwarded-proto') || 'http';
+  const host = headerList.get('x-forwarded-host') || headerList.get('host') || 'localhost:3000';
+  return process.env.NEXT_PUBLIC_APP_URL || `${proto}://${host}`;
 }
 
 export async function readSuperAdminId() {

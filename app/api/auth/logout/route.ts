@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { AUTH_COOKIE, GUEST_COOKIE, SESSION_COOKIE } from '@/lib/session';
+import { getBaseUrl } from '@/lib/session';
 import { query } from '@/lib/domain';
 
 export async function POST(request: Request) {
@@ -26,7 +27,7 @@ export async function POST(request: Request) {
   response.cookies.delete(SESSION_COOKIE);
 
   if (request.headers.get('accept')?.includes('text/html')) {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.url;
+    const baseUrl = getBaseUrl(request);
     const redirectResponse = NextResponse.redirect(new URL('/', baseUrl));
     redirectResponse.cookies.delete(AUTH_COOKIE);
     redirectResponse.cookies.delete('fg_auth_role');

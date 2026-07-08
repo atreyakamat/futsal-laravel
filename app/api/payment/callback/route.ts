@@ -1,3 +1,4 @@
+import { getBaseUrl } from '@/lib/session';
 import { NextResponse } from 'next/server';
 import { confirmPayment, markPaymentFailed, getBookingsByRef, query } from '@/lib/domain';
 import { verifyPayuResponseHash, verifyPaymentWithPayu } from '@/lib/payment';
@@ -5,7 +6,7 @@ import { sendTicketEmail } from '@/lib/ticket';
 
 export async function POST(request: Request) {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.url;
+    const baseUrl = getBaseUrl(request);
     const formData = await request.formData();
     const status = String(formData.get('status') ?? '');
     const bookingRef = String(formData.get('txnid') ?? '');

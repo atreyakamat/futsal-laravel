@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { removeOtp, findOrCreateUserByIdentifier, verifyOtp as verifyOtpHash } from '@/lib/domain';
 import { AUTH_COOKIE, GUEST_COOKIE, signValue, getCookieOptions } from '@/lib/session';
+import { getBaseUrl } from '@/lib/session';
 import { isLockedOut, recordFailedAttempt, resetAttempts } from '@/lib/rate-limit';
 import { normalizePhoneNumber } from '@/lib/phone';
 
@@ -22,7 +23,7 @@ export async function POST(request: Request) {
     : payload.identifier;
 
   const isLocked = await isLockedOut(cleanIdentifier);
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.url;
+  const baseUrl = getBaseUrl(request);
   
   if (isLocked) {
     const msg = 'Too many failed attempts. You are locked out for 15 minutes.';
