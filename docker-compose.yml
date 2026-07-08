@@ -10,7 +10,7 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/futsal_laravel?schema=public
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/futsal_laravel?schema=public}
       - ADMIN_EMAIL=${ADMIN_EMAIL:-superadmin@example.com}
       - ADMIN_MOBILE=${ADMIN_MOBILE:-+919999999999}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-Admin@123456}
