@@ -212,7 +212,7 @@ export class AiSensyProvider implements SmsProvider {
         buttonText = ticketNumber || bookingRef;
       } else if (otp) {
         isOtp = true;
-        templateParams = ['user']; // Map $FirstName to generic user if name not available
+        templateParams = [otp]; // The template expects the OTP as the first parameter (e.g. "{{1}} is your verification code")
         buttonText = otp;
       } else {
         templateParams = [message, message, message, message];
