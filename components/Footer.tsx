@@ -91,9 +91,14 @@ export default function Footer() {
         </div>
 
         <div className="pt-12 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-6">
-          <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em]">
-            © {new Date().getFullYear()} AGNELARENA. ALL RIGHTS RESERVED.
-          </p>
+          <div className="flex flex-col items-center md:items-start gap-2">
+            <p className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">
+              AGNEL CHARITIES AGNEL SEVA SANGH
+            </p>
+            <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em]">
+              © {new Date().getFullYear()} AGNELARENA. ALL RIGHTS RESERVED.
+            </p>
+          </div>
           <div className="flex items-center gap-6">
             <span className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em] flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-primary" />
