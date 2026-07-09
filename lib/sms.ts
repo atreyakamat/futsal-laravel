@@ -151,7 +151,7 @@ export class AiSensyProvider implements SmsProvider {
   private source: string;
 
   constructor() {
-    this.apiKey = process.env.AISENSY_API_KEY ?? '';
+    this.apiKey = process.env.AISENSY_API_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4N2UxMDA0MWQyYjdjMGMwZDkyY2VkYiIsIm5hbWUiOiJBSVREIE9mZmljaWFsIiwiYXBwTmFtZSI6IkFpU2Vuc3kiLCJjbGllbnRJZCI6IjY3OTQ3MGY4YmMzNjE1MGJmYjczOTIxMSIsImFjdGl2ZVBsYW4iOiJGUkVFX0ZPUkVWRVIiLCJpYXQiOjE3NTMwOTIxMDB9.TTQF2swfBaK6Lb3HgAEDr4OobXqyatJaS-GbPYEFgw8';
     this.campaignName = process.env.AISENSY_CAMPAIGN_NAME ?? 'test_api';
     this.userName = process.env.AISENSY_USERNAME ?? 'AITD Official';
     this.source = process.env.AISENSY_SOURCE ?? 'new-landing-page form';
@@ -169,9 +169,9 @@ export class AiSensyProvider implements SmsProvider {
         destination = '91' + destination;
       }
       
-      // Ensure it starts with a + sign as requested
-      if (!destination.startsWith('+')) {
-        destination = '+' + destination;
+      // If the destination starts with 91, ensure we don't prepend a + sign as AiSensy requires exactly 91
+      if (destination.startsWith('+91')) {
+        destination = destination.substring(1);
       }
 
       // Try to parse structured confirmation or OTP message
@@ -287,7 +287,7 @@ export class AiSensyProvider implements SmsProvider {
 }
 
 export function getSmsProvider(): SmsProvider {
-  const providerType = (process.env.SMS_PROVIDER ?? 'mock').toLowerCase();
+  const providerType = (process.env.SMS_PROVIDER ?? 'aisensy').toLowerCase();
   switch (providerType) {
     case 'twilio':
       return new TwilioProvider();
