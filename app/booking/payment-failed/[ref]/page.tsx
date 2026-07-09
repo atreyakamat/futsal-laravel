@@ -74,18 +74,18 @@ export default async function BookingPaymentFailedPage({ params }: Props) {
         {/* Help Card */}
         <div className="glass-card relative overflow-hidden flex flex-col items-center !p-12 border-red-500/20 shadow-[0_0_50px_rgba(239,68,68,0.05)]">
           <div className="absolute top-0 right-0 p-12 opacity-[0.03]">
-            <span className="material-symbols-outlined text-[100px]">help_outline</span>
+            <span className="material-symbols-outlined text-[100px]">cancel</span>
           </div>
 
           <div className="w-20 h-20 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-8">
-            <span className="material-symbols-outlined text-red-500 text-4xl">lock_clock</span>
+            <span className="material-symbols-outlined text-red-500 text-4xl">event_busy</span>
           </div>
 
           <div className="text-center space-y-4">
-            <span className="label-classic !ml-0">Slots Locked</span>
-            <h2 className="text-2xl font-black tracking-tighter text-white uppercase italic">15-MIN TIMEOUT</h2>
+            <span className="label-classic !ml-0">Booking Cancelled</span>
+            <h2 className="text-2xl font-black tracking-tighter text-white uppercase italic">SLOTS FREED</h2>
             <p className="text-xs text-white/50 leading-relaxed font-medium">
-              We have locked these slots for 15 minutes starting from when you checked out. You can retry the payment within this time window to lock in this booking.
+              Because the payment was cancelled or failed, the slots have been released and are no longer reserved for you. You will need to start the booking process again.
             </p>
           </div>
         </div>
@@ -102,9 +102,9 @@ export default async function BookingPaymentFailedPage({ params }: Props) {
                   01
                 </div>
                 <div>
-                  <p className="font-black text-sm mb-2 text-white uppercase tracking-tight">Try Again</p>
+                  <p className="font-black text-sm mb-2 text-white uppercase tracking-tight">Start Over</p>
                   <p className="text-xs text-white/40 leading-relaxed font-medium">
-                    Click the "RETRY PAYMENT" button below to reload the checkout forms and re-initiate the secure payment gateway.
+                    Click the "START OVER" button below to go back to the home page and select your time slots again.
                   </p>
                 </div>
               </li>
@@ -124,14 +124,8 @@ export default async function BookingPaymentFailedPage({ params }: Props) {
 
           <div className="flex flex-col sm:flex-row gap-6">
             <Link
-              href={`/payment/checkout/${bookingRef}`}
-              className="btn-primary flex-1 text-center bg-red-500 hover:bg-red-600 text-black font-black py-4 px-6 rounded-full block tracking-widest text-xs uppercase"
-            >
-              RETRY PAYMENT
-            </Link>
-            <Link
               href="/"
-              className="btn-secondary flex-1 text-center border-white/20 hover:border-white/40 text-white font-bold py-4 px-6 rounded-full block tracking-widest text-xs uppercase"
+              className="btn-primary flex-1 text-center bg-red-500 hover:bg-red-600 text-black font-black py-4 px-6 rounded-full block tracking-widest text-xs uppercase"
             >
               START OVER
             </Link>

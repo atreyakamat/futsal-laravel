@@ -33,6 +33,7 @@ export async function POST(request: Request) {
     });
 
     if (!isValidHash) {
+      await markPaymentFailed(bookingRef);
       return NextResponse.redirect(new URL(`/booking/payment-failed/${bookingRef}`, baseUrl));
     }
 
