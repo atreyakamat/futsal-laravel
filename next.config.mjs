@@ -41,15 +41,6 @@ const nextConfig = {
         ]
       }
     ];
-  },
-  async redirects() {
-    return [
-      {
-        source: '/verify',
-        destination: '/verify-ticket',
-        permanent: true,
-      },
-    ];
   }
 };
 
