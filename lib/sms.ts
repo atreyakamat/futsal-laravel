@@ -233,7 +233,7 @@ export class AiSensyProvider implements SmsProvider {
         campaignName: isOtp
           ? 'agnel_arena_otp'
           : 'agnelarena_cofirm',
-        destination: destination,
+        destination: cleanDestination,
         userName: this.userName,
         templateParams: templateParams,
         source: this.source,
