@@ -65,10 +65,15 @@ export async function POST(request: Request) {
     }
 
     if (status === 'success') {
-      // Double check status using the postservice API as requested
+      // Double check status using the postservice API
       const verificationDetails = await verifyPaymentWithPayu(bookingRef);
-      if (!verificationDetails || verificationDetails.status !== 'success') {
-        console.error('PayU postservice verification failed or returned non-success for txnid:', bookingRef);
+      if (verificationDetails === null) {
+        // Postservice API itself failed (network/timeout) — trust the hash-verified callback
+        console.warn('PayU postservice API returned null for txnid:', bookingRef, '— trusting hash-verified callback and confirming payment.');
+      } else if (verificationDetails.status !== 'success') {
+        // PayU explicitly returned a non-success status — reject
+        console.error('PayU postservice verification returned non-success for txnid:', bookingRef, 'status:', verificationDetails.status);
+        await markPaymentFailed(bookingRef);
         return NextResponse.redirect(new URL(`/booking/payment-failed/${bookingRef}`, baseUrl), 303);
       }
 

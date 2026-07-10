@@ -164,14 +164,12 @@ export class AiSensyProvider implements SmsProvider {
       return true;
     }
     try {
-      let destination = to.replace(/\+/g, '').trim();
+      // Normalize: strip any non-digits except leading + then ensure 91 prefix
+      let destination = to.replace(/[^\d]/g, '').trim();
       if (destination.length === 10) {
         destination = '91' + destination;
-      }
-      
-      // If the destination starts with 91, ensure we don't prepend a + sign as AiSensy requires exactly 91
-      if (destination.startsWith('+91')) {
-        destination = destination.substring(1);
+      } else if (destination.startsWith('0')) {
+        destination = '91' + destination.substring(1);
       }
 
       // Try to parse structured confirmation or OTP message
@@ -232,7 +230,9 @@ export class AiSensyProvider implements SmsProvider {
 
       const payload: any = {
         apiKey: this.apiKey,
-        campaignName: isOtp ? 'agnel_arena_otp' : 'agnelarena_cofirm',
+        campaignName: isOtp
+          ? (process.env.AISENSY_CAMPAIGN_NAME_OTP || 'agnel_arena_otp')
+          : (process.env.AISENSY_CAMPAIGN_NAME_BOOKING || 'agnelarena_cofirm'),
         destination: destination,
         userName: this.userName,
         templateParams: templateParams,
@@ -272,7 +272,7 @@ export class AiSensyProvider implements SmsProvider {
 
       if (!response.ok) {
         const errText = await response.text();
-        console.error(`[AiSensyProvider] Failed to send WhatsApp message: ${response.status} - ${errText}`);
+        console.error(`[AiSensyProvider] Failed to send WhatsApp message: ${response.status} - ${errText} | destination=${destination} | campaign=${isOtp ? (process.env.AISENSY_CAMPAIGN_NAME_OTP || 'agnel_arena_otp') : (process.env.AISENSY_CAMPAIGN_NAME_BOOKING || 'agnelarena_cofirm')} | templateParams=${JSON.stringify(templateParams)}`);
         return false;
       }
       
