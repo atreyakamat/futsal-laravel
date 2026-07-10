@@ -239,7 +239,7 @@ export class AiSensyProvider implements SmsProvider {
         source: this.source,
         media: isOtp ? {} : {
           url: pdfUrl,
-          filename: ticketNumber ? `ticket-${ticketNumber}` : "booking_confirmation.pdf"
+          filename: ticketNumber ? `ticket-${ticketNumber}.pdf` : "booking_confirmation.pdf"
         },
         buttons: isOtp ? [
           {
