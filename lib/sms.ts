@@ -247,11 +247,20 @@ export class AiSensyProvider implements SmsProvider {
         userName: this.userName,
         templateParams: templateParams,
         source: this.source,
-        media: isOtp ? {} : {
+        carouselCards: [],
+        location: {},
+        attributes: {},
+        paramsFallbackValue: {
+          FirstName: "user"
+        }
+      };
+
+      if (!isOtp) {
+        payload.media = {
           url: pdfUrl,
           filename: ticketNumber ? `ticket-${ticketNumber}.pdf` : "booking_confirmation.pdf"
-        },
-        buttons: isOtp ? [] : [
+        };
+        payload.buttons = [
           {
             type: "button",
             sub_type: "url",
@@ -263,14 +272,8 @@ export class AiSensyProvider implements SmsProvider {
               }
             ]
           }
-        ],
-        carouselCards: [],
-        location: {},
-        attributes: {},
-        paramsFallbackValue: {
-          FirstName: "user"
-        }
-      };
+        ];
+      }
 
       const response = await fetch('https://backend.aisensy.com/campaign/t1/api/v2', {
         method: 'POST',
