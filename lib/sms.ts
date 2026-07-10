@@ -151,8 +151,8 @@ export class AiSensyProvider implements SmsProvider {
   private source: string;
 
   constructor() {
-    this.apiKey = process.env.AISENSY_API_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4N2UxMDA0MWQyYjdjMGMwZDkyY2VkYiIsIm5hbWUiOiJBSVREIE9mZmljaWFsIiwiYXBwTmFtZSI6IkFpU2Vuc3kiLCJjbGllbnRJZCI6IjY3OTQ3MGY4YmMzNjE1MGJmYjczOTIxMSIsImFjdGl2ZVBsYW4iOiJGUkVFX0ZPUkVWRVIiLCJpYXQiOjE3NTMwOTIxMDB9.TTQF2swfBaK6Lb3HgAEDr4OobXqyatJaS-GbPYEFgw8';
-    this.campaignName = process.env.AISENSY_CAMPAIGN_NAME ?? 'test_api';
+    this.apiKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4N2UxMDA0MWQyYjdjMGMwZDkyY2VkYiIsIm5hbWUiOiJBSVREIE9mZmljaWFsIiwiYXBwTmFtZSI6IkFpU2Vuc3kiLCJjbGllbnRJZCI6IjY3OTQ3MGY4YmMzNjE1MGJmYjczOTIxMSIsImFjdGl2ZVBsYW4iOiJGUkVFX0ZPUkVWRVIiLCJpYXQiOjE3NTMwOTIxMDB9.TTQF2swfBaK6Lb3HgAEDr4OobXqyatJaS-GbPYEFgw8';
+    this.campaignName = 'agnelarena_cofirm';
     this.userName = process.env.AISENSY_USERNAME ?? 'AITD Official';
     this.source = process.env.AISENSY_SOURCE ?? 'new-landing-page form';
   }
@@ -231,8 +231,8 @@ export class AiSensyProvider implements SmsProvider {
       const payload: any = {
         apiKey: this.apiKey,
         campaignName: isOtp
-          ? (process.env.AISENSY_CAMPAIGN_NAME_OTP || 'agnel_arena_otp')
-          : (process.env.AISENSY_CAMPAIGN_NAME_BOOKING || 'agnelarena_cofirm'),
+          ? 'agnel_arena_otp'
+          : 'agnelarena_cofirm',
         destination: destination,
         userName: this.userName,
         templateParams: templateParams,
