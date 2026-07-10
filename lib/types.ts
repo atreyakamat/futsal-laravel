@@ -21,8 +21,8 @@ export interface PricingRow {
 
 export interface BookingRow {
   id: number;
-  ticket_number: string | null;
-  booking_ref: string | null;
+  ticket_number: string;
+  booking_ref: string;
   arena_id: number;
   user_id: number | null;
   booking_date: string;
@@ -36,6 +36,8 @@ export interface BookingRow {
   checked_in: number | boolean;
   is_free_booking: number | boolean;
   payu_mihpayid: string | null;
+  created_at: Date;
+  updated_at: Date;
 }
 
 export interface SlotLockRow {

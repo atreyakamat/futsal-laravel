@@ -66,6 +66,9 @@ model Booking {
   checked_in_at     DateTime?
   checked_in_by     Int?
   is_free_booking   Boolean  @default(false)
+  cancellation_requested Boolean @default(false)
+  cancellation_reason String?
+  refund_amount     Decimal? @db.Decimal(10, 2)
   created_at        DateTime @default(now())
   updated_at        DateTime @updatedAt
 
