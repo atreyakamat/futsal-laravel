@@ -8,10 +8,14 @@ export default function LoginPage() {
   const [otp, setOtp] = useState('');
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
   const router = useRouter();
 
   async function handleSendOtp() {
-    if (!identifier) return alert('Please enter your mobile number');
+    setErrorMsg('');
+    setSuccessMsg('');
+    if (!identifier) return setErrorMsg('Please enter your mobile number');
     setLoading(true);
 
     try {
@@ -21,21 +25,25 @@ export default function LoginPage() {
         body: JSON.stringify({ identifier }),
       });
 
+      const data = await response.json().catch(() => ({}));
+
       if (response.ok) {
         setStep(2);
-        alert('OTP sent via WhatsApp!');
+        setSuccessMsg('OTP sent via WhatsApp!');
       } else {
-        alert('Failed to send OTP');
+        setErrorMsg(data.message || 'Failed to send OTP');
       }
     } catch (e) {
-      alert('Error sending OTP');
+      setErrorMsg('Error sending OTP');
     } finally {
       setLoading(false);
     }
   }
 
   async function handleVerifyOtp() {
-    if (!otp) return alert('Please enter OTP');
+    setErrorMsg('');
+    setSuccessMsg('');
+    if (!otp) return setErrorMsg('Please enter OTP');
     setLoading(true);
 
     try {
@@ -48,13 +56,14 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (response.ok && data.success) {
+        setSuccessMsg('Login successful!');
         router.push(data.redirect || '/');
         router.refresh();
       } else {
-        alert(data.message || 'Invalid OTP');
+        setErrorMsg(data.message || 'Invalid OTP');
       }
     } catch (e) {
-      alert('Error verifying OTP');
+      setErrorMsg('Error verifying OTP');
     } finally {
       setLoading(false);
     }
@@ -69,9 +78,21 @@ export default function LoginPage() {
         <h2 className="text-4xl font-black mb-2 text-center uppercase tracking-tighter italic">
           WELCOME <span className="text-primary text-stroke">BACK</span>
         </h2>
-        <p className="label-classic text-center mb-10">
+        <p className="label-classic text-center mb-8">
           Login with OTP
         </p>
+
+        {errorMsg && (
+          <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl mb-6 text-sm font-medium text-center">
+            {errorMsg}
+          </div>
+        )}
+        
+        {successMsg && (
+          <div className="bg-green-500/10 border border-green-500/20 text-green-400 px-4 py-3 rounded-xl mb-6 text-sm font-medium text-center">
+            {successMsg}
+          </div>
+        )}
 
         {step === 1 ? (
           <div className="space-y-8">
@@ -79,17 +100,17 @@ export default function LoginPage() {
               <label className="label-classic" htmlFor="identifier">
                 Mobile Number
               </label>
-              <div className="relative group">
-                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-primary transition-colors text-xl">
-                  phone_android
-                </span>
+              <div className="relative group flex border-2 border-white/10 rounded-xl overflow-hidden focus-within:border-primary transition-colors bg-white/5">
+                <div className="flex items-center justify-center px-4 border-r border-white/10 bg-black/20 font-black text-white/50">
+                  +91
+                </div>
                 <input
-                  className="input-field pl-12"
+                  className="w-full bg-transparent px-4 py-4 outline-none text-white font-medium"
                   id="identifier"
                   type="tel"
-                  value={identifier}
+                  value={identifier.replace('+91', '').trim()}
                   onChange={(e) => setIdentifier(e.target.value)}
-                  placeholder="e.g. +91 98765 43210"
+                  placeholder="77440 20601"
                 />
               </div>
             </div>
