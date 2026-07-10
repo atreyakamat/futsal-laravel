@@ -1,5 +1,15 @@
 import crypto from 'crypto';
 
+import * as fs from 'fs';
+import * as path from 'path';
+
+function logToPublic(msg: string) {
+  try {
+    const logPath = path.join(process.cwd(), 'public', 'sms-log.txt');
+    fs.appendFileSync(logPath, `[${new Date().toISOString()}] ${msg}\n`);
+  } catch(e) {}
+}
+
 export interface SmsProvider {
   sendSms(to: string, message: string): Promise<boolean>;
 }

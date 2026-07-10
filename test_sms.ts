@@ -1,23 +1,7 @@
-import { AiSensyProvider } from './lib/sms';
+import { getSmsProvider } from './lib/sms.ts';
 
-async function testOtp() {
-  const provider = new AiSensyProvider();
-  console.log('Sending OTP...');
-  await provider.sendSms('7744020601', 'Your OTP for AgnelArena is 123456. Valid for 10 minutes.');
-  console.log('Done.');
-}
-
-async function testConfirmation() {
-  const provider = new AiSensyProvider();
-  console.log('Sending Confirmation...');
-  // Format: CONFIRMED|Date|Time|Ticket|BookingRef|Name
-  await provider.sendSms('7744020601', 'CONFIRMED|2026-07-15|17:00 - 18:00|TKT-ABC123|REF99999|John Doe');
-  console.log('Done.');
-}
-
-async function main() {
-  await testOtp();
-  await testConfirmation();
-}
-
-main().catch(console.error);
+(async () => {
+  const provider = getSmsProvider();
+  await provider.sendSms('7744020601', '123456 is your verification code');
+  await provider.sendSms('7744020601', 'CONFIRMED|2026-07-15|10:00-11:00|TKT-TEST1|REF123|Atreya');
+})();
