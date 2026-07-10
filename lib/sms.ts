@@ -235,7 +235,7 @@ export class AiSensyProvider implements SmsProvider {
 
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://agnelarenagoa.com';
       const pdfUrl = ticketNumber 
-        ? `${appUrl}/api/bookings/download?ticket=${ticketNumber}`
+        ? `${appUrl}/api/ticket/${ticketNumber}.pdf`
         : "https://d3jt6ku4g6z5l8.cloudfront.net/FILE/6353da2e153a147b991dd812/4079142_dummy.pdf";
 
       const payload: any = {
