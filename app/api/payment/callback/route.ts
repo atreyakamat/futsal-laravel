@@ -16,6 +16,7 @@ export async function POST(request: Request) {
     const firstname = String(formData.get('firstname') ?? '');
     const email = String(formData.get('email') ?? '');
     const hash = String(formData.get('hash') ?? '');
+    const additionalCharges = formData.has('additionalCharges') ? String(formData.get('additionalCharges')) : null;
 
     if (!bookingRef) {
       return NextResponse.json({ success: false, message: 'txnid is required.' }, { status: 400 });
@@ -30,6 +31,7 @@ export async function POST(request: Request) {
       firstname,
       email,
       hash,
+      additionalCharges,
     });
 
     if (!isValidHash) {

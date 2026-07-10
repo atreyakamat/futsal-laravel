@@ -55,6 +55,7 @@ export function verifyPayuResponseHash(params: {
   firstname: string;
   email: string;
   hash?: string | null;
+  additionalCharges?: string | null;
 }) {
   const { merchantKey, merchantSalt } = getPayuConfig();
   if (!params.hash) return false;
@@ -80,7 +81,10 @@ export function verifyPayuResponseHash(params: {
     merchantKey
   ];
   
-  const hashString = expectedSequence.join('|');
+  let hashString = expectedSequence.join('|');
+  if (params.additionalCharges) {
+    hashString = `${params.additionalCharges}|${hashString}`;
+  }
   const expectedHash = crypto.createHash('sha512').update(hashString).digest('hex').toLowerCase();
   return expectedHash === params.hash.toLowerCase();
 }
