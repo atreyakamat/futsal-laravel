@@ -241,7 +241,7 @@ export class AiSensyProvider implements SmsProvider {
           url: pdfUrl,
           filename: ticketNumber ? `ticket-${ticketNumber}.pdf` : "booking_confirmation.pdf"
         },
-        buttons: isOtp ? [
+        buttons: isOtp ? [] : [
           {
             type: "button",
             sub_type: "url",
@@ -253,7 +253,7 @@ export class AiSensyProvider implements SmsProvider {
               }
             ]
           }
-        ] : [],
+        ],
         carouselCards: [],
         location: {},
         attributes: {},
