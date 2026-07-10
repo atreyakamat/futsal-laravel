@@ -5,7 +5,7 @@
     "scripts": {
         "dev": "next dev",
         "build": "rm -rf .next && next build",
-        "postbuild": "node -e \"const fs = require('fs'); const file = '.next/standalone/server.js'; if(fs.existsSync(file)) { fs.writeFileSync(file, 'process.env.HOSTNAME=\\'0.0.0.0\\';\\n' + fs.readFileSync(file, 'utf8')); }\"",
+        "postbuild": "node -e \"const fs = require('fs'); const file = '.next/standalone/server.js'; if(fs.existsSync(file)) { const code = fs.readFileSync(file, 'utf8'); const inject = 'process.env.HOSTNAME=\\'0.0.0.0\\';\\nprocess.on(\\'uncaughtException\\', err => fs.writeFileSync(\\'crash.log\\', err.stack));\\n'; fs.writeFileSync(file, inject + code); }\"",
         "start": "next start",
         "lint": "next lint",
         "db:pull": "prisma db pull",
