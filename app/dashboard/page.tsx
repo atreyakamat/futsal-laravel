@@ -2,6 +2,7 @@ import { getBookingsForUser, getArenaById } from '@/lib/domain';
 import { readAuthUserId } from '@/lib/session';
 import { mergeSlots, getDurationText } from '@/lib/slot-merge';
 import Link from 'next/link';
+import CancelBookingBtn from '@/components/CancelBookingBtn';
 
 export const dynamic = 'force-dynamic';
 
@@ -136,6 +137,14 @@ export default async function DashboardPage() {
                 VIEW TICKET
                 <span className="material-symbols-outlined text-xl">confirmation_number</span>
               </Link>
+              
+              <CancelBookingBtn
+                bookingRef={ref}
+                bookingDateStr={firstBooking.booking_date}
+                slotStart={firstBooking.time_slot.split(' - ')[0]}
+                isCancellationRequested={!!(firstBooking as any).cancellation_requested}
+                paymentStatus={firstBooking.payment_status}
+              />
             </div>
           </div>
         </div>
