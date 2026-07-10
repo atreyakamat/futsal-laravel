@@ -21,111 +21,111 @@ model User {
   created_at        DateTime  @default(now())
   updated_at        DateTime  @updatedAt
 
-  @@map("users")
   @@index([role])
   @@index([email])
+  @@map("users")
 }
 
 model Arena {
-  id              Int       @id @default(autoincrement())
-  name            String
-  slug            String    @unique
-  address         String?
-  description     String?
-  cover_image     String?
-  logo_url        String?
-  contact_email   String?
-  contact_phone   String?
-  status          String    @default("active")
-  bot_enabled     Boolean   @default(false)
-  gmaps_link      String?
-  created_at      DateTime  @default(now())
-  updated_at      DateTime  @updatedAt
+  id            Int      @id @default(autoincrement())
+  name          String
+  slug          String   @unique
+  address       String?
+  description   String?
+  cover_image   String?
+  logo_url      String?
+  contact_email String?
+  contact_phone String?
+  status        String   @default("active")
+  bot_enabled   Boolean  @default(false)
+  gmaps_link    String?
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
 
-  @@map("arenas")
   @@index([status])
+  @@map("arenas")
 }
 
 model Booking {
-  id                Int      @id @default(autoincrement())
-  ticket_number     String   @unique
-  booking_ref       String
-  user_id           Int
-  arena_id          Int
-  booking_date      String
-  time_slot         String
-  customer_name     String
-  customer_mobile   String
-  customer_email    String?
-  amount            Decimal  @db.Decimal(10, 2)
-  payment_status    String   @default("pending")
-  payment_method    String?
-  payu_mihpayid     String?
-  notes             String?
-  checked_in        Boolean  @default(false)
-  checked_in_at     DateTime?
-  checked_in_by     Int?
-  is_free_booking   Boolean  @default(false)
-  cancellation_requested Boolean @default(false)
-  cancellation_reason String?
-  refund_amount     Decimal? @db.Decimal(10, 2)
-  created_at        DateTime @default(now())
-  updated_at        DateTime @updatedAt
+  id                     Int       @id @default(autoincrement())
+  ticket_number          String    @unique
+  booking_ref            String
+  user_id                Int
+  arena_id               Int
+  booking_date           String
+  time_slot              String
+  customer_name          String
+  customer_mobile        String
+  customer_email         String?
+  amount                 Decimal   @db.Decimal(10, 2)
+  payment_status         String    @default("pending")
+  payment_method         String?
+  payu_mihpayid          String?
+  notes                  String?
+  checked_in             Boolean   @default(false)
+  checked_in_at          DateTime?
+  checked_in_by          Int?
+  is_free_booking        Boolean   @default(false)
+  cancellation_requested Boolean   @default(false)
+  cancellation_reason    String?
+  refund_amount          Decimal?  @db.Decimal(10, 2)
+  created_at             DateTime  @default(now())
+  updated_at             DateTime  @updatedAt
 
-  @@map("bookings")
   @@index([booking_ref])
   @@index([ticket_number])
   @@index([user_id])
   @@index([arena_id])
   @@index([payment_status])
+  @@map("bookings")
 }
 
 model Pricing {
-  id        Int      @id @default(autoincrement())
-  arena_id  Int
-  time_slot String
-  price     Decimal  @db.Decimal(10, 2)
+  id         Int      @id @default(autoincrement())
+  arena_id   Int
+  time_slot  String
+  price      Decimal  @db.Decimal(10, 2)
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  @@map("pricings")
   @@unique([arena_id, time_slot])
   @@index([arena_id])
+  @@map("pricings")
 }
 
 model SlotLock {
-  id          Int      @id @default(autoincrement())
-  arena_id    Int
+  id           Int      @id @default(autoincrement())
+  arena_id     Int
   booking_date String
-  time_slot   String
-  session_id  String
-  locked_at   DateTime @default(now())
-  expires_at  DateTime
-  created_at  DateTime @default(now())
+  time_slot    String
+  session_id   String
+  locked_at    DateTime @default(now())
+  expires_at   DateTime
+  created_at   DateTime @default(now())
 
-  @@map("slot_locks")
   @@unique([arena_id, booking_date, time_slot])
   @@index([arena_id])
   @@index([session_id])
   @@index([expires_at])
+  @@map("slot_locks")
 }
 
 model UserOtp {
-  id          Int      @id @default(autoincrement())
-  identifier  String   @unique
-  otp         String
-  expires_at  DateTime
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  id         Int      @id @default(autoincrement())
+  identifier String   @unique
+  otp        String
+  expires_at DateTime
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
-  @@map("user_otps")
   @@index([identifier])
+  @@map("user_otps")
 }
 
 model Setting {
-  id        Int      @id @default(autoincrement())
-  key       String   @unique
-  value     String?
+  id         Int      @id @default(autoincrement())
+  key        String   @unique
+  value      String?
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
@@ -133,96 +133,96 @@ model Setting {
 }
 
 model ArenaManager {
-  id        Int      @id @default(autoincrement())
-  user_id   Int      @unique
-  arena_id  Int
-  role      String   @default("manager")
+  id         Int      @id @default(autoincrement())
+  user_id    Int      @unique
+  arena_id   Int
+  role       String   @default("manager")
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  @@map("arena_managers")
   @@index([user_id])
   @@index([arena_id])
+  @@map("arena_managers")
 }
 
 model SuperAdmin {
-  id                Int       @id @default(autoincrement())
-  user_id           Int       @unique
-  email             String    @unique
-  password_hash     String
-  first_name        String?
-  last_name         String?
-  permissions       String[]  @default([])
-  is_active         Boolean   @default(true)
-  last_login        DateTime?
-  created_at        DateTime  @default(now())
-  updated_at        DateTime  @updatedAt
+  id            Int       @id @default(autoincrement())
+  user_id       Int       @unique
+  email         String    @unique
+  password_hash String
+  first_name    String?
+  last_name     String?
+  permissions   String[]  @default([])
+  is_active     Boolean   @default(true)
+  last_login    DateTime?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
 
-  @@map("super_admins")
   @@index([email])
   @@index([is_active])
+  @@map("super_admins")
 }
 
 model ArenaAdmin {
-  id                Int       @id @default(autoincrement())
-  arena_id          Int
-  email             String    @unique
-  password_hash     String
-  first_name        String?
-  last_name         String?
-  phone             String?
-  is_active         Boolean   @default(true)
-  created_by        Int
-  last_login        DateTime?
-  created_at        DateTime  @default(now())
-  updated_at        DateTime  @updatedAt
+  id            Int       @id @default(autoincrement())
+  arena_id      Int
+  email         String    @unique
+  password_hash String
+  first_name    String?
+  last_name     String?
+  phone         String?
+  is_active     Boolean   @default(true)
+  created_by    Int
+  last_login    DateTime?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
 
-  @@map("arena_admins")
   @@index([arena_id])
   @@index([email])
   @@index([is_active])
+  @@map("arena_admins")
 }
 
 model SecurityStaff {
-  id                Int       @id @default(autoincrement())
-  arena_id          Int
-  email             String    @unique
-  password_hash     String
-  first_name        String?
-  last_name         String?
-  phone             String?
-  permissions       String[]  @default([])
-  is_active         Boolean   @default(true)
-  created_by        Int
-  last_login        DateTime?
-  created_at        DateTime  @default(now())
-  updated_at        DateTime  @updatedAt
+  id            Int       @id @default(autoincrement())
+  arena_id      Int
+  email         String    @unique
+  password_hash String
+  first_name    String?
+  last_name     String?
+  phone         String?
+  permissions   String[]  @default([])
+  is_active     Boolean   @default(true)
+  created_by    Int
+  last_login    DateTime?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
 
-  @@map("security_staff")
   @@index([arena_id])
   @@index([email])
   @@index([is_active])
+  @@map("security_staff")
 }
 
 model SlotApprovalRequest {
-  id                Int       @id @default(autoincrement())
-  arena_id          Int
-  requested_by      Int
-  request_type      String    @default("block_slot")
-  booking_date      String
-  time_slot         String
-  reason            String?
-  status            String    @default("pending")
-  approved_by       Int?
-  approved_at       DateTime?
-  rejection_reason  String?
-  created_at        DateTime  @default(now())
-  updated_at        DateTime  @updatedAt
+  id               Int       @id @default(autoincrement())
+  arena_id         Int
+  requested_by     Int
+  request_type     String    @default("block_slot")
+  booking_date     String
+  time_slot        String
+  reason           String?
+  status           String    @default("pending")
+  approved_by      Int?
+  approved_at      DateTime?
+  rejection_reason String?
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
 
-  @@map("slot_approval_requests")
   @@index([arena_id])
   @@index([status])
   @@index([requested_by])
+  @@map("slot_approval_requests")
 }
 
 model Report {
@@ -232,38 +232,38 @@ model Report {
   date_range_start String
   date_range_end   String
   total_bookings   Int?     @default(0)
-  total_revenue    Decimal? @db.Decimal(10, 2) @default(0)
+  total_revenue    Decimal? @default(0) @db.Decimal(10, 2)
   total_visitors   Int?     @default(0)
-  average_duration Decimal? @db.Decimal(5, 2) @default(0)
+  average_duration Decimal? @default(0) @db.Decimal(5, 2)
   peak_hours       String?  @default("[]")
   report_data      String?
   created_by       Int?
   created_at       DateTime @default(now())
 
-  @@map("reports")
   @@index([arena_id])
   @@index([report_type])
   @@index([created_at])
+  @@map("reports")
 }
 
 model AdminCredential {
-  id                Int       @id @default(autoincrement())
-  admin_id          Int
-  admin_type        String
-  credential_token  String    @unique
-  is_used           Boolean   @default(false)
-  used_at           DateTime?
-  expires_at        DateTime
-  created_at        DateTime  @default(now())
+  id               Int       @id @default(autoincrement())
+  admin_id         Int
+  admin_type       String
+  credential_token String    @unique
+  is_used          Boolean   @default(false)
+  used_at          DateTime?
+  expires_at       DateTime
+  created_at       DateTime  @default(now())
 
-  @@map("admin_credentials")
   @@index([admin_id])
   @@index([is_used])
   @@index([expires_at])
+  @@map("admin_credentials")
 }
 
 model SystemAuditLog {
-  id             Int       @id @default(autoincrement())
+  id             Int      @id @default(autoincrement())
   super_admin_id Int?
   action         String
   entity_type    String?
@@ -278,32 +278,32 @@ model SystemAuditLog {
   old_value      String?
   new_value      String?
   reason         String?
-  created_at     DateTime  @default(now())
+  created_at     DateTime @default(now())
 
-  @@map("system_audit_logs")
   @@index([super_admin_id])
   @@index([action])
   @@index([created_at])
+  @@map("system_audit_logs")
 }
 
 model Notification {
-  id                Int       @id @default(autoincrement())
-  user_id           Int
-  role              String
-  title             String
-  message           String
-  request_type      String?
-  arena_id          Int?
-  status            String?
-  approver_id       Int?
-  is_read           Boolean   @default(false)
-  created_at        DateTime  @default(now())
+  id           Int      @id @default(autoincrement())
+  user_id      Int
+  role         String
+  title        String
+  message      String
+  request_type String?
+  arena_id     Int?
+  status       String?
+  approver_id  Int?
+  is_read      Boolean  @default(false)
+  created_at   DateTime @default(now())
 
-  @@map("notifications")
   @@index([user_id])
   @@index([role])
   @@index([is_read])
   @@index([created_at])
+  @@map("notifications")
 }
 
 model SlotTiming {
@@ -317,8 +317,8 @@ model SlotTiming {
   updated_at  DateTime @updatedAt
 
   @@unique([arena_id, time_slot, day_of_week])
-  @@map("slot_timings")
   @@index([arena_id])
+  @@map("slot_timings")
 }
 
 model AdminFreeBooking {
@@ -334,10 +334,10 @@ model AdminFreeBooking {
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt
 
-  @@map("admin_free_bookings")
   @@index([arena_id])
   @@index([arena_admin_id])
   @@index([status])
+  @@map("admin_free_bookings")
 }
 
 model AdminSlotBlock {
@@ -352,10 +352,10 @@ model AdminSlotBlock {
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt
 
-  @@map("admin_slot_blocks")
   @@index([arena_id])
   @@index([super_admin_id])
   @@index([status])
+  @@map("admin_slot_blocks")
 }
 
 model PaymentAuditLog {
@@ -367,30 +367,30 @@ model PaymentAuditLog {
   payload     String?
   created_at  DateTime @default(now())
 
-  @@map("payment_audit_logs")
   @@index([booking_ref])
+  @@map("payment_audit_logs")
 }
 
 model ApprovalRequest {
-  id               Int       @id @default(autoincrement())
-  booking_id       Int?
-  status           String    @default("pending")
-  notes            String?
-  created_at       DateTime  @default(now())
-  updated_at       DateTime  @updatedAt
-  request_type     String    @default("slot_template_update")
-  arena_id         Int?
-  requested_by     Int?
-  payload_json     String?
-  decision_by      Int?
-  decision_reason  String?
-  decision_at      DateTime?
-  applied_at       DateTime?
+  id              Int       @id @default(autoincrement())
+  booking_id      Int?
+  status          String    @default("pending")
+  notes           String?
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+  request_type    String    @default("slot_template_update")
+  arena_id        Int?
+  requested_by    Int?
+  payload_json    String?
+  decision_by     Int?
+  decision_reason String?
+  decision_at     DateTime?
+  applied_at      DateTime?
 
-  @@map("approval_requests")
   @@index([arena_id])
   @@index([status])
   @@index([requested_by])
+  @@map("approval_requests")
 }
 
 model OtpAttempt {
@@ -419,7 +419,7 @@ model PaymentCallback {
   raw_payload Json
   received_at DateTime @default(now())
 
-  @@map("payment_callbacks")
   @@index([booking_ref])
   @@index([gateway_id])
+  @@map("payment_callbacks")
 }
