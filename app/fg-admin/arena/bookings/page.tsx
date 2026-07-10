@@ -21,17 +21,18 @@ export default async function ArenaAdminBookingsPage() {
 
   const bookings = await query<{
     id: number;
-    ticket_number: string | null;
-    booking_ref: string | null;
+    ticket_number: string;
+    booking_ref: string;
     customer_name: string;
     customer_mobile: string;
     booking_date: string;
     time_slot: string;
     payment_status: string;
     amount: number;
+    cancellation_requested: boolean;
   }>(
     `SELECT id, ticket_number, booking_ref, customer_name, customer_mobile,
-            booking_date, time_slot, payment_status, amount
+            booking_date, time_slot, payment_status, amount, cancellation_requested
        FROM bookings
       WHERE arena_id = ?
       ORDER BY created_at DESC
