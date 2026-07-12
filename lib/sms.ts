@@ -241,18 +241,12 @@ export class AiSensyProvider implements SmsProvider {
       const payload: any = {
         apiKey: this.apiKey,
         campaignName: isOtp
-          ? 'agnel_arena_otp'
-          : 'agnelarena_cofirm',
+          ? (process.env.AISENSY_CAMPAIGN_NAME_OTP || 'agnel_arena_otp')
+          : (process.env.AISENSY_CAMPAIGN_NAME_BOOKING || 'agnelarena_cofirm'),
         destination: destination,
         userName: this.userName,
         templateParams: templateParams,
-        source: this.source,
-        carouselCards: [],
-        location: {},
-        attributes: {},
-        paramsFallbackValue: {
-          FirstName: "user"
-        }
+        source: this.source
       };
 
       if (!isOtp) {
