@@ -285,15 +285,19 @@ export class AiSensyProvider implements SmsProvider {
 
       if (!response.ok) {
         const errText = await response.text();
-        console.error(`[AiSensyProvider] Failed to send WhatsApp message: ${response.status} - ${errText} | destination=${destination} | campaign=${isOtp ? (process.env.AISENSY_CAMPAIGN_NAME_OTP || 'agnel_arena_otp') : (process.env.AISENSY_CAMPAIGN_NAME_BOOKING || 'agnelarena_cofirm')} | templateParams=${JSON.stringify(templateParams)}`);
+        const errMsg = `[AiSensyProvider] Failed to send WhatsApp message: ${response.status} - ${errText} | destination=${destination} | campaign=${isOtp ? (process.env.AISENSY_CAMPAIGN_NAME_OTP || 'agnel_arena_otp') : (process.env.AISENSY_CAMPAIGN_NAME_BOOKING || 'agnelarena_cofirm')} | templateParams=${JSON.stringify(templateParams)}`;
+        console.error(errMsg);
+        logToPublic(errMsg);
         return false;
       }
       
       const resData = await response.json();
       console.info(`[AiSensyProvider] Message sent successfully to ${to}. Response:`, resData);
+      logToPublic(`[AiSensyProvider] Message sent successfully to ${to}. Response: ${JSON.stringify(resData)}`);
       return true;
-    } catch (err) {
+    } catch (err: any) {
       console.error('[AiSensyProvider] Error sending WhatsApp message:', err);
+      logToPublic(`[AiSensyProvider] Error sending WhatsApp message: ${err.message || String(err)}`);
       return false;
     }
   }
