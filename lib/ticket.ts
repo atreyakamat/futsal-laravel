@@ -2,7 +2,7 @@ import { getArenaById, getBookingsByRef } from '@/lib/domain';
 import { mergeSlots, getDurationText } from '@/lib/slot-merge';
 import { sendEmail, generateBookingConfirmationEmail } from '@/lib/email';
 import { getSmsProvider } from '@/lib/sms';
-import { generateQrDataUrl } from '@/lib/qr';
+import { buildTicketVerificationUrl, generateQrDataUrl } from '@/lib/qr';
 
 export type TicketPackage = {
   bookingRef: string;
@@ -14,14 +14,14 @@ export type TicketPackage = {
 };
 
 export async function getTicketQrUrl(ticketNumber: string): Promise<string> {
-  return generateQrDataUrl(ticketNumber);
+  return generateQrDataUrl(buildTicketVerificationUrl(ticketNumber));
 }
 
 export async function buildTicketHtml(ticket: TicketPackage): Promise<string> {
   const mergedSlots = mergeSlots(ticket.slots);
   const qrUrl = await getTicketQrUrl(ticket.ticketNumbers[0] ?? ticket.bookingRef);
   const ticketNumbers = (ticket.ticketNumbers || []).join(', ');
-  const downloadHref = `/booking/ticket/${encodeURIComponent(ticket.bookingRef)}?download=1`;
+  const downloadHref = `/api/bookings/download?ref=${encodeURIComponent(ticket.bookingRef)}`;
 
   return `
       <div class="card">

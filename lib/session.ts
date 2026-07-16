@@ -68,7 +68,7 @@ export function getWritableSessionId(request: Request) {
 export function getCookieOptions(maxAge?: number) {
   return {
     httpOnly: true,
-    sameSite: 'strict' as const,
+    sameSite: 'lax' as const,
     secure: process.env.NODE_ENV === 'production' || process.env.SECURE_COOKIES === 'true',
     path: '/',
     ...(maxAge !== undefined && { maxAge }),

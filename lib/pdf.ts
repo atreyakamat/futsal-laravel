@@ -1,5 +1,5 @@
 import PDFDocument from 'pdfkit';
-import { generateQrDataUrl } from './qr';
+import { buildTicketVerificationUrl, generateQrDataUrl } from './qr';
 
 interface BookingData {
   ticket_number: string;
@@ -110,7 +110,7 @@ export async function generateTicketPdfBuffer(
       drawMetaRow('Payment Status', `${primaryBooking.payment_status.toUpperCase()} - (Total: ₹${totalAmount.toFixed(2)})`);
 
       // 4. QR Code & Scan verification on the right
-      const qrLink = `https://agnelarenagoa.com/verify-ticket?ticket=${primaryBooking.ticket_number}`;
+      const qrLink = buildTicketVerificationUrl(primaryBooking.ticket_number);
       const qrDataUrl = await generateQrDataUrl(qrLink);
       const base64Data = qrDataUrl.replace(/^data:image\/png;base64,/, '');
       const qrBuffer = Buffer.from(base64Data, 'base64');

@@ -1,5 +1,10 @@
 import QRCode from 'qrcode';
 
+export function buildTicketVerificationUrl(ticketNumber: string, baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000') {
+  const normalizedBaseUrl = baseUrl.replace(/\/$/, '');
+  return `${normalizedBaseUrl}/verify-ticket?ticket=${encodeURIComponent(ticketNumber)}`;
+}
+
 /**
  * Generates a local QR code as a Base64-encoded PNG Data URL (data:image/png;base64,...).
  * No external API dependencies or networks requests are performed.
