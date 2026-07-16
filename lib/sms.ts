@@ -241,20 +241,17 @@ export class AiSensyProvider implements SmsProvider {
       const payload: any = {
         apiKey: this.apiKey,
         campaignName: isOtp
-          ? (process.env.AISENSY_CAMPAIGN_NAME_OTP || 'agnel_arena_otp')
-          : (process.env.AISENSY_CAMPAIGN_NAME_BOOKING || 'agnelarena_cofirm'),
+          ? 'agnel_arena_otp'
+          : 'agnelarena_cofirm',
         destination: destination,
         userName: this.userName,
         templateParams: templateParams,
-        source: this.source
-      };
-
-      if (!isOtp) {
-        payload.media = {
+        source: this.source,
+        media: isOtp ? {} : {
           url: pdfUrl,
           filename: ticketNumber ? `ticket-${ticketNumber}.pdf` : "booking_confirmation.pdf"
-        };
-        payload.buttons = [
+        },
+        buttons: isOtp ? [] : [
           {
             type: "button",
             sub_type: "url",
@@ -266,8 +263,14 @@ export class AiSensyProvider implements SmsProvider {
               }
             ]
           }
-        ];
-      }
+        ],
+        carouselCards: [],
+        location: {},
+        attributes: {},
+        paramsFallbackValue: {
+          FirstName: "user"
+        }
+      };
 
       const response = await fetch('https://backend.aisensy.com/campaign/t1/api/v2', {
         method: 'POST',
