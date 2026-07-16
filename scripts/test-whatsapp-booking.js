@@ -1,0 +1,1 @@
+import dotenv from 'dotenv'; dotenv.config(); import { getSmsProvider } from '../lib/sms.ts'; async function test() { const provider = getSmsProvider(); const msg = 'CONFIRMED|2026-10-10|18:00-19:00|TKT-261010-ABCD|REF-1234|John Doe'; await provider.sendSms('917744020601', msg); } test();

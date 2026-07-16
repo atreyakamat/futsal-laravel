@@ -73,7 +73,7 @@ export async function getTicketPackage(bookingRef: string): Promise<TicketPackag
   };
 }
 
-export async function sendTicketEmail(bookingRef: string) {
+export async function sendTicketEmail(bookingRef: string, appUrl?: string) {
   const ticket = await getTicketPackage(bookingRef);
   if (!ticket) {
     return { sent: false, reason: 'Ticket not found' as const };
@@ -93,7 +93,8 @@ export async function sendTicketEmail(bookingRef: string) {
       const timeRange = mergedSlots.join(', '); // e.g. "17:00-18:00"
       await provider.sendSms(
         firstBooking.customer_mobile,
-        `CONFIRMED|${ticket.bookingDate}|${timeRange}|${ticket.ticketNumbers[0] || ticket.bookingRef}|${bookingRef}|${ticket.customerName}`
+        `CONFIRMED|${ticket.bookingDate}|${timeRange}|${ticket.ticketNumbers[0] || ticket.bookingRef}|${bookingRef}|${ticket.customerName}`,
+        { appUrl }
       );
     } catch (smsErr) {
       console.error('[WhatsApp Ticket] Failed to send ticket via WhatsApp:', smsErr);

@@ -11,11 +11,11 @@ function logToPublic(msg: string) {
 }
 
 export interface SmsProvider {
-  sendSms(to: string, message: string): Promise<boolean>;
+  sendSms(to: string, message: string, options?: { appUrl?: string }): Promise<boolean>;
 }
 
 export class MockProvider implements SmsProvider {
-  async sendSms(to: string, message: string): Promise<boolean> {
+  async sendSms(to: string, message: string, options?: { appUrl?: string }): Promise<boolean> {
     console.info(`[SMS MOCK] To: ${to} | Message: ${message}`);
     return true;
   }
@@ -32,7 +32,7 @@ export class TwilioProvider implements SmsProvider {
     this.fromNumber = process.env.TWILIO_FROM_NUMBER ?? '';
   }
 
-  async sendSms(to: string, message: string): Promise<boolean> {
+  async sendSms(to: string, message: string, options?: { appUrl?: string }): Promise<boolean> {
     if (!this.accountSid || !this.authToken || !this.fromNumber) {
       console.warn('[TwilioProvider] Missing environment credentials, falling back to mock logging.');
       console.info(`[SMS TWILIO MOCK] To: ${to} | Message: ${message}`);
@@ -79,7 +79,7 @@ export class MSG91Provider implements SmsProvider {
     this.senderId = process.env.MSG91_SENDER_ID ?? '';
   }
 
-  async sendSms(to: string, message: string): Promise<boolean> {
+  async sendSms(to: string, message: string, options?: { appUrl?: string }): Promise<boolean> {
     if (!this.authKey) {
       console.warn('[MSG91Provider] Missing environment credentials, falling back to mock logging.');
       console.info(`[SMS MSG91 MOCK] To: ${to} | Message: ${message}`);
@@ -124,7 +124,7 @@ export class GupshupProvider implements SmsProvider {
     this.password = process.env.GUPSHUP_PASSWORD ?? '';
   }
 
-  async sendSms(to: string, message: string): Promise<boolean> {
+  async sendSms(to: string, message: string, options?: { appUrl?: string }): Promise<boolean> {
     if (!this.apiKey && !this.userId) {
       console.warn('[GupshupProvider] Missing environment credentials, falling back to mock logging.');
       console.info(`[SMS GUPSHUP MOCK] To: ${to} | Message: ${message}`);
@@ -167,7 +167,7 @@ export class AiSensyProvider implements SmsProvider {
     this.source = process.env.AISENSY_SOURCE ?? 'new-landing-page form';
   }
 
-  async sendSms(to: string, message: string): Promise<boolean> {
+  async sendSms(to: string, message: string, options?: { appUrl?: string }): Promise<boolean> {
     if (!this.apiKey) {
       console.warn('[AiSensyProvider] Missing environment credentials, falling back to mock logging.');
       console.info(`[SMS AISENSY MOCK] To: ${to} | Message: ${message}`);
@@ -233,7 +233,7 @@ export class AiSensyProvider implements SmsProvider {
         ticketNumber = ticketMatch ? ticketMatch[0] : '';
       }
 
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://agnelarenagoa.com';
+      const appUrl = options?.appUrl || process.env.NEXT_PUBLIC_APP_URL || 'https://agnelarenagoa.com';
       const pdfUrl = ticketNumber 
         ? `${appUrl}/api/ticket/${ticketNumber}.pdf`
         : "https://d3jt6ku4g6z5l8.cloudfront.net/FILE/6353da2e153a147b991dd812/4079142_dummy.pdf";

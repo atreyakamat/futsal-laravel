@@ -93,7 +93,10 @@ export async function POST(request: Request) {
   await releaseLocks(sessionId, payload.arena_id, payload.date, payload.slots);
 
   if (entryMode === 'free') {
-    await sendTicketEmail(result.bookingRef);
+    const proto = request.headers.get('x-forwarded-proto') || 'http';
+    const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'localhost:3000';
+    const dynamicBaseUrl = process.env.NEXT_PUBLIC_APP_URL || `${proto}://${host}`;
+    await sendTicketEmail(result.bookingRef, dynamicBaseUrl);
   }
 
   const redirectTarget = entryMode === 'free'

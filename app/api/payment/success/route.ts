@@ -51,7 +51,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: 'Failed to confirm payment' }, { status: 500 });
     }
 
-    await sendTicketEmail(payload.txnid);
+    const proto = request.headers.get('x-forwarded-proto') || 'http';
+    const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'localhost:3000';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `${proto}://${host}`;
+    await sendTicketEmail(payload.txnid, baseUrl);
 
     return NextResponse.json({ success: true, message: 'Payment confirmed', bookingRef: payload.txnid });
   } catch (error) {

@@ -84,7 +84,7 @@ export async function POST(request: Request) {
         return NextResponse.redirect(new URL(`/booking/payment-failed/${bookingRef}`, baseUrl), 303);
       }
 
-      await sendTicketEmail(bookingRef);
+      await sendTicketEmail(bookingRef, baseUrl);
 
       return NextResponse.redirect(new URL(`/booking/success/${bookingRef}`, baseUrl), 303);
     }
