@@ -5,7 +5,7 @@ import * as path from 'path';
 
 function logToPublic(msg: string) {
   try {
-    const logPath = '/tmp/sms-log.txt';
+    const logPath = path.join(process.cwd(), 'sms-log.txt');
     fs.appendFileSync(logPath, `[${new Date().toISOString()}] ${msg}\n`);
   } catch(e) {}
 }

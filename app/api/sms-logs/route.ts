@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    const logPath = '/tmp/sms-log.txt';
+    const logPath = path.join(process.cwd(), 'sms-log.txt');
     if (fs.existsSync(logPath)) {
       const data = fs.readFileSync(logPath, 'utf8');
       return NextResponse.json({ logs: data });
