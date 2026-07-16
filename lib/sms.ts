@@ -15,8 +15,9 @@ export interface SmsProvider {
 }
 
 export class MockProvider implements SmsProvider {
-  async sendSms(to: string, message: string, options?: { appUrl?: string }): Promise<boolean> {
+  async sendSms(to: string, message: string): Promise<boolean> {
     console.info(`[SMS MOCK] To: ${to} | Message: ${message}`);
+    logToPublic(`[SMS MOCK] To: ${to} | Message: ${message}`);
     return true;
   }
 }
@@ -302,6 +303,9 @@ export class AiSensyProvider implements SmsProvider {
 
 export function getSmsProvider(): SmsProvider {
   const providerType = (process.env.SMS_PROVIDER ?? 'aisensy').toLowerCase();
+  
+  logToPublic(`[getSmsProvider] Resolving provider: "${providerType}" (env: ${process.env.SMS_PROVIDER})`);
+  
   switch (providerType) {
     case 'twilio':
       return new TwilioProvider();
@@ -314,6 +318,7 @@ export function getSmsProvider(): SmsProvider {
       return new AiSensyProvider();
     case 'mock':
     default:
+      logToPublic(`[getSmsProvider] Falling back to MockProvider for "${providerType}"`);
       return new MockProvider();
   }
 }
