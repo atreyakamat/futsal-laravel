@@ -16,4 +16,7 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            sudo /opt/stacks/agnel-arena/deploy.sh
+            cd /opt/stacks/agnel-arena
+            sudo git fetch --all
+            sudo git reset --hard origin/main
+            sudo ./deploy.sh
