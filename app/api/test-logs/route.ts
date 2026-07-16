@@ -1,0 +1,1 @@
+import { NextResponse } from 'next/server'; import fs from 'fs'; export async function GET() { try { const logs = fs.readFileSync('/tmp/sms-log.txt', 'utf8'); return new NextResponse(logs, { headers: { 'Content-Type': 'text/plain' } }); } catch (e: any) { return NextResponse.json({ error: e.message }); } }
