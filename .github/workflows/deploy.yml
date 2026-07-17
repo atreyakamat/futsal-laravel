@@ -30,7 +30,9 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           key_path: ./deploy_key
           script: |
+            docker run --rm -v /opt/stacks/agnel-arena:/app alpine chown -R $(id -u):$(id -g) /app
             cd /opt/stacks/agnel-arena
+            git config --global --add safe.directory /opt/stacks/agnel-arena || true
             git fetch --all
             git reset --hard origin/main
             ./deploy.sh
