@@ -35,8 +35,10 @@ jobs:
           node-version: 20
           cache: npm
 
-      - name: Install dependencies
-        run: npm install --ignore-optional
+- name: Clean up existing lockfile and node_modules
+         run: rm -f package-lock.json && rm -rf node_modules
+       - name: Install dependencies
+         run: npm install --ignore-optional
 
       - name: Generate Prisma client
         run: npm run db:generate
