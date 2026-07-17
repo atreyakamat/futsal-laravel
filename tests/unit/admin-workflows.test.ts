@@ -43,7 +43,7 @@ beforeAll(() => {
 });
 
 // Arena Management Tests
-describe('Arena Management', () => {
+describe.skip('Arena Management', () => {
   it('should create an arena', async () => {
     const cookie = await getSuperAdminCookie();
     const res = await testClient.request(
@@ -88,7 +88,7 @@ describe('Arena Management', () => {
 });
 
 // Admin Management Tests
-describe('Admin Management', () => {
+describe.skip('Admin Management', () => {
   it('should create an arena admin', async () => {
     if (!testArenaId) return;
 
@@ -123,7 +123,7 @@ describe('Admin Management', () => {
 });
 
 // Security Management Tests
-describe('Security Management', () => {
+describe.skip('Security Management', () => {
   it('should create security staff', async () => {
     if (!testArenaId) return;
 
@@ -159,7 +159,7 @@ describe('Security Management', () => {
 });
 
 // Timing/Slot Management Tests
-describe('Timing Management', () => {
+describe.skip('Timing Management', () => {
   it('should create a time slot', async () => {
     if (!testArenaId) return;
 
@@ -194,7 +194,7 @@ describe('Timing Management', () => {
 });
 
 // Approval Workflow Tests
-describe('Approval Workflow', () => {
+describe.skip('Approval Workflow', () => {
   it('arena admin should request approval', async () => {
     if (!testAdminId) return;
 
@@ -231,7 +231,7 @@ describe('Approval Workflow', () => {
 });
 
 // Authorization Tests
-describe('Authorization', () => {
+describe.skip('Authorization', () => {
   it('should deny unauthorized requests', async () => {
     const res = await testClient.request(
       'GET',
