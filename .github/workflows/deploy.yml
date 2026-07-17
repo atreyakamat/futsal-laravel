@@ -30,9 +30,7 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           key_path: ./deploy_key
           script: |
-            sudo sh -c '
-              cd /opt/stacks/agnel-arena
-              git fetch --all
-              git reset --hard origin/main
-              ./deploy.sh
-            '
+            cd /opt/stacks/agnel-arena
+            git fetch --all
+            git reset --hard origin/main
+            ./deploy.sh
