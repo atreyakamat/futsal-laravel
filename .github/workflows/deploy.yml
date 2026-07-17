@@ -15,7 +15,6 @@ jobs:
       - name: Write SSH Key
         run: |
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ./deploy_key
-          chmod 600 ./deploy_key
           if [ ! -s ./deploy_key ] || [ $(wc -c < ./deploy_key) -lt 50 ]; then
             echo "::error::SSH_PRIVATE_KEY secret is missing, empty, or too short! Please verify the secret in GitHub Settings."
             exit 1
