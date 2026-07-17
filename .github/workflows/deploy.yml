@@ -17,7 +17,7 @@ jobs:
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
-          key_path: ./github_actions_key
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             sudo sh -c '
               cd /opt/stacks/agnel-arena

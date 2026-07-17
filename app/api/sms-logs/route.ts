@@ -1,10 +1,13 @@
 import fs from 'fs';
 import path from 'path';
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
+import { requireSuperAdmin } from '@/lib/admin';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const logPath = path.join(process.cwd(), 'sms-log.txt');
+    const admin = await requireSuperAdmin(request);
+    if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const logPath = process.env.SMS_LOG_PATH || '/tmp/sms-log.txt';
     if (fs.existsSync(logPath)) {
       const data = fs.readFileSync(logPath, 'utf8');
       return NextResponse.json({ logs: data });

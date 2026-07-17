@@ -3,9 +3,10 @@ import crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 
+const SMS_LOG_PATH = process.env.SMS_LOG_PATH || '/tmp/sms-log.txt';
 function logToPublic(msg: string) {
   try {
-    const logPath = path.join(process.cwd(), 'sms-log.txt');
+    const logPath = SMS_LOG_PATH;
     fs.appendFileSync(logPath, `[${new Date().toISOString()}] ${msg}\n`);
   } catch(e) {}
 }
@@ -162,7 +163,7 @@ export class AiSensyProvider implements SmsProvider {
   private source: string;
 
   constructor() {
-    this.apiKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4N2UxMDA0MWQyYjdjMGMwZDkyY2VkYiIsIm5hbWUiOiJBSVREIE9mZmljaWFsIiwiYXBwTmFtZSI6IkFpU2Vuc3kiLCJjbGllbnRJZCI6IjY3OTQ3MGY4YmMzNjE1MGJmYjczOTIxMSIsImFjdGl2ZVBsYW4iOiJGUkVFX0ZPUkVWRVIiLCJpYXQiOjE3NTMwOTIxMDB9.TTQF2swfBaK6Lb3HgAEDr4OobXqyatJaS-GbPYEFgw8';
+    this.apiKey = process.env.AISENSY_API_KEY ?? 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4N2UxMDA0MWQyYjdjMGMwZDkyY2VkYiIsIm5hbWUiOiJBSVREIE9mZmljaWFsIiwiYXBwTmFtZSI6IkFpU2Vuc3kiLCJjbGllbnRJZCI6IjY3OTQ3MGY4YmMzNjE1MGJmYjczOTIxMSIsImFjdGl2ZVBsYW4iOiJGUkVFX0ZPUkVWRVIiLCJpYXQiOjE3NTMwOTIxMDB9.TTQF2swfBaK6Lb3HgAEDr4OobXqyatJaS-GbPYEFgw8';
     this.campaignName = 'agnelarena_cofirm';
     this.userName = process.env.AISENSY_USERNAME ?? 'AITD Official';
     this.source = process.env.AISENSY_SOURCE ?? 'new-landing-page form';
@@ -217,11 +218,11 @@ export class AiSensyProvider implements SmsProvider {
           endTime = (times[1] ?? '').trim();
         }
 
-        templateParams = [customerName, formattedDate, startTime, endTime];
+        templateParams = ['$FirstName', '$FirstName', '$FirstName', '$FirstName']; // placeholders as per approved template
         buttonText = ticketNumber || bookingRef;
       } else if (otp) {
         isOtp = true;
-        templateParams = [otp]; // The template expects the OTP as the first parameter (e.g. "{{1}} is your verification code")
+        templateParams = ['$FirstName']; // placeholder, OTP sent in button text
         buttonText = otp;
       } else {
         templateParams = [message, message, message, message];

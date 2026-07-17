@@ -28,3 +28,6 @@ Thumbs.db
 /generated/prisma
 db_data/
 temp_pg_data/
+github_actions_key
+github_actions_key.pub
+deploy_keys/*.pem
