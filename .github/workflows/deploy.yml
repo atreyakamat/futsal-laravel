@@ -12,12 +12,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         
+      - name: Write SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          if [ ! -s ~/.ssh/deploy_key ] || [ $(wc -c < ~/.ssh/deploy_key) -lt 50 ]; then
+            echo "::error::SSH_PRIVATE_KEY secret is missing, empty, or too short! Please verify the secret in GitHub Settings."
+            exit 1
+          fi
+          
       - name: Trigger Remote Deployment
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          key_path: ~/.ssh/deploy_key
           script: |
             sudo sh -c '
               cd /opt/stacks/agnel-arena
