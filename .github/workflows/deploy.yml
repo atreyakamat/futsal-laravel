@@ -14,7 +14,7 @@ jobs:
         
       - name: Write SSH Key
         run: |
-          cat << 'EOF' > ./deploy_key.tmp
+          cat <<EOF > ./deploy_key.tmp
           ${{ secrets.SSH_PRIVATE_KEY }}
           EOF
           sed 's/^[ \t]*//;s/[ \t]*$//' ./deploy_key.tmp | tr -d '\r' > ./deploy_key
