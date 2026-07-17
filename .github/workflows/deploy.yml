@@ -35,4 +35,5 @@ jobs:
             git config --global --add safe.directory /opt/stacks/agnel-arena || true
             git fetch --all
             git reset --hard origin/main
+            sed -i 's/SMS_PROVIDER=log/SMS_PROVIDER=aisensy/g' .env.production || true
             ./deploy.sh
