@@ -222,7 +222,7 @@ export class AiSensyProvider implements SmsProvider {
         buttonText = ticketNumber || bookingRef;
       } else if (otp) {
         isOtp = true;
-        templateParams = ['$FirstName']; // placeholder, OTP sent in button text
+        templateParams = [otp];
         buttonText = otp;
       } else {
         templateParams = [message, message, message, message];

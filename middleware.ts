@@ -102,6 +102,19 @@ export async function middleware(req: NextRequest) {
   if (needsCsrfCookie) {
     const token = generateCsrfToken();
     const signed = signCsrfToken(token);
+    
+    // Pass the cookie to the request so Server Components can read it immediately
+    const requestHeaders = new Headers(req.headers);
+    const existingCookies = req.headers.get('cookie') || '';
+    const separator = existingCookies ? '; ' : '';
+    requestHeaders.set('cookie', `${existingCookies}${separator}fg_csrf_token=${signed}`);
+    
+    response = NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
+    
     response.cookies.set('fg_csrf_token', signed, getCsrfCookieOptions());
   }
 
