@@ -176,13 +176,8 @@ export class AiSensyProvider implements SmsProvider {
       return true;
     }
     try {
-      // Normalize: strip any non-digits except leading + then ensure 91 prefix
+      // Normalize: strip any non-digits
       let destination = to.replace(/[^\d]/g, '').trim();
-      if (destination.length === 10) {
-        destination = '91' + destination;
-      } else if (destination.startsWith('0')) {
-        destination = '91' + destination.substring(1);
-      }
 
       // Try to parse structured confirmation or OTP message
       let templateParams: string[] = [];
