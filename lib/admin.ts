@@ -568,7 +568,7 @@ export async function resolveApprovalRequest(input: {
       if (arenaPayload.description) { updates.push('description = ?'); values.push(arenaPayload.description); }
       if (arenaPayload.slug) { updates.push('slug = ?'); values.push(arenaPayload.slug); }
       if (arenaPayload.contact_phone) { updates.push('contact_phone = ?'); values.push(arenaPayload.contact_phone); }
-      if (arenaPayload.location) { updates.push('location = ?'); values.push(arenaPayload.location); }
+      if (arenaPayload.location) { updates.push('address = ?'); values.push(arenaPayload.location); }
 
       if (updates.length > 0 && request.arena_id) {
         values.push(request.arena_id);
