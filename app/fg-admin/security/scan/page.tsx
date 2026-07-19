@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { Scanner } from '@yudiel/react-qr-scanner';
 
 import { Suspense } from 'react';
 
@@ -34,6 +35,23 @@ function SecurityScanContent() {
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="w-full h-64 rounded-2xl overflow-hidden bg-black/50 border border-white/10 relative">
+            <Scanner
+              onScan={(result) => {
+                if (result && result.length > 0) {
+                  const value = result[0].rawValue;
+                  if (value && value !== ticketNumber && !loading) {
+                    setTicketNumber(value);
+                    setLoading(true);
+                    router.push(`/fg-admin/security/verify?ticket_number=${encodeURIComponent(value)}`);
+                  }
+                }
+              }}
+              styles={{ container: { width: '100%', height: '100%' } }}
+            />
+            <div className="absolute inset-0 border-2 border-primary/50 pointer-events-none rounded-2xl m-4"></div>
+          </div>
+          
           <div className="space-y-2">
             <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1" htmlFor="ticket_number">
               Ticket Number
