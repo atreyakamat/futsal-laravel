@@ -119,6 +119,31 @@ async function seedDemoData(client) {
     console.log(`✓ Super admin link created/updated for email: ${adminEmail}`);
   }
 
+  // Seed Arena Admin
+  await client.query(
+    `INSERT INTO arena_admins (arena_id, email, password_hash, first_name, last_name, is_active, created_by, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $5, TRUE, $6, NOW(), NOW())
+     ON CONFLICT (email) DO UPDATE SET
+       password_hash = EXCLUDED.password_hash,
+       arena_id = EXCLUDED.arena_id,
+       updated_at = NOW()`,
+    [arenaId, 'arena@test.com', adminPasswordHash, 'Arena', 'Admin', demoUserId || 1]
+  );
+  console.log(`✓ Arena admin user created/updated: arena@test.com`);
+
+  // Seed Security Staff
+  await client.query(
+    `INSERT INTO security_staff (arena_id, email, password_hash, first_name, last_name, is_active, created_by, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $5, TRUE, $6, NOW(), NOW())
+     ON CONFLICT (email) DO UPDATE SET
+       password_hash = EXCLUDED.password_hash,
+       arena_id = EXCLUDED.arena_id,
+       updated_at = NOW()`,
+    [arenaId, 'security@test.com', adminPasswordHash, 'Security', 'Guard', demoUserId || 1]
+  );
+  console.log(`✓ Security staff user created/updated: security@test.com`);
+
+
   await client.query(
     `INSERT INTO bookings (
        ticket_number, booking_ref, arena_id, user_id, booking_date, time_slot,
@@ -162,9 +187,11 @@ async function seedDemoData(client) {
   console.log('\n=================================================================');
   console.log('                 🔥 SYSTEM SEED COMPLETE 🔥');
   console.log('=================================================================');
-  console.log(' SUPER ADMIN LOGIN CREDENTIALS:');
-  console.log(` -> URL:      http://localhost:3000/admin/super-admin-login`);
-  console.log(` -> EMAIL:    ${adminEmail}`);
+  console.log(' ADMIN LOGIN CREDENTIALS:');
+  console.log(` -> URL:      http://localhost:3000/fg-admin/login`);
+  console.log(` -> SUPER:    ${adminEmail}`);
+  console.log(` -> ARENA:    arena@test.com`);
+  console.log(` -> SECURITY: security@test.com`);
   console.log(` -> PASSWORD: ${adminPassword}`);
   console.log('=================================================================\n');
 }
