@@ -1,0 +1,79 @@
+Starting FutsalGoa container...
+Loaded Prisma config from prisma.config.ts.
+Applying Prisma Migrations...
+Datasource "db": PostgreSQL database "futsal_laravel", schema "public" at "postgres:5432"
+
+6 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+Applying database seeding and bootstrapping...
+Waiting for database...
+Running Prisma migrate deploy...
+Datasource "db": PostgreSQL database "futsal_laravel", schema "public" at "postgres:5432"
+
+6 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+Applying seed file: 002-seed.sql
+✓ Admin user created/updated: superadmin@agnelarenagoa.com
+✓ Super admin link created/updated for email: superadmin@agnelarenagoa.com
+
+=================================================================
+                 🔥 SYSTEM SEED COMPLETE 🔥
+=================================================================
+ SUPER ADMIN LOGIN CREDENTIALS:
+ -> URL:      http://localhost:3000/admin/super-admin-login
+ -> EMAIL:    superadmin@agnelarenagoa.com
+ -> PASSWORD: SuperAdmin@123
+
+Prisma schema loaded from prisma/schema.prisma.
+npm notice
+npm notice New major version of npm available! 10.8.2 -> 12.0.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.0.1
+npm notice To update run: npm install -g npm@12.0.1
+npm notice
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+[ENV VALIDATION] Optional vars not set (features degraded): RESEND_API_KEY, SENTRY_DSN
+[ENV VALIDATION] Optional vars not set (features degraded): RESEND_API_KEY, SENTRY_DSN
+[Booking Process Error]: Error: Slot 08:00-09:00 has already been booked.
+    at <unknown> (.next/server/app/api/arenas/[slug]/route.js:41:81)
+    at async k (.next/server/app/api/arenas/[slug]/route.js:1:1296)
+    at async x (.next/server/app/api/arenas/[slug]/route.js:34:554)
+    at async o (.next/server/app/api/bookings/process/route.js:1:2492)
+    at async k (.next/server/app/api/bookings/process/route.js:1:7605)
+    at async g (.next/server/app/api/bookings/process/route.js:1:8608)
+=================================================================
+
+DB init complete
+◇ injected env (0) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+Connected to database to seed AIEM Assagao
+Arena AIEM Assagao created/updated with ID: 1
+Pricing entries seeded successfully
+Slot timings seeded successfully
+Seed process finished
+Starting Next.js Server...
+   ▲ Next.js 15.5.18
+   - Local:        http://localhost:3000
+   - Network:      http://0.0.0.0:3000
+
+ ✓ Starting...
+ ✓ Ready in 469ms
+[ENV VALIDATION] All required environment variables are present and secure.
+[ENV VALIDATION] All required environment variables are present and secure.
+[OTP] 917744020601: 174770
+[AiSensyProvider] Message sent successfully to 917744020601. Response: {
+  success: 'true',
+  submitted_message_id: '9299306e-c397-487f-8052-a3c280f389ca'
+}
+[Booking Process Error]: Error: Slot 08:00-09:00 has already been booked.
+    at <unknown> (.next/server/app/api/arenas/[slug]/route.js:41:81)
+    at async k (.next/server/app/api/arenas/[slug]/route.js:1:1296)
+    at async x (.next/server/app/api/arenas/[slug]/route.js:34:554)
+    at async o (.next/server/app/api/bookings/process/route.js:1:2492)
+    at async k (.next/server/app/api/bookings/process/route.js:1:7605)
+    at async g (.next/server/app/api/bookings/process/route.js:1:8608)
+[EMAIL] AWS_ACCESS_KEY_ID not configured, skipping email send

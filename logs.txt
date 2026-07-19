@@ -1,0 +1,109 @@
+Starting FutsalGoa container...
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+npm notice
+npm notice New major version of npm available! 10.8.2 -> 12.0.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.0.1
+Applying Prisma Migrations...
+Datasource "db": PostgreSQL database "futsal_laravel", schema "public" at "postgres:5432"
+
+6 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+Applying database seeding and bootstrapping...
+Waiting for database...
+Running Prisma migrate deploy...
+Datasource "db": PostgreSQL database "futsal_laravel", schema "public" at "postgres:5432"
+
+6 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+Applying seed file: 002-seed.sql
+✓ Admin user created/updated: superadmin@agnelarenagoa.com
+✓ Super admin link created/updated for email: superadmin@agnelarenagoa.com
+
+=================================================================
+                 🔥 SYSTEM SEED COMPLETE 🔥
+=================================================================
+ SUPER ADMIN LOGIN CREDENTIALS:
+ -> URL:      http://localhost:3000/admin/super-admin-login
+ -> EMAIL:    superadmin@agnelarenagoa.com
+ -> PASSWORD: SuperAdmin@123
+npm notice To update run: npm install -g npm@12.0.1
+npm notice
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+[ENV VALIDATION] Optional vars not set (features degraded): RESEND_API_KEY, SENTRY_DSN
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+[ENV VALIDATION] Optional vars not set (features degraded): RESEND_API_KEY, SENTRY_DSN
+=================================================================
+
+DB init complete
+◇ injected env (0) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+Connected to database to seed AIEM Assagao
+Arena AIEM Assagao created/updated with ID: 1
+Pricing entries seeded successfully
+Slot timings seeded successfully
+Seed process finished
+Starting Next.js Server...
+   ▲ Next.js 15.5.18
+   - Local:        http://localhost:3000
+   - Network:      http://0.0.0.0:3000
+
+ ✓ Starting...
+ ✓ Ready in 586ms
+[ENV VALIDATION] All required environment variables are present and secure.
+Starting FutsalGoa container...
+Applying Prisma Migrations...
+Datasource "db": PostgreSQL database "futsal_laravel", schema "public" at "postgres:5432"
+
+6 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+Applying database seeding and bootstrapping...
+Waiting for database...
+Running Prisma migrate deploy...
+Datasource "db": PostgreSQL database "futsal_laravel", schema "public" at "postgres:5432"
+
+6 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+Applying seed file: 002-seed.sql
+✓ Admin user created/updated: superadmin@agnelarenagoa.com
+✓ Super admin link created/updated for email: superadmin@agnelarenagoa.com
+
+=================================================================
+                 🔥 SYSTEM SEED COMPLETE 🔥
+=================================================================
+ SUPER ADMIN LOGIN CREDENTIALS:
+ -> URL:      http://localhost:3000/admin/super-admin-login
+ -> EMAIL:    superadmin@agnelarenagoa.com
+ -> PASSWORD: SuperAdmin@123
+=================================================================
+
+DB init complete
+◇ injected env (0) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+Connected to database to seed AIEM Assagao
+Arena AIEM Assagao created/updated with ID: 1
+Pricing entries seeded successfully
+Slot timings seeded successfully
+Seed process finished
+Starting Next.js Server...
+   ▲ Next.js 15.5.18
+   - Local:        http://localhost:3000
+   - Network:      http://0.0.0.0:3000
+
+ ✓ Starting...
+ ✓ Ready in 603ms
+[ENV VALIDATION] All required environment variables are present and secure.

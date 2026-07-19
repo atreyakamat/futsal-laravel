@@ -128,25 +128,10 @@ export default function Header({ userId, role, arenaId, userName }: HeaderProps)
           <Link href="/" className="text-xs font-black uppercase tracking-widest hover:text-primary text-white/60 transition-colors">
             Explore Arenas
           </Link>
-          {userId ? (
-            role === 'customer' || role === 'player' ? (
-              <Link href="/dashboard" className="text-xs font-black uppercase tracking-widest hover:text-primary text-white/60 transition-colors">
-                My Bookings
-              </Link>
-            ) : (
-              <Link
-                href={
-                  role === 'super_admin'
-                    ? '/fg-admin/platform/super-admin'
-                    : role === 'arena_admin'
-                    ? '/fg-admin/arena/dashboard'
-                    : '/fg-admin/login'
-                }
-                className="text-xs font-black uppercase tracking-widest hover:text-primary text-white/60 transition-colors text-primary"
-              >
-                Admin Panel
-              </Link>
-            )
+          {userId && (role === 'customer' || role === 'player') ? (
+            <Link href="/dashboard" className="text-xs font-black uppercase tracking-widest hover:text-primary text-white/60 transition-colors">
+              My Bookings
+            </Link>
           ) : null}
         </nav>
 
@@ -183,30 +168,14 @@ export default function Header({ userId, role, arenaId, userName }: HeaderProps)
             >
               Explore Arenas
             </Link>
-            {userId ? (
-              role === 'customer' || role === 'player' ? (
-                <Link 
-                  href="/dashboard"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="text-sm font-black uppercase tracking-widest text-white/80 hover:text-primary"
-                >
-                  My Bookings
-                </Link>
-              ) : (
-                <Link 
-                  href={
-                    role === 'super_admin'
-                      ? '/fg-admin/platform/super-admin'
-                      : role === 'arena_admin'
-                      ? '/fg-admin/arena/dashboard'
-                      : '/fg-admin/login'
-                  }
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="text-sm font-black uppercase tracking-widest text-primary"
-                >
-                  Admin Panel
-                </Link>
-              )
+            {userId && (role === 'customer' || role === 'player') ? (
+              <Link 
+                href="/dashboard"
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-sm font-black uppercase tracking-widest text-white/80 hover:text-primary"
+              >
+                My Bookings
+              </Link>
             ) : null}
           </nav>
 
