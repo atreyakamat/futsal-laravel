@@ -49,10 +49,10 @@ function PayloadSummary({ requestType, payloadJson }: { requestType: string; pay
           <p className="text-[9px] text-white/40 uppercase tracking-widest font-bold">Time Slots</p>
           <p className="text-sm font-black text-white mt-0.5">{slots || '—'}</p>
         </div>
-        {payload.customerName && (
+        {Boolean(payload.customerName) && (
           <div className="p-3 rounded-xl bg-white/5 border border-white/5 col-span-2">
             <p className="text-[9px] text-white/40 uppercase tracking-widest font-bold">Requested For</p>
-            <p className="text-sm font-black text-white mt-0.5">{String(payload.customerName)}</p>
+            <p className="text-sm font-black text-white mt-0.5">{String(payload.customerName ?? '')}</p>
           </div>
         )}
       </div>
@@ -77,14 +77,15 @@ function PayloadSummary({ requestType, payloadJson }: { requestType: string; pay
   }
 
   if (requestType === 'entry_mode_update') {
+    const mode = String(payload.mode ?? 'open');
     return (
       <div className="mt-4">
         <p className="text-[9px] text-white/40 uppercase tracking-widest font-bold mb-2">Requested Mode</p>
         <span className={`inline-block px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-widest border ${
-          payload.mode === 'open' ? 'text-primary border-primary/30 bg-primary/10' :
-          payload.mode === 'blocked' ? 'text-red-400 border-red-500/30 bg-red-500/10' :
+          mode === 'open' ? 'text-primary border-primary/30 bg-primary/10' :
+          mode === 'blocked' ? 'text-red-400 border-red-500/30 bg-red-500/10' :
           'text-yellow-400 border-yellow-500/30 bg-yellow-500/10'
-        }`}>{String(payload.mode ?? 'open')}</span>
+        }`}>{mode}</span>
       </div>
     );
   }
