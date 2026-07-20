@@ -58,10 +58,13 @@ export async function POST(request: Request) {
   if (isMobileNum) {
     const provider = getSmsProvider();
     try {
-      await provider.sendSms(
+      const sent = await provider.sendSms(
         cleanIdentifier,
         `Your OTP for AgnelArena is ${otp}. Valid for 10 minutes.`
       );
+      if (!sent) {
+        console.error(`[SMS] Provider reported failure sending OTP to ${cleanIdentifier}`);
+      }
     } catch (smsErr) {
       console.error('[SMS] Failed to send SMS via provider:', smsErr);
     }

@@ -91,11 +91,14 @@ export async function sendTicketEmail(bookingRef: string, appUrl?: string) {
     try {
       const mergedSlots = mergeSlots(ticket.slots);
       const timeRange = mergedSlots.join(', '); // e.g. "17:00-18:00"
-      await provider.sendSms(
+      const sent = await provider.sendSms(
         firstBooking.customer_mobile,
         `CONFIRMED|${ticket.bookingDate}|${timeRange}|${ticket.ticketNumbers[0] || ticket.bookingRef}|${bookingRef}|${ticket.customerName}`,
         { appUrl }
       );
+      if (!sent) {
+        console.error(`[WhatsApp Ticket] Provider reported failure sending ticket to ${firstBooking.customer_mobile}`);
+      }
     } catch (smsErr) {
       console.error('[WhatsApp Ticket] Failed to send ticket via WhatsApp:', smsErr);
     }
