@@ -88,7 +88,13 @@ export async function getBookingsByRef(bookingRef: string) {
 }
 
 export async function getBookingsForUser(userId: number) {
-  return dbQuery<BookingRow>('SELECT * FROM bookings WHERE user_id = ? ORDER BY created_at DESC', [userId]);
+  return dbQuery<BookingRow>(
+    `SELECT * FROM bookings
+      WHERE user_id = ?
+        AND payment_status IN ('confirmed', 'pending')
+      ORDER BY created_at DESC`,
+    [userId]
+  );
 }
 
 export async function getBookingByTicket(ticketNumber: string) {

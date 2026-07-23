@@ -31,7 +31,7 @@ export interface BookingRow {
   customer_mobile: string;
   customer_email: string | null;
   amount: number;
-  payment_status: 'pending' | 'confirmed' | 'failed' | 'cancelled';
+  payment_status: 'pending' | 'confirmed' | 'failed' | 'cancelled' | 'expired';
   payment_method: 'online' | 'cash' | 'upi';
   checked_in: number | boolean;
   is_free_booking: number | boolean;

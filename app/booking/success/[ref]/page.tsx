@@ -22,6 +22,16 @@ export default async function BookingSuccessPage({ params }: Props) {
   const arena = await getArenaById(firstBooking.arena_id);
   if (!arena) redirect('/');
 
+  // Guard: only show ticket for confirmed bookings (including free bookings)
+  const isConfirmed = bookings.every(
+    (b) => b.payment_status === 'confirmed'
+  );
+  if (!isConfirmed) {
+    redirect(`/booking/payment-failed/${bookingRef}`);
+  }
+
+
+
   const totalAmount = bookings.reduce((sum, b) => sum + Number(b.amount), 0);
   const slots = bookings.map((b) => b.time_slot);
   const mergedSlots = mergeSlots(slots).join(', ');

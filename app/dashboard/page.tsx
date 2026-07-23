@@ -44,11 +44,17 @@ export default async function DashboardPage() {
   
   // Sort refs by booking date (newest first for history, closest first for upcoming)
   const upcomingRefs = bookingRefs
-    .filter((ref) => groups[ref][0].booking_date >= todayStr)
+    .filter((ref) => {
+      const status = groups[ref][0].payment_status;
+      return groups[ref][0].booking_date >= todayStr && status !== 'failed' && status !== 'expired';
+    })
     .sort((a, b) => groups[a][0].booking_date.localeCompare(groups[b][0].booking_date));
     
   const historyRefs = bookingRefs
-    .filter((ref) => groups[ref][0].booking_date < todayStr)
+    .filter((ref) => {
+      const status = groups[ref][0].payment_status;
+      return groups[ref][0].booking_date < todayStr && status !== 'failed' && status !== 'expired';
+    })
     .sort((a, b) => groups[b][0].booking_date.localeCompare(groups[a][0].booking_date));
 
   const renderBookingCard = (ref: string) => {
@@ -113,10 +119,12 @@ export default async function DashboardPage() {
                     className={`pill-status ${
                       firstBooking.payment_status === 'confirmed'
                         ? 'border-primary/20 text-primary'
-                        : 'border-yellow-500/20 text-yellow-500'
+                        : firstBooking.payment_status === 'pending'
+                        ? 'border-yellow-500/20 text-yellow-500'
+                        : 'border-red-500/20 text-red-500'
                     }`}
                   >
-                    {firstBooking.payment_status}
+                    {firstBooking.is_free_booking ? 'free' : firstBooking.payment_status}
                   </span>
                 </div>
               </div>
@@ -130,13 +138,24 @@ export default async function DashboardPage() {
                 </span>
               </div>
 
-              <Link
-                href={`/booking/success/${ref}`}
-                className="btn-secondary w-full md:w-auto mt-8 flex items-center justify-center gap-3 !py-3 hover:scale-105 active:scale-95"
-              >
-                VIEW TICKET
-                <span className="material-symbols-outlined text-xl">confirmation_number</span>
-              </Link>
+              {firstBooking.payment_status === 'confirmed' ? (
+                <Link
+                  href={`/booking/success/${ref}`}
+                  className="btn-secondary w-full md:w-auto mt-8 flex items-center justify-center gap-3 !py-3 hover:scale-105 active:scale-95"
+                >
+                  VIEW TICKET
+                  <span className="material-symbols-outlined text-xl">confirmation_number</span>
+                </Link>
+              ) : firstBooking.payment_status === 'pending' ? (
+                <div className="w-full md:w-auto mt-8 px-6 py-3 rounded-xl border border-yellow-500/20 text-yellow-500 text-[10px] font-black uppercase tracking-widest text-center">
+                  PAYMENT PENDING
+                </div>
+              ) : (
+                <div className="w-full md:w-auto mt-8 px-6 py-3 rounded-xl border border-red-500/20 text-red-400 text-[10px] font-black uppercase tracking-widest text-center flex items-center justify-center gap-2">
+                  <span className="material-symbols-outlined text-sm">cancel</span>
+                  PAYMENT FAILED
+                </div>
+              )}
               
               <CancelBookingBtn
                 bookingRef={ref}
