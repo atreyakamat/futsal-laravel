@@ -67,7 +67,7 @@ describe('OTP end‑to‑end flow', () => {
     expect(setCookie).toContain('fg_auth_role');
 
     // Confirm that a user record now exists for the mobile identifier
-    const user = await queryOne('SELECT * FROM users WHERE customer_mobile = ?', [normalizePhoneNumber(testMobile)]);
+    const user = await queryOne<{ id: number; customer_mobile: string; role: string }>('SELECT * FROM users WHERE customer_mobile = ?', [normalizePhoneNumber(testMobile)]);
     expect(user).toBeTruthy();
     expect(user?.role).toBeTruthy();
   });

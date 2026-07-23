@@ -12,6 +12,8 @@ jobs:
     env:
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/futsal_laravel?schema=public
       NEXT_PUBLIC_APP_URL: http://localhost:3000
+      COOKIE_SECRET: ci-test-cookie-secret-not-for-prod
+      SESSION_SECRET: ci-test-session-secret-not-for-prod
     services:
       postgres:
         image: postgres:15
@@ -35,15 +37,17 @@ jobs:
           node-version: 20
           cache: npm
 
-- name: Clean up existing lockfile and node_modules
-         run: rm -f package-lock.json && rm -rf node_modules
-       - name: Install dependencies
-         run: npm install --ignore-optional
+      - name: Clean up existing lockfile and node_modules
+        run: rm -f package-lock.json && rm -rf node_modules
+
+      - name: Install dependencies
+        run: npm install --ignore-optional
 
       - name: Generate Prisma client
         run: npm run db:generate
 
       - name: Build application
         run: npm run build
+
       - name: Run tests
         run: npm test
