@@ -3,7 +3,7 @@ import { getAdminContext } from '@/lib/admin';
 import { getArenaById, query } from '@/lib/domain';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import ProcessRefundBtn from '@/components/ProcessRefundBtn';
+import RescheduleBookingBtn from '@/components/RescheduleBookingBtn';
 
 export const dynamic = 'force-dynamic';
 
@@ -100,10 +100,11 @@ export default async function ArenaAdminBookingsPage() {
                   <div className="text-right mr-4">
                     <span className="label-classic !ml-0 mb-1">Amount</span>
                     <span className="text-2xl font-black text-white italic tracking-tighter">₹{b.amount}</span>
-                    <ProcessRefundBtn
+                    <RescheduleBookingBtn
                       bookingRef={b.booking_ref}
-                      amount={b.amount}
-                      cancellationRequested={!!(b as any).cancellation_requested}
+                      currentDate={b.booking_date}
+                      currentSlot={b.time_slot}
+                      paymentStatus={b.payment_status}
                     />
                   </div>
                   <Link

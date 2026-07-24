@@ -1,5 +1,5 @@
 import { getBookingsByRef } from '@/lib/domain';
-import { getPayuConfig, generatePayuHash } from '@/lib/payment';
+import { getPayuConfig, generatePayuHash, getEnforcePaymethod } from '@/lib/payment';
 import { readRequestOrigin } from '@/lib/session';
 import { redirect } from 'next/navigation';
 import PaymentRedirector from '@/components/PaymentRedirector';
@@ -31,6 +31,8 @@ export default async function PaymentCheckoutPage({ params }: Props) {
     phone: firstBooking.customer_mobile || '9999999999',
     surl: `${origin}/api/payment/callback`,
     furl: `${origin}/api/payment/callback`,
+    // Enforce allowed payment modes per business rules
+    enforce_paymethod: getEnforcePaymethod(),
   };
 
   const hash = generatePayuHash(payuParams);

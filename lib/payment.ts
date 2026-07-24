@@ -1,5 +1,28 @@
 import crypto from 'crypto';
 
+/**
+ * Allowed payment methods enforced via PayU API.
+ * Per Basil Sir (23-Jul-2026):
+ *   ✅ UPI (no UPI credit)
+ *   ✅ Debit card
+ *   ✅ Wallets
+ *   ✅ Net Banking
+ *   ❌ Credit card (excluded)
+ *   ❌ UPI credit (excluded — UPI without credit is enforced by PayU when CC is absent)
+ *
+ * PayU codes: UPI = UPI, DC = Debit Card, CASH = Wallets, NB = Net Banking
+ */
+export const ENFORCE_PAYMETHOD = 'UPI|DC|CASH|NB';
+
+/**
+ * Returns the enforce_paymethod string to pass to PayU's payment form.
+ * Including this in the POST to /_payment restricts the checkout UI
+ * to only these payment modes.
+ */
+export function getEnforcePaymethod(): string {
+  return ENFORCE_PAYMETHOD;
+}
+
 export function getPayuConfig() {
   const isProd = process.env.PAYU_ENV === 'production' || process.env.PAYU_TEST_MODE === 'false';
   

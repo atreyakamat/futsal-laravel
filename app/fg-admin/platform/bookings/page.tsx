@@ -3,6 +3,7 @@ import { getAdminContext } from '@/lib/admin';
 import { query } from '@/lib/domain';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import SuperAdminRefundBtn from '@/components/SuperAdminRefundBtn';
 
 export const dynamic = 'force-dynamic';
 
@@ -106,6 +107,13 @@ export default async function AdminBookingsPage() {
                   <div className="text-right mr-4">
                     <span className="label-classic !ml-0 mb-1">Amount</span>
                     <span className="text-2xl font-black text-white italic tracking-tighter">₹{b.amount}</span>
+                    {context.role === 'super_admin' && (
+                      <SuperAdminRefundBtn
+                        bookingRef={b.booking_ref}
+                        grossAmount={b.amount}
+                        paymentStatus={b.payment_status}
+                      />
+                    )}
                   </div>
                   <Link
                     href={`/booking/success/${b.booking_ref}`}

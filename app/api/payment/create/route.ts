@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getBookingsByRef } from '@/lib/domain';
-import { getPayuConfig, generatePayuHash } from '@/lib/payment';
+import { getPayuConfig, generatePayuHash, getEnforcePaymethod } from '@/lib/payment';
 import { readRequestOrigin } from '@/lib/session';
 
 const bodySchema = z.object({
@@ -38,6 +38,8 @@ export async function POST(request: Request) {
       phone: firstBooking.customer_mobile,
       surl: `${origin}/api/payment/callback`,
       furl: `${origin}/api/payment/callback`,
+      // Enforce allowed payment modes per business rules
+      enforce_paymethod: getEnforcePaymethod(),
     };
 
     const hash = generatePayuHash(payuParams);
