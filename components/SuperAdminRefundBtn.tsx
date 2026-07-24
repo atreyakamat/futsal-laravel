@@ -2,15 +2,26 @@
 
 import { useState } from 'react';
 
+interface SlotItem {
+  timeSlot: string;
+  amount: number;
+}
+
 interface SuperAdminRefundBtnProps {
   bookingRef: string;
-  grossAmount: number;
+  slots: SlotItem[];          // one entry per DB row (one per slot)
   paymentStatus: string;
+}
+
+const FEE_PCT = 5;
+
+function calcFee(amount: number) {
+  return parseFloat(((amount * FEE_PCT) / 100).toFixed(2));
 }
 
 export default function SuperAdminRefundBtn({
   bookingRef,
-  grossAmount,
+  slots,
   paymentStatus,
 }: SuperAdminRefundBtnProps) {
   const [open, setOpen] = useState(false);
@@ -21,8 +32,9 @@ export default function SuperAdminRefundBtn({
 
   if (paymentStatus === 'cancelled') return null;
 
-  const serviceFee = parseFloat(((grossAmount * 5) / 100).toFixed(2));
-  const refundAmount = parseFloat((grossAmount - serviceFee).toFixed(2));
+  const totalGross = parseFloat(slots.reduce((s, sl) => s + sl.amount, 0).toFixed(2));
+  const totalFee   = parseFloat(slots.reduce((s, sl) => s + calcFee(sl.amount), 0).toFixed(2));
+  const totalRefund = parseFloat((totalGross - totalFee).toFixed(2));
 
   const handleRefund = async () => {
     setLoading(true);
@@ -52,6 +64,8 @@ export default function SuperAdminRefundBtn({
     }
   };
 
+  const isMultiSlot = slots.length > 1;
+
   return (
     <>
       <button
@@ -63,39 +77,99 @@ export default function SuperAdminRefundBtn({
       </button>
 
       {open && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="glass-card !p-10 max-w-md w-full space-y-6">
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="glass-card !p-10 max-w-lg w-full space-y-6 my-8">
+            {/* Header */}
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-black uppercase tracking-tighter italic">
-                Super Admin <span className="text-orange-400">Refund</span>
-              </h2>
+              <div>
+                <h2 className="text-xl font-black uppercase tracking-tighter italic">
+                  Super Admin <span className="text-orange-400">Refund</span>
+                </h2>
+                {isMultiSlot && (
+                  <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest mt-1">
+                    Combined Booking · {slots.length} Slots
+                  </p>
+                )}
+              </div>
               <button onClick={() => setOpen(false)} className="text-white/40 hover:text-white transition-colors">
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
 
-            {/* Refund Breakdown */}
+            {/* Per-slot breakdown — only shown when multi-slot */}
+            {isMultiSlot && (
+              <div className="space-y-2">
+                <p className="text-[10px] font-black text-white/30 uppercase tracking-widest mb-3">
+                  Slot Breakdown
+                </p>
+                {slots.map((sl, idx) => {
+                  const fee = calcFee(sl.amount);
+                  const slotRefund = parseFloat((sl.amount - fee).toFixed(2));
+                  return (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between px-4 py-3 rounded-xl border border-white/5 bg-white/[0.02] gap-4"
+                    >
+                      {/* Slot label */}
+                      <div className="flex items-center gap-3 flex-1">
+                        <div className="w-7 h-7 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-[10px] font-black shrink-0">
+                          {idx + 1}
+                        </div>
+                        <span className="text-xs font-black text-white uppercase italic">
+                          {sl.timeSlot}
+                        </span>
+                      </div>
+                      {/* Per-slot financials */}
+                      <div className="text-right shrink-0 space-y-0.5">
+                        <p className="text-[10px] text-white/30 font-bold">
+                          ₹{sl.amount} <span className="text-red-400">− ₹{fee}</span>
+                        </p>
+                        <p className="text-xs font-black text-primary">= ₹{slotRefund}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Total refund breakdown */}
             <div className="border border-white/5 rounded-xl p-5 space-y-3 bg-white/[0.02]">
+              {!isMultiSlot && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-white/40 font-bold uppercase tracking-widest text-[10px]">Slot</span>
+                  <span className="font-black text-white">{slots[0]?.timeSlot}</span>
+                </div>
+              )}
               <div className="flex justify-between text-sm">
-                <span className="text-white/40 font-bold uppercase tracking-widest text-[10px]">Gross Amount</span>
-                <span className="font-black text-white">₹{grossAmount}</span>
+                <span className="text-white/40 font-bold uppercase tracking-widest text-[10px]">
+                  {isMultiSlot ? 'Total Gross' : 'Gross Amount'}
+                </span>
+                <span className="font-black text-white">₹{totalGross}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-white/40 font-bold uppercase tracking-widest text-[10px]">Handling Fee (5%)</span>
-                <span className="font-black text-red-400">− ₹{serviceFee}</span>
+                <span className="text-white/40 font-bold uppercase tracking-widest text-[10px]">
+                  Handling Fee ({FEE_PCT}%)
+                </span>
+                <span className="font-black text-red-400">− ₹{totalFee}</span>
               </div>
               <div className="border-t border-white/5 pt-3 flex justify-between">
-                <span className="text-white/40 font-bold uppercase tracking-widest text-[10px]">Refund Amount</span>
-                <span className="font-black text-primary text-lg">₹{refundAmount}</span>
+                <span className="text-white/40 font-bold uppercase tracking-widest text-[10px]">
+                  {isMultiSlot ? 'Total Refund' : 'Refund Amount'}
+                </span>
+                <span className="font-black text-primary text-lg">₹{totalRefund}</span>
               </div>
             </div>
 
+            {/* Warning */}
             <div className="px-4 py-3 rounded-xl border border-orange-500/20 bg-orange-500/5 text-orange-400 text-xs font-bold">
               ⚠ This bypasses all time restrictions. The booking will be marked as cancelled immediately.
             </div>
 
+            {/* Notes */}
             <div>
-              <label className="label-classic !ml-0 block mb-2">Notes <span className="text-white/30">(optional)</span></label>
+              <label className="label-classic !ml-0 block mb-2">
+                Notes <span className="text-white/30">(optional)</span>
+              </label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -116,6 +190,7 @@ export default function SuperAdminRefundBtn({
               </div>
             )}
 
+            {/* Actions */}
             <div className="flex gap-4">
               <button
                 onClick={() => setOpen(false)}
