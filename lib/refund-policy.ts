@@ -30,15 +30,24 @@ export function calculateRefundAmount(grossAmount: number): {
  * Checks whether a customer self-cancellation is within the allowed time window.
  *
  * @param bookingDateStr  YYYY-MM-DD  (IST date of the game)
- * @param slotStart       "HH:MM"     (start time from time_slot field, e.g. "06:00")
+ * @param slotStart       "HH:MM" or "HH:MM - HH:MM"
  * @returns { allowed, msUntilBooking }
  */
 export function isCancellationAllowed(bookingDateStr: string, slotStart: string): {
   allowed: boolean;
   msUntilBooking: number;
 } {
-  const bookingDateTime = new Date(`${bookingDateStr}T${slotStart}:00+05:30`);
+  // Support both "06:00" and "06:00 - 07:00"
+  const startTime = slotStart.includes('-') ? slotStart.split('-')[0].trim() : slotStart.trim();
+  const timeFormatted = startTime.padStart(5, '0'); // e.g. "6:00" -> "06:00"
+
+  const bookingDateTime = new Date(`${bookingDateStr}T${timeFormatted}:00+05:30`);
   const msUntilBooking = bookingDateTime.getTime() - Date.now();
   const cutoffMs = CANCEL_CUTOFF_HOURS * 60 * 60 * 1000;
+
+  if (isNaN(msUntilBooking)) {
+    return { allowed: false, msUntilBooking: 0 };
+  }
+
   return { allowed: msUntilBooking >= cutoffMs, msUntilBooking };
 }
