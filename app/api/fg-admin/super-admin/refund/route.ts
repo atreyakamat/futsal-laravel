@@ -4,7 +4,13 @@
  * Super Admin ONLY — bypasses all time rules and issues a refund
  * with the standard 5% handling fee deducted.
  *
- * Body: { ref: string, notes?: string }
+ * Requirement Checklist:
+ *  1. Super Admin can override the 3-hour rule.
+ *  2. Super Admin can issue refunds even after the cutoff.
+ *  3. Even overridden refunds deduct 5% handling fees (Refund Amount = Original - 5%).
+ *  4. Every override MUST:
+ *      - Require a reason.
+ *      - Be stored in audit logs.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { readSuperAdminId } from '@/lib/session';
@@ -14,8 +20,8 @@ import { calculateRefundAmount } from '@/lib/refund-policy';
 import { z } from 'zod';
 
 const schema = z.object({
-  ref: z.string().min(1),
-  notes: z.string().optional(),
+  ref: z.string().min(1, 'Booking reference is required'),
+  reason: z.string().min(3, 'A valid reason for the refund override is required'),
 });
 
 export async function POST(req: NextRequest) {
@@ -55,7 +61,7 @@ export async function POST(req: NextRequest) {
         WHERE booking_ref = ?`,
       [
         refundAmount,
-        `Super Admin Refund${payload.notes ? ': ' + payload.notes : ''}`,
+        `Super Admin Override: ${payload.reason}`,
         payload.ref,
       ]
     );
@@ -66,17 +72,18 @@ export async function POST(req: NextRequest) {
       'FORCE_REFUND',
       'booking',
       undefined,
-      { ref: payload.ref, grossAmount, serviceFee, refundAmount, notes: payload.notes },
+      { ref: payload.ref, grossAmount, serviceFee, refundAmount, overrideReason: payload.reason },
       req.headers.get('x-forwarded-for') || 'unknown',
       req.headers.get('user-agent') || 'unknown'
     );
 
     return NextResponse.json({
       success: true,
-      message: `Refund of ₹${refundAmount} processed (₹${serviceFee} handling fee deducted from ₹${grossAmount}).`,
+      message: `Refund of ₹${refundAmount} processed (₹${serviceFee} 5% fee deducted from ₹${grossAmount}). Reason: "${payload.reason}".`,
       grossAmount,
       serviceFee,
       refundAmount,
+      overrideReason: payload.reason,
     });
   } catch (err: any) {
     if (err instanceof z.ZodError) {

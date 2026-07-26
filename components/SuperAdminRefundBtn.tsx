@@ -25,7 +25,7 @@ export default function SuperAdminRefundBtn({
   paymentStatus,
 }: SuperAdminRefundBtnProps) {
   const [open, setOpen] = useState(false);
-  const [notes, setNotes] = useState('');
+  const [reason, setReason] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -37,6 +37,11 @@ export default function SuperAdminRefundBtn({
   const totalRefund = parseFloat((totalGross - totalFee).toFixed(2));
 
   const handleRefund = async () => {
+    if (!reason || reason.trim().length < 3) {
+      setError('Please provide a valid reason for the refund override.');
+      return;
+    }
+
     setLoading(true);
     setError('');
     setMessage('');
@@ -45,7 +50,7 @@ export default function SuperAdminRefundBtn({
       const res = await fetch('/api/fg-admin/super-admin/refund', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ref: bookingRef, notes }),
+        body: JSON.stringify({ ref: bookingRef, reason: reason.trim() }),
       });
       const data = await res.json();
       if (data.success) {
@@ -162,19 +167,19 @@ export default function SuperAdminRefundBtn({
 
             {/* Warning */}
             <div className="px-4 py-3 rounded-xl border border-orange-500/20 bg-orange-500/5 text-orange-400 text-xs font-bold">
-              ⚠ This bypasses all time restrictions. The booking will be marked as cancelled immediately.
+              ⚠ This bypasses all time restrictions. A reason is required and will be logged in system audit logs.
             </div>
 
-            {/* Notes */}
+            {/* Reason */}
             <div>
               <label className="label-classic !ml-0 block mb-2">
-                Notes <span className="text-white/30">(optional)</span>
+                Override Reason <span className="text-red-400">*</span>
               </label>
               <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
                 rows={3}
-                placeholder="Reason for refund..."
+                placeholder="Enter detailed reason for refund override (required)..."
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm font-bold focus:outline-none focus:border-primary/50 resize-none"
               />
             </div>

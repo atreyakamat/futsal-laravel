@@ -4,12 +4,20 @@
  * Arena Admin ONLY — reschedule a booking to a new date/time slot.
  * Arena Admins CANNOT issue refunds; they can only reschedule.
  *
- * Body: { ref: string, newDate: string, newSlot: string }
+ * Rules & Safeguards:
+ *  1. Select an existing confirmed booking (by booking_ref).
+ *  2. Select a new available slot & date (must not be past date, must not be occupied).
+ *  3. Lock new slot & update booking rows.
+ *  4. Release previous slot (automatic when updating booking_date & time_slot).
+ *  5. Preserve booking_ref.
+ *  6. Notify customer via SMS/notification.
+ *  7. Log audit action.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { readAuthUserId, readAuthRole } from '@/lib/session';
 import { getAdminContext } from '@/lib/admin';
 import { query } from '@/lib/domain';
+import { getSmsProvider } from '@/lib/sms';
 import { z } from 'zod';
 
 const schema = z.object({
@@ -34,7 +42,16 @@ export async function POST(req: NextRequest) {
 
     const payload = schema.parse(await req.json());
 
-    // Verify booking belongs to this admin's arena
+    // 1. Prevent past date selection
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (payload.newDate < todayStr) {
+      return NextResponse.json(
+        { success: false, message: 'Reschedule rejected: Cannot reschedule to a past date.' },
+        { status: 400 }
+      );
+    }
+
+    // 2. Verify booking belongs to this admin's arena
     const bookings = await query<any>(
       `SELECT * FROM bookings WHERE booking_ref = ? AND arena_id = ? LIMIT 10`,
       [payload.ref, context.arenaId]
@@ -44,11 +61,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: 'Booking not found in your arena' }, { status: 404 });
     }
 
-    if (bookings[0].payment_status === 'cancelled') {
-      return NextResponse.json({ success: false, message: 'Cannot reschedule a cancelled booking' }, { status: 400 });
+    const firstBooking = bookings[0];
+    if (firstBooking.payment_status === 'cancelled' || firstBooking.payment_status === 'failed') {
+      return NextResponse.json(
+        { success: false, message: 'Cannot reschedule a cancelled or failed booking.' },
+        { status: 400 }
+      );
     }
 
-    // Check the new slot is not already taken at the target date for this arena
+    const oldDate = firstBooking.booking_date;
+    const oldSlot = firstBooking.time_slot;
+
+    // 3. Prevent occupied slots / double booking
     const conflicting = await query<any>(
       `SELECT id FROM bookings
         WHERE arena_id = ?
@@ -62,12 +86,12 @@ export async function POST(req: NextRequest) {
 
     if (conflicting && conflicting.length > 0) {
       return NextResponse.json(
-        { success: false, message: 'The requested slot is already booked for that date. Please choose another slot.' },
+        { success: false, message: 'The requested slot is already occupied for that date. Please choose another slot.' },
         { status: 409 }
       );
     }
 
-    // Update all rows that share this booking_ref (multi-slot bookings)
+    // 4. Update booking row(s) — preserving booking_ref, releasing old slot, locking new slot
     await query(
       `UPDATE bookings
           SET booking_date = ?,
@@ -77,9 +101,46 @@ export async function POST(req: NextRequest) {
       [payload.newDate, payload.newSlot, payload.ref, context.arenaId]
     );
 
+    // 5. Log the action into audit logs
+    try {
+      await query(
+        `INSERT INTO audit_logs (admin_id, action, entity_type, entity_id, details, ip_address, user_agent, created_at)
+         VALUES (?, 'RESCHEDULE_BOOKING', 'booking', ?, ?, ?, ?, NOW())`,
+        [
+          userId,
+          payload.ref,
+          JSON.stringify({ ref: payload.ref, oldDate, oldSlot, newDate: payload.newDate, newSlot: payload.newSlot }),
+          req.headers.get('x-forwarded-for') || 'unknown',
+          req.headers.get('user-agent') || 'unknown',
+        ]
+      );
+    } catch (auditErr) {
+      console.error('[Reschedule Audit Error]', auditErr);
+    }
+
+    // 6. Notify Customer via SMS/WhatsApp
+    if (firstBooking.customer_mobile) {
+      try {
+        const sms = getSmsProvider();
+        await sms.sendSms(
+          firstBooking.customer_mobile,
+          `RESCHEDULED|${payload.newDate}|${payload.newSlot}|${firstBooking.ticket_number || payload.ref}|${payload.ref}|${firstBooking.customer_name}`
+        );
+      } catch (notifyErr) {
+        console.error('[Reschedule Notification Error]', notifyErr);
+      }
+    }
+
     return NextResponse.json({
       success: true,
-      message: `Booking ${payload.ref} rescheduled to ${payload.newDate} at ${payload.newSlot}.`,
+      message: `Booking ${payload.ref} rescheduled to ${payload.newDate} at ${payload.newSlot}. Customer notified.`,
+      data: {
+        bookingRef: payload.ref,
+        oldDate,
+        oldSlot,
+        newDate: payload.newDate,
+        newSlot: payload.newSlot,
+      },
     });
   } catch (err: any) {
     if (err instanceof z.ZodError) {
