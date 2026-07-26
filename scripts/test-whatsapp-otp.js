@@ -1,1 +1,0 @@
-import dotenv from 'dotenv'; dotenv.config(); import { getSmsProvider } from '../lib/sms.ts'; async function test() { const provider = getSmsProvider(); const msg = 'Your OTP for AgnelArena is 123456. Valid for 10 minutes.'; await provider.sendSms('917744020601', msg); } test();
