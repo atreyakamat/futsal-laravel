@@ -21,15 +21,20 @@ function toPgPlaceholders(sql: string) {
   return sql.replace(/\?/g, () => `$${++index}`);
 }
 
+function getLocalPort(): string {
+  return process.env.LOCAL_DB_PORT || process.env.DB_PORT || '5432';
+}
+
 function resolveDatabaseUrl(rawUrl?: string): string | null {
   if (!rawUrl) return null;
 
   const isInsideDocker = fs.existsSync('/.dockerenv') || process.env.IS_DOCKER === 'true';
   if (!isInsideDocker && (rawUrl.includes('@postgres:') || rawUrl.includes('@postgres/'))) {
+    const localPort = getLocalPort();
     return rawUrl
-      .replace(/@postgres:5432/g, '@127.0.0.1:5434')
-      .replace(/@postgres:5434/g, '@127.0.0.1:5434')
-      .replace(/@postgres\//g, '@127.0.0.1:5434/');
+      .replace(/@postgres:5432/g, `@127.0.0.1:${localPort}`)
+      .replace(/@postgres:5434/g, `@127.0.0.1:${localPort}`)
+      .replace(/@postgres\//g, `@127.0.0.1:${localPort}/`);
   }
   return rawUrl;
 }
@@ -46,7 +51,7 @@ function getPoolConfig() {
 
   return {
     host: process.env.DB_HOST ?? '127.0.0.1',
-    port: Number(process.env.DB_PORT ?? '5434'),
+    port: Number(getLocalPort()),
     user: process.env.DB_USERNAME ?? 'postgres',
     password: process.env.DB_PASSWORD ?? 'postgres',
     database: process.env.DB_DATABASE ?? 'futsal_laravel',
@@ -77,13 +82,13 @@ export async function query<T>(sql: string, params: any[] = []): Promise<T[]> {
     const result = await pool.query(toPgPlaceholders(sql), params);
     return (result?.rows || []) as T[];
   } catch (err: any) {
-    // If running outside Docker and cached pool was using "postgres", self-heal by clearing pool and connecting to 127.0.0.1:5434
     if (err?.code === 'ENOTFOUND' && (err?.hostname === 'postgres' || String(err?.message).includes('postgres'))) {
-      console.warn('[DB Self-Heal] "postgres" host not found on local network — reconnecting to 127.0.0.1:5434...');
+      const localPort = getLocalPort();
+      console.warn(`[DB Self-Heal] "postgres" host not found on local network — reconnecting to 127.0.0.1:${localPort}...`);
       if (process.env.DATABASE_URL) {
         process.env.DATABASE_URL = process.env.DATABASE_URL
-          .replace(/@postgres:5432/g, '@127.0.0.1:5434')
-          .replace(/@postgres:/g, '@127.0.0.1:5434');
+          .replace(/@postgres:5432/g, `@127.0.0.1:${localPort}`)
+          .replace(/@postgres:/g, `@127.0.0.1:${localPort}`);
       }
       resetPool();
       const retryPool = getPool();
@@ -105,10 +110,11 @@ export async function transaction<T>(callback: (connection: TransactionExecutor)
     connection = await getPool().connect();
   } catch (err: any) {
     if (err?.code === 'ENOTFOUND' && (err?.hostname === 'postgres' || String(err?.message).includes('postgres'))) {
+      const localPort = getLocalPort();
       if (process.env.DATABASE_URL) {
         process.env.DATABASE_URL = process.env.DATABASE_URL
-          .replace(/@postgres:5432/g, '@127.0.0.1:5434')
-          .replace(/@postgres:/g, '@127.0.0.1:5434');
+          .replace(/@postgres:5432/g, `@127.0.0.1:${localPort}`)
+          .replace(/@postgres:/g, `@127.0.0.1:${localPort}`);
       }
       resetPool();
       connection = await getPool().connect();

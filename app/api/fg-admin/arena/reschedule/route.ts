@@ -11,7 +11,7 @@
  *  4. Release previous slot (automatic when updating booking_date & time_slot).
  *  5. Preserve booking_ref.
  *  6. Notify customer via SMS/notification.
- *  7. Log audit action.
+ *  7. Log audit action into system_audit_logs.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { readAuthUserId, readAuthRole } from '@/lib/session';
@@ -101,14 +101,14 @@ export async function POST(req: NextRequest) {
       [payload.newDate, payload.newSlot, payload.ref, context.arenaId]
     );
 
-    // 5. Log the action into audit logs
+    // 5. Log the action into system_audit_logs
     try {
       await query(
-        `INSERT INTO audit_logs (admin_id, action, entity_type, entity_id, details, ip_address, user_agent, created_at)
+        `INSERT INTO system_audit_logs (super_admin_id, action, entity_type, entity_id, changes, ip_address, user_agent, created_at)
          VALUES (?, 'RESCHEDULE_BOOKING', 'booking', ?, ?, ?, ?, NOW())`,
         [
           userId,
-          payload.ref,
+          context.arenaId || 1,
           JSON.stringify({ ref: payload.ref, oldDate, oldSlot, newDate: payload.newDate, newSlot: payload.newSlot }),
           req.headers.get('x-forwarded-for') || 'unknown',
           req.headers.get('user-agent') || 'unknown',
