@@ -1,5 +1,6 @@
 import pkg from 'pg';
 import type { Pool as PoolType } from 'pg';
+import fs from 'fs';
 const { Pool } = pkg;
 
 declare global {
@@ -21,9 +22,16 @@ function toPgPlaceholders(sql: string) {
 }
 
 function getPoolConfig() {
-  const databaseUrl = process.env.DATABASE_URL;
+  let databaseUrl = process.env.DATABASE_URL;
 
   if (databaseUrl) {
+    // If running outside Docker (e.g. `npm run dev` on Windows host) and DATABASE_URL uses container hostname "@postgres:5432",
+    // dynamically route to the host's published Docker port "127.0.0.1:5434" to prevent ENOTFOUND postgres errors.
+    const isInsideDocker = fs.existsSync('/.dockerenv') || process.env.IS_DOCKER === 'true';
+    if (!isInsideDocker && databaseUrl.includes('@postgres:')) {
+      databaseUrl = databaseUrl.replace('@postgres:5432', '@127.0.0.1:5434').replace('@postgres:', '@127.0.0.1:5434');
+    }
+
     return {
       connectionString: databaseUrl,
       max: 10,
@@ -32,10 +40,10 @@ function getPoolConfig() {
 
   return {
     host: process.env.DB_HOST ?? '127.0.0.1',
-    port: Number(process.env.DB_PORT ?? '5432'),
+    port: Number(process.env.DB_PORT ?? '5434'),
     user: process.env.DB_USERNAME ?? 'postgres',
     password: process.env.DB_PASSWORD ?? 'postgres',
-    database: process.env.DB_DATABASE ?? 'agnel_laravel',
+    database: process.env.DB_DATABASE ?? 'futsal_laravel',
     max: 10,
   };
 }
