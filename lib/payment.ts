@@ -4,31 +4,29 @@ import crypto from 'crypto';
  * Allowed payment methods enforced via PayU API.
  * Per Basil Sir (23-Jul-2026):
  *   ✅ UPI (no UPI credit)
- *   ✅ Debit card
- *   ✅ Wallets
- *   ✅ Net Banking
- *   ❌ Credit card (excluded)
- *   ❌ UPI credit (excluded — UPI without credit is enforced by PayU when CC is absent)
+ *   ✅ Debit card (DC)
+ *   ✅ Wallets (CASH)
+ *   ✅ Net Banking (NB)
+ *   ❌ Credit card (CC - excluded)
+ *   ❌ EMI / BNPL (excluded)
  *
  * PayU codes: UPI = UPI, DC = Debit Card, CASH = Wallets, NB = Net Banking
  */
-export const ENFORCE_PAYMETHOD = 'UPI|DC|CASH|NB';
+export const DEFAULT_ENFORCE_PAYMETHOD = 'UPI|DC|CASH|NB';
 
 /**
  * Returns the enforce_paymethod string to pass to PayU's payment form.
- * Including this in the POST to /_payment restricts the checkout UI
- * to only these payment modes.
+ * Configurable via process.env.PAYU_ENFORCE_PAYMETHOD.
  */
 export function getEnforcePaymethod(): string {
-  return ENFORCE_PAYMETHOD;
+  return process.env.PAYU_ENFORCE_PAYMETHOD || DEFAULT_ENFORCE_PAYMETHOD;
 }
 
 export function getPayuConfig() {
   const isProd = process.env.PAYU_ENV === 'production' || process.env.PAYU_TEST_MODE === 'false';
   
-  // Use user-defined credentials if present (regardless of env mode), otherwise fallback to sandbox defaults.
-  const merchantKey = process.env.PAYU_MERCHANT_KEY || process.env.PAYU_KEY || process.env.PAYU_TEST_KEY || 'bPLpnO';
-  const merchantSalt = process.env.PAYU_MERCHANT_SALT || process.env.PAYU_SALT || process.env.PAYU_TEST_SALT || 'IgE6ICwOJngI1nZwAnwkX6yK0pWJxOXE';
+  const merchantKey = process.env.PAYU_MERCHANT_KEY || process.env.PAYU_KEY || process.env.PAYU_TEST_KEY || 'gtKFFx';
+  const merchantSalt = process.env.PAYU_MERCHANT_SALT || process.env.PAYU_SALT || process.env.PAYU_TEST_SALT || '4R38IvwiV57FwVpsgOvTXBdLE4tHUXFW';
 
   const payuBaseUrl = process.env.PAYU_BASE_URL || (isProd ? 'https://secure.payu.in' : 'https://test.payu.in');
   const payuUrl = `${payuBaseUrl}/_payment`;
@@ -116,7 +114,6 @@ export async function verifyPaymentWithPayu(txnid: string) {
   const { merchantKey, merchantSalt } = getPayuConfig();
   const command = 'verify_payment';
 
-  // Hash formula: sha512(key|command|var1|SALT)
   const hashString = `${merchantKey}|${command}|${txnid}|${merchantSalt}`;
   const hash = crypto.createHash('sha512').update(hashString).digest('hex').toLowerCase();
 

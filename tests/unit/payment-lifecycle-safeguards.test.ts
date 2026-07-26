@@ -4,12 +4,10 @@ import { calculateRefundAmount, isCancellationAllowed } from '@/lib/refund-polic
 describe('Payment Lifecycle & Ticket Security Safeguards', () => {
   describe('Ticket & Payment Status Guards', () => {
     it('should only consider confirmed bookings eligible for ticket access', () => {
-      const statuses = ['pending', 'failed', 'cancelled', 'confirmed'];
+      const statuses: string[] = ['pending', 'failed', 'cancelled', 'confirmed'];
       const confirmedStatuses = statuses.filter((s) => s === 'confirmed');
       expect(confirmedStatuses).toEqual(['confirmed']);
-      expect(confirmedStatuses.includes('pending')).toBe(false);
-      expect(confirmedStatuses.includes('failed')).toBe(false);
-      expect(confirmedStatuses.includes('cancelled')).toBe(false);
+      expect(statuses.filter((s) => s === 'confirmed').length).toBe(1);
     });
 
     it('should calculate 5% handling fee correctly for single and multi-slot totals', () => {
@@ -31,7 +29,6 @@ describe('Payment Lifecycle & Ticket Security Safeguards', () => {
   });
 
   describe('Cancellation Cutoff Rules', () => {
-
     it('should disallow cancellation if game time is less than 3 hours away', () => {
       const nearFuture = new Date(Date.now() + 1.5 * 60 * 60 * 1000); // 1.5h in future
       const dateStr = nearFuture.toLocaleDateString('sv-SE', { timeZone: 'Asia/Kolkata' });
