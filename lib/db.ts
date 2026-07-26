@@ -21,17 +21,23 @@ function toPgPlaceholders(sql: string) {
   return sql.replace(/\?/g, () => `$${++index}`);
 }
 
+function resolveDatabaseUrl(rawUrl?: string): string | null {
+  if (!rawUrl) return null;
+
+  const isInsideDocker = fs.existsSync('/.dockerenv') || process.env.IS_DOCKER === 'true';
+  if (!isInsideDocker && (rawUrl.includes('@postgres:') || rawUrl.includes('@postgres/'))) {
+    return rawUrl
+      .replace(/@postgres:5432/g, '@127.0.0.1:5434')
+      .replace(/@postgres:5434/g, '@127.0.0.1:5434')
+      .replace(/@postgres\//g, '@127.0.0.1:5434/');
+  }
+  return rawUrl;
+}
+
 function getPoolConfig() {
-  let databaseUrl = process.env.DATABASE_URL;
+  const databaseUrl = resolveDatabaseUrl(process.env.DATABASE_URL);
 
   if (databaseUrl) {
-    // If running outside Docker (e.g. `npm run dev` on Windows host) and DATABASE_URL uses container hostname "@postgres:5432",
-    // dynamically route to the host's published Docker port "127.0.0.1:5434" to prevent ENOTFOUND postgres errors.
-    const isInsideDocker = fs.existsSync('/.dockerenv') || process.env.IS_DOCKER === 'true';
-    if (!isInsideDocker && databaseUrl.includes('@postgres:')) {
-      databaseUrl = databaseUrl.replace('@postgres:5432', '@127.0.0.1:5434').replace('@postgres:', '@127.0.0.1:5434');
-    }
-
     return {
       connectionString: databaseUrl,
       max: 10,
@@ -48,6 +54,15 @@ function getPoolConfig() {
   };
 }
 
+export function resetPool() {
+  if (globalThis.pgPool) {
+    try {
+      globalThis.pgPool.end();
+    } catch (_) {}
+    globalThis.pgPool = undefined;
+  }
+}
+
 export function getPool() {
   if (!globalThis.pgPool) {
     globalThis.pgPool = new Pool(getPoolConfig());
@@ -56,10 +71,27 @@ export function getPool() {
   return globalThis.pgPool;
 }
 
-export async function query<T>(sql: string, params: any[] = []) {
-  const pool = getPool();
-  const result = await pool.query(toPgPlaceholders(sql), params);
-  return (result?.rows || []) as T[];
+export async function query<T>(sql: string, params: any[] = []): Promise<T[]> {
+  try {
+    const pool = getPool();
+    const result = await pool.query(toPgPlaceholders(sql), params);
+    return (result?.rows || []) as T[];
+  } catch (err: any) {
+    // If running outside Docker and cached pool was using "postgres", self-heal by clearing pool and connecting to 127.0.0.1:5434
+    if (err?.code === 'ENOTFOUND' && (err?.hostname === 'postgres' || String(err?.message).includes('postgres'))) {
+      console.warn('[DB Self-Heal] "postgres" host not found on local network — reconnecting to 127.0.0.1:5434...');
+      if (process.env.DATABASE_URL) {
+        process.env.DATABASE_URL = process.env.DATABASE_URL
+          .replace(/@postgres:5432/g, '@127.0.0.1:5434')
+          .replace(/@postgres:/g, '@127.0.0.1:5434');
+      }
+      resetPool();
+      const retryPool = getPool();
+      const retryResult = await retryPool.query(toPgPlaceholders(sql), params);
+      return (retryResult?.rows || []) as T[];
+    }
+    throw err;
+  }
 }
 
 export async function queryOne<T>(sql: string, params: any[] = []) {
@@ -68,7 +100,23 @@ export async function queryOne<T>(sql: string, params: any[] = []) {
 }
 
 export async function transaction<T>(callback: (connection: TransactionExecutor) => Promise<T>) {
-  const connection = await getPool().connect();
+  let connection;
+  try {
+    connection = await getPool().connect();
+  } catch (err: any) {
+    if (err?.code === 'ENOTFOUND' && (err?.hostname === 'postgres' || String(err?.message).includes('postgres'))) {
+      if (process.env.DATABASE_URL) {
+        process.env.DATABASE_URL = process.env.DATABASE_URL
+          .replace(/@postgres:5432/g, '@127.0.0.1:5434')
+          .replace(/@postgres:/g, '@127.0.0.1:5434');
+      }
+      resetPool();
+      connection = await getPool().connect();
+    } else {
+      throw err;
+    }
+  }
+
   const runner: TransactionExecutor = {
     async execute<R extends Record<string, unknown> = Record<string, unknown>>(sql: string, params: unknown[] = []) {
       const result = await connection.query(toPgPlaceholders(sql), params);
