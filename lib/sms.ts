@@ -55,6 +55,7 @@ export class TwilioProvider implements SmsProvider {
             From: this.fromNumber,
             Body: message,
           }).toString(),
+          signal: AbortSignal.timeout(5000),
         }
       );
       if (!response.ok) {
@@ -63,8 +64,8 @@ export class TwilioProvider implements SmsProvider {
         return false;
       }
       return true;
-    } catch (err) {
-      console.error('[TwilioProvider] Error sending SMS:', err);
+    } catch (err: any) {
+      console.error('[TwilioProvider] Error sending SMS:', err?.message || err);
       return false;
     }
   }
@@ -101,6 +102,7 @@ export class MSG91Provider implements SmsProvider {
           mobiles: cleanMobile,
           var1: message,
         }),
+        signal: AbortSignal.timeout(5000),
       });
       if (!response.ok) {
         const errText = await response.text();
@@ -108,8 +110,8 @@ export class MSG91Provider implements SmsProvider {
         return false;
       }
       return true;
-    } catch (err) {
-      console.error('[MSG91Provider] Error sending SMS:', err);
+    } catch (err: any) {
+      console.error('[MSG91Provider] Error sending SMS:', err?.message || err);
       return false;
     }
   }
@@ -142,15 +144,17 @@ export class GupshupProvider implements SmsProvider {
         format: 'json',
         ...(this.apiKey ? { apiKey: this.apiKey } : { userid: this.userId, password: this.password ?? '' }),
       });
-      const response = await fetch(`https://enterprise.smsgupshup.com/GatewayAPI/rest?${params.toString()}`);
+      const response = await fetch(`https://enterprise.smsgupshup.com/GatewayAPI/rest?${params.toString()}`, {
+        signal: AbortSignal.timeout(5000),
+      });
       if (!response.ok) {
         const errText = await response.text();
         console.error(`[GupshupProvider] Failed to send SMS: ${response.status} - ${errText}`);
         return false;
       }
       return true;
-    } catch (err) {
-      console.error('[GupshupProvider] Error sending SMS:', err);
+    } catch (err: any) {
+      console.error('[GupshupProvider] Error sending SMS:', err?.message || err);
       return false;
     }
   }
@@ -277,6 +281,7 @@ export class AiSensyProvider implements SmsProvider {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(5000), // 5s timeout to fail fast on network degradation
       });
 
       if (!response.ok) {
@@ -292,8 +297,13 @@ export class AiSensyProvider implements SmsProvider {
       logToPublic(`[AiSensyProvider] Message sent successfully to ${to}. Response: ${JSON.stringify(resData)}`);
       return true;
     } catch (err: any) {
-      console.error('[AiSensyProvider] Error sending WhatsApp message:', err);
-      logToPublic(`[AiSensyProvider] Error sending WhatsApp message: ${err.message || String(err)}`);
+      const isTimeout = err?.name === 'AbortError' || err?.code === 'UND_ERR_CONNECT_TIMEOUT' || String(err?.message).includes('timeout');
+      const errDetail = isTimeout ? 'Network timeout connecting to AiSensy API endpoint (3.6.154.237:443)' : (err?.message || String(err));
+      console.error(`[AiSensyProvider] Error sending WhatsApp message: ${errDetail}`);
+      logToPublic(`[AiSensyProvider] Error sending WhatsApp message: ${errDetail}`);
+
+      // In development or when offline, log explicit fallback notice so dev can use printed OTP
+      console.info(`[SMS AISENSY FALLBACK MOCK] Destination: ${to} | OTP/Message: ${message}`);
       return false;
     }
   }
@@ -320,4 +330,3 @@ export function getSmsProvider(): SmsProvider {
       return new MockProvider();
   }
 }
-
