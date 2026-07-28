@@ -483,6 +483,13 @@ export async function removeOtp(identifier: string) {
   await query('DELETE FROM user_otps WHERE identifier = ?', [identifier]);
 }
 
+export async function findUserById(id: number) {
+  return queryOne<{ id: number; name: string; email: string; customer_mobile: string | null; role: string }>(
+    `SELECT id, name, email, customer_mobile, role FROM users WHERE id = ? LIMIT 1`,
+    [id]
+  );
+}
+
 export async function findUserByIdentifier(identifier: string) {
   return queryOne<{ id: number; name: string; email: string; customer_mobile: string | null; role: string }>(
     `SELECT id, name, email, customer_mobile, role
