@@ -36,8 +36,43 @@ export interface BookingRow {
   checked_in: number | boolean;
   is_free_booking: number | boolean;
   payu_mihpayid: string | null;
+  cancellation_requested?: boolean;
+  cancellation_reason?: string | null;
+  refund_amount?: number | null;
   created_at: Date;
   updated_at: Date;
+}
+
+export interface BookingSlotItem {
+  id: number;
+  ticket_number: string;
+  booking_date: string;
+  time_slot: string;
+  amount: number;
+  checked_in: boolean;
+  checked_in_at?: string | null;
+}
+
+export interface BookingGroup {
+  booking_ref: string;
+  primary_ticket_number: string;
+  arena_id: number;
+  user_id: number | null;
+  customer_name: string;
+  customer_mobile: string;
+  customer_email: string | null;
+  booking_date: string;
+  total_amount: number;
+  payment_status: 'pending' | 'confirmed' | 'failed' | 'cancelled' | 'expired';
+  payment_method: string | null;
+  payu_mihpayid: string | null;
+  is_free_booking: boolean;
+  cancellation_requested: boolean;
+  cancellation_reason: string | null;
+  refund_amount: number | null;
+  created_at: string | Date;
+  updated_at: string | Date;
+  slots: BookingSlotItem[];
 }
 
 export interface SlotLockRow {

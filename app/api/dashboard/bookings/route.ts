@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getBookingsForUser, getArenaById } from '@/lib/domain';
+import { getGroupedBookingsForUser, getArenaById } from '@/lib/domain';
 import { readAuthUserId } from '@/lib/session';
 
 export async function GET() {
@@ -9,17 +9,17 @@ export async function GET() {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
   }
 
-  const bookings = await getBookingsForUser(userId);
+  const groupedBookings = await getGroupedBookingsForUser(userId);
 
   const arenaCache: Record<number, { name: string }> = {};
-  for (const b of bookings) {
+  for (const b of groupedBookings) {
     if (!arenaCache[b.arena_id]) {
       const arena = await getArenaById(b.arena_id);
       if (arena) arenaCache[b.arena_id] = arena;
     }
   }
 
-  const enriched = bookings.map((b) => ({
+  const enriched = groupedBookings.map((b) => ({
     ...b,
     arena_name: arenaCache[b.arena_id]?.name || 'Arena',
   }));
