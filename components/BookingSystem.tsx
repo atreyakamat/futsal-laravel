@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 type Slot = {
@@ -9,7 +9,7 @@ type Slot = {
   status: 'available' | 'booked' | 'locked' | 'selected';
 };
 
-export default function BookingSystem({ arenaId, initialDate, csrfToken }: { arenaId: number; initialDate: string, csrfToken: string }) {
+export default function BookingSystem({ arenaId, initialDate, csrfToken }: { arenaId: number; initialDate: string; csrfToken: string }) {
   // 1. All State declarations at the top
   const [date, setDate] = useState(initialDate || new Date().toISOString().split('T')[0]);
   const [slots, setSlots] = useState<Slot[]>([]);
@@ -18,7 +18,13 @@ export default function BookingSystem({ arenaId, initialDate, csrfToken }: { are
   const [processing, setProcessing] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  
+
+  // Customer details state for quick inline mobile checkout
+  const [customerName, setCustomerName] = useState('');
+  const [customerMobile, setCustomerMobile] = useState('');
+  const [customerEmail, setCustomerEmail] = useState('');
+
+  const customerDetailsRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
   // 2. Fetch Slots Logic
@@ -26,7 +32,7 @@ export default function BookingSystem({ arenaId, initialDate, csrfToken }: { are
     try {
       const response = await fetch(`/api/slots/status?arena_id=${arenaId}&date=${date}`);
       if (!response.ok) throw new Error('Failed to fetch slot status');
-      
+
       const data = await response.json();
       const newSlots = data.slots || [];
       setSlots(newSlots);
@@ -43,7 +49,7 @@ export default function BookingSystem({ arenaId, initialDate, csrfToken }: { are
       );
     } catch (e) {
       console.error('Fetch slots error:', e);
-      setRetryCount(prev => prev + 1);
+      setRetryCount((prev) => prev + 1);
       setError('Connection lost. Retrying...');
     } finally {
       setLoading(false);
@@ -68,6 +74,15 @@ export default function BookingSystem({ arenaId, initialDate, csrfToken }: { are
     }
   }, [retryCount, fetchSlots]);
 
+  // Scroll to customer details section on mobile when first slot is selected
+  useEffect(() => {
+    if (selectedSlots.length > 0 && window.innerWidth < 1024) {
+      setTimeout(() => {
+        customerDetailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 100);
+    }
+  }, [selectedSlots.length]);
+
   // 4. Actions
   async function toggleSlot(slot: Slot) {
     const isSelected = selectedSlots.some((s) => s.time_slot === slot.time_slot);
@@ -76,28 +91,28 @@ export default function BookingSystem({ arenaId, initialDate, csrfToken }: { are
       if (isSelected) {
         await fetch('/api/slots/unlock', {
           method: 'POST',
-          headers: { 
+          headers: {
             'Content-Type': 'application/json',
-            'x-csrf-token': csrfToken
+            'x-csrf-token': csrfToken,
           },
           body: JSON.stringify({ arena_id: arenaId, date, slots: [slot.time_slot] }),
         });
-        setSelectedSlots(prev => prev.filter((s) => s.time_slot !== slot.time_slot));
+        setSelectedSlots((prev) => prev.filter((s) => s.time_slot !== slot.time_slot));
       } else {
         const response = await fetch('/api/slots/lock', {
           method: 'POST',
-          headers: { 
+          headers: {
             'Content-Type': 'application/json',
-            'x-csrf-token': csrfToken
+            'x-csrf-token': csrfToken,
           },
           body: JSON.stringify({ arena_id: arenaId, date, slots: [slot.time_slot] }),
         });
-        
+
         if (!response.ok) throw new Error('Lock failed');
         const data = await response.json();
 
         if (data.success) {
-          setSelectedSlots(prev => [...prev, slot]);
+          setSelectedSlots((prev) => [...prev, slot]);
         } else {
           alert('This slot was just taken. Refreshing...');
           fetchSlots();
@@ -117,18 +132,22 @@ export default function BookingSystem({ arenaId, initialDate, csrfToken }: { are
     try {
       const response = await fetch('/api/slots/lock', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'x-csrf-token': csrfToken 
+          'x-csrf-token': csrfToken,
         },
         body: JSON.stringify({ arena_id: arenaId, date, slots: slotsArr }),
       });
 
       if (!response.ok) throw new Error('Final lock failed');
       const data = await response.json();
-      
+
       if (data.success) {
-        router.push(`/booking/checkout?arena_id=${arenaId}&date=${date}&slots=${encodeURIComponent(JSON.stringify(slotsArr))}`);
+        let checkoutUrl = `/booking/checkout?arena_id=${arenaId}&date=${date}&slots=${encodeURIComponent(JSON.stringify(slotsArr))}`;
+        if (customerName) checkoutUrl += `&name=${encodeURIComponent(customerName)}`;
+        if (customerMobile) checkoutUrl += `&mobile=${encodeURIComponent(customerMobile)}`;
+        if (customerEmail) checkoutUrl += `&email=${encodeURIComponent(customerEmail)}`;
+        router.push(checkoutUrl);
       } else {
         alert('Some selected slots were just taken. Refreshing...');
         fetchSlots();
@@ -157,32 +176,36 @@ export default function BookingSystem({ arenaId, initialDate, csrfToken }: { are
 
   return (
     <section className="py-6 sm:py-12 lg:py-20 max-w-7xl mx-auto px-4 sm:px-6">
-      {/* Mobile summary bar */}
+      {/* Mobile Sticky Action Bar */}
       {selectedSlots.length > 0 && (
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-dark/95 backdrop-blur-xl border-t border-white/10 px-4 py-4 flex items-center justify-between gap-4">
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-dark/95 backdrop-blur-xl border-t border-white/10 px-4 py-3 flex items-center justify-between gap-4 shadow-2xl pb-[calc(1rem+env(safe-area-inset-bottom))]">
           <div>
-            <div className="text-[10px] font-black text-white/40 uppercase tracking-widest">{selectedSlots.length} slot{selectedSlots.length > 1 ? 's' : ''} selected</div>
-            <div className="text-2xl font-black text-primary italic">₹{total}</div>
+            <div className="text-[10px] font-black text-white/50 uppercase tracking-widest">
+              {selectedSlots.length} slot{selectedSlots.length > 1 ? 's' : ''} selected
+            </div>
+            <div className="text-xl font-black text-primary italic">₹{total}</div>
           </div>
           <button
             onClick={handleProceed}
             disabled={processing}
-            className="btn-primary !py-3 !px-6 flex items-center gap-2"
+            id="mobile-checkout-btn"
+            className="btn-primary !py-3 !px-6 flex items-center gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all"
           >
             {processing ? <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" /> : null}
-            {processing ? 'LOCKING...' : 'CHECKOUT'}
+            {processing ? 'LOCKING...' : 'PROCEED TO CHECKOUT'}
             {!processing && <span className="material-symbols-outlined text-lg">arrow_forward</span>}
           </button>
         </div>
       )}
+
       <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 pb-24 lg:pb-0">
         <div className="lg:col-span-8 space-y-10 lg:space-y-12">
           {/* Date Picker */}
           <div>
-            <div className="flex items-center justify-between mb-10">
-              <h2 className="text-2xl font-black uppercase tracking-tight flex items-center gap-4 italic">
-                <span className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-inner">
-                  <span className="material-symbols-outlined text-xl">calendar_month</span>
+            <div className="flex items-center justify-between mb-8 sm:mb-10">
+              <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight flex items-center gap-3 sm:gap-4 italic">
+                <span className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-inner">
+                  <span className="material-symbols-outlined text-lg sm:text-xl">calendar_month</span>
                 </span>
                 1. Choose <span className="text-primary text-stroke">Date</span>
               </h2>
@@ -199,7 +222,9 @@ export default function BookingSystem({ arenaId, initialDate, csrfToken }: { are
                       setSelectedSlots([]);
                     }}
                     className={`date-card flex-shrink-0 flex flex-col items-center justify-center w-16 h-20 sm:w-24 sm:h-28 rounded-2xl sm:rounded-[1.5rem] border glass transition-all duration-300 ${
-                      isActive ? 'bg-primary text-black border-primary -translate-y-1 sm:-translate-y-2 shadow-[0_10px_30px_rgba(13,242,32,0.3)]' : 'border-white/5 hover:border-primary/30'
+                      isActive
+                        ? 'bg-primary text-black border-primary -translate-y-1 sm:-translate-y-2 shadow-[0_10px_30px_rgba(13,242,32,0.3)]'
+                        : 'border-white/5 hover:border-primary/30'
                     }`}
                   >
                     <span className={`text-[9px] sm:text-[10px] font-black uppercase mb-0.5 sm:mb-1 tracking-widest ${isActive ? 'text-black/60' : 'text-white/40'}`}>
@@ -217,14 +242,14 @@ export default function BookingSystem({ arenaId, initialDate, csrfToken }: { are
 
           {/* Slots Grid */}
           <div>
-            <div className="flex items-center justify-between mb-10">
-              <h2 className="text-2xl font-black uppercase tracking-tight flex items-center gap-4 italic">
-                <span className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-inner">
-                  <span className="material-symbols-outlined text-xl">schedule</span>
+            <div className="flex items-center justify-between mb-8 sm:mb-10">
+              <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight flex items-center gap-3 sm:gap-4 italic">
+                <span className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-inner">
+                  <span className="material-symbols-outlined text-lg sm:text-xl">schedule</span>
                 </span>
                 2. Pick <span className="text-primary text-stroke">Slots</span>
               </h2>
-              <div className="flex gap-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/20">
+              <div className="flex gap-4 sm:gap-6 text-[10px] font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] text-white/40">
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_10px_rgba(13,242,32,0.5)]" /> Available
                 </div>
@@ -237,7 +262,7 @@ export default function BookingSystem({ arenaId, initialDate, csrfToken }: { are
             {loading ? (
               <div className="py-24 flex flex-col items-center justify-center glass-card border-dashed border-white/5">
                 <div className="w-14 h-14 border-4 border-primary/10 border-t-primary rounded-full animate-spin mb-6" />
-                <span className="label-classic">Syncing with real-time locks...</span>
+                <span className="label-classic">Syncing real-time locks...</span>
               </div>
             ) : (
               <>
@@ -260,8 +285,8 @@ export default function BookingSystem({ arenaId, initialDate, csrfToken }: { are
                         className={`slot-card p-3 sm:p-5 lg:p-8 rounded-xl sm:rounded-2xl lg:rounded-3xl border transition-all duration-300 group relative overflow-hidden text-left ${
                           isBooked ? 'opacity-20 grayscale cursor-not-allowed bg-white/[0.02] border-white/5' : ''
                         } ${isLocked ? 'opacity-40 cursor-not-allowed border-white/5' : ''} ${
-                          isSelected 
-                            ? 'border-primary bg-primary/10 text-primary shadow-[0_0_30px_rgba(13,242,32,0.15)] scale-[1.03]' 
+                          isSelected
+                            ? 'border-primary bg-primary/10 text-primary shadow-[0_0_30px_rgba(13,242,32,0.15)] scale-[1.03]'
                             : 'bg-white/[0.02] border-white/5 hover:border-primary/50 hover:bg-white/[0.04] hover:scale-[1.02]'
                         }`}
                       >
@@ -286,6 +311,100 @@ export default function BookingSystem({ arenaId, initialDate, csrfToken }: { are
               </>
             )}
           </div>
+
+          {/* Step 3: Customer Details Section — rendered when slots are selected */}
+          {selectedSlots.length > 0 && (
+            <div ref={customerDetailsRef} id="customer-details-section" className="pt-6 border-t border-white/10 transition-all duration-300 animate-fadeIn">
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight flex items-center gap-3 sm:gap-4 italic">
+                  <span className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-inner">
+                    <span className="material-symbols-outlined text-lg sm:text-xl">person</span>
+                  </span>
+                  3. Customer <span className="text-primary text-stroke">Details</span>
+                </h2>
+                <span className="pill-status">
+                  <span className="material-symbols-outlined text-xs">lock</span>
+                  Secure Lock
+                </span>
+              </div>
+
+              <div className="glass-card !p-6 sm:!p-8 space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label htmlFor="booking_customer_name" className="label-classic">Full Name</label>
+                    <div className="relative group">
+                      <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-primary transition-colors text-lg">
+                        person
+                      </span>
+                      <input
+                        id="booking_customer_name"
+                        type="text"
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                        placeholder="John Doe"
+                        className="input-field pl-11 !py-3.5 text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label htmlFor="booking_customer_mobile" className="label-classic">Mobile Number</label>
+                    <div className="relative group">
+                      <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-primary transition-colors text-lg">
+                        phone_iphone
+                      </span>
+                      <input
+                        id="booking_customer_mobile"
+                        type="tel"
+                        value={customerMobile}
+                        onChange={(e) => setCustomerMobile(e.target.value)}
+                        placeholder="+91 98765 43210"
+                        className="input-field pl-11 !py-3.5 text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="booking_customer_email" className="label-classic">
+                    Email Address <span className="text-white/20 italic lowercase">(optional)</span>
+                  </label>
+                  <div className="relative group">
+                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-primary transition-colors text-lg">
+                      mail
+                    </span>
+                    <input
+                      id="booking_customer_email"
+                      type="email"
+                      value={customerEmail}
+                      onChange={(e) => setCustomerEmail(e.target.value)}
+                      placeholder="john@example.com"
+                      className="input-field pl-11 !py-3.5 text-sm"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleProceed}
+                  disabled={processing}
+                  id="inline-proceed-btn"
+                  className="btn-primary w-full py-4 text-sm flex items-center justify-center gap-3 mt-4"
+                >
+                  {processing ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+                      LOCKING SLOTS...
+                    </>
+                  ) : (
+                    <>
+                      PROCEED TO CHECKOUT (₹{total})
+                      <span className="material-symbols-outlined font-black">arrow_forward</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Sidebar Summary — desktop only */}
@@ -341,13 +460,13 @@ export default function BookingSystem({ arenaId, initialDate, csrfToken }: { are
                     <div className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin" />
                     LOCKING...
                   </>
+                ) : (selectedSlots?.length || 0) > 0 ? (
+                  <>
+                    PROCEED TO CHECKOUT
+                    <span className="material-symbols-outlined font-black">arrow_forward</span>
+                  </>
                 ) : (
-                  (selectedSlots?.length || 0) > 0 ? (
-                    <>
-                      PROCEED TO CHECKOUT
-                      <span className="material-symbols-outlined font-black">arrow_forward</span>
-                    </>
-                  ) : 'PICK SLOTS TO START'
+                  'PICK SLOTS TO START'
                 )}
               </button>
             </div>
