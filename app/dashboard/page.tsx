@@ -42,7 +42,7 @@ export default async function DashboardPage() {
   const bookingRefs = Object.keys(groups);
   const todayStr = new Date().toISOString().split('T')[0];
   
-  // Sort refs by booking date (newest first for history, closest first for upcoming)
+  // Sort refs by booking date
   const upcomingRefs = bookingRefs
     .filter((ref) => {
       const status = groups[ref][0].payment_status;
@@ -87,7 +87,7 @@ export default async function DashboardPage() {
                     <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">
                       REF:
                     </span>
-                    <span className="text-[10px] font-black text-primary px-3 py-1 rounded-full bg-primary/10 border border-primary/20 uppercase tracking-widest">
+                    <span className="text-[10px] font-black text-primary px-3 py-1 rounded-full bg-primary/10 border border-primary/20 uppercase tracking-widest font-mono">
                       {ref}
                     </span>
                   </div>
@@ -156,13 +156,17 @@ export default async function DashboardPage() {
                   PAYMENT FAILED
                 </div>
               )}
-              
+
               <CancelBookingBtn
                 bookingRef={ref}
                 bookingDateStr={firstBooking.booking_date}
-                slotStart={firstBooking.time_slot.split(' - ')[0]}
+                timeSlots={slots}
                 isCancellationRequested={!!(firstBooking as any).cancellation_requested}
                 paymentStatus={firstBooking.payment_status}
+                refundAmount={firstBooking.refund_amount ? Number(firstBooking.refund_amount) : null}
+                cancellationReason={(firstBooking as any).cancellation_reason ?? null}
+                updatedAt={firstBooking.updated_at || new Date()}
+                totalAmount={totalAmount}
               />
             </div>
           </div>
