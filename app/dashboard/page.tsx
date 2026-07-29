@@ -167,6 +167,7 @@ export default async function DashboardPage() {
                 cancellationReason={(firstBooking as any).cancellation_reason ?? null}
                 updatedAt={firstBooking.updated_at || new Date()}
                 totalAmount={totalAmount}
+                payuMihpayid={firstBooking.payu_mihpayid}
               />
             </div>
           </div>

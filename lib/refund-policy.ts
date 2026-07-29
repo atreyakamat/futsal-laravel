@@ -16,6 +16,7 @@
 
 export const REFUND_SERVICE_FEE_PCT = 5; // percentage deducted from eligible refunds
 export const CANCEL_CUTOFF_HOURS = 3;    // hours before slot start required for customer cancellation
+export const DEFAULT_REFUND_TIMELINE = "Expected within 5–7 business days.";
 
 export interface CancellationEligibility {
   allowed: boolean;
@@ -26,6 +27,8 @@ export interface CancellationEligibility {
   msUntilStart: number;
   msUntilEnd: number;
 }
+
+export type RefundLifecycleStatus = 'PENDING_REVIEW' | 'APPROVED' | 'PROCESSING' | 'REFUNDED' | 'REJECTED';
 
 /**
  * Calculates the refundable amount after the 5% service fee deduction.
@@ -41,6 +44,79 @@ export function calculateRefundAmount(grossAmount: number): {
 }
 
 /**
+ * Computes explicit Refund Lifecycle Status for Customer, Arena Admin, and Super Admin dashboards.
+ */
+export function computeRefundLifecycleStatus(booking: {
+  payment_status: string;
+  cancellation_requested?: boolean;
+  cancellation_reason?: string | null;
+  refund_amount?: number | null;
+}): {
+  status: RefundLifecycleStatus;
+  statusText: string;
+  badgeClass: string;
+  isRefunded: boolean;
+  isRejected: boolean;
+  isPending: boolean;
+  isProcessing: boolean;
+  isApproved: boolean;
+} {
+  // 1. Refund Completed
+  if (booking.payment_status === 'refunded' || (booking.refund_amount && Number(booking.refund_amount) > 0 && booking.payment_status === 'cancelled')) {
+    return {
+      status: 'REFUNDED',
+      statusText: 'REFUNDED',
+      badgeClass: 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10',
+      isRefunded: true,
+      isRejected: false,
+      isPending: false,
+      isProcessing: false,
+      isApproved: true,
+    };
+  }
+
+  // 2. Cancellation Rejected
+  if (booking.cancellation_reason && booking.cancellation_reason.toUpperCase().startsWith('REJECTED:')) {
+    return {
+      status: 'REJECTED',
+      statusText: 'REJECTED',
+      badgeClass: 'border-red-500/30 text-red-400 bg-red-500/10',
+      isRefunded: false,
+      isRejected: true,
+      isPending: false,
+      isProcessing: false,
+      isApproved: false,
+    };
+  }
+
+  // 3. Cancellation Approved & Processing
+  if (booking.cancellation_reason && booking.cancellation_reason.toUpperCase().includes('APPROVED')) {
+    return {
+      status: 'PROCESSING',
+      statusText: 'PROCESSING',
+      badgeClass: 'border-blue-500/30 text-blue-400 bg-blue-500/10',
+      isRefunded: false,
+      isRejected: false,
+      isPending: false,
+      isProcessing: true,
+      isApproved: true,
+    };
+  }
+
+  // 4. Pending Review (Default for cancellation_requested = true)
+  return {
+    status: 'PENDING_REVIEW',
+    statusText: 'PENDING REVIEW',
+    badgeClass: 'border-amber-500/30 text-amber-300 bg-amber-500/10',
+    isRefunded: false,
+    isRejected: false,
+    isPending: true,
+    isProcessing: false,
+    isApproved: false,
+  };
+}
+
+/**
  * Parses booking date and slot array into authoritative start and end Date objects in IST (+05:30).
  */
 export function getBookingTimeRange(bookingDateStr: string, timeSlots: string[]): {
@@ -52,7 +128,6 @@ export function getBookingTimeRange(bookingDateStr: string, timeSlots: string[])
     return { bookingStart: defaultStart, bookingEnd: defaultStart };
   }
 
-  // Parse all start and end times
   const starts: string[] = [];
   const ends: string[] = [];
 
@@ -77,12 +152,10 @@ export function getBookingTimeRange(bookingDateStr: string, timeSlots: string[])
 
   let bookingEnd: Date;
   if (latestEndStr === '00:00' || latestEndStr === '24:00') {
-    // End time is midnight at the start of next day
     const startDateObj = new Date(`${bookingDateStr}T00:00:00+05:30`);
     bookingEnd = new Date(startDateObj.getTime() + 24 * 60 * 60 * 1000);
   } else {
     bookingEnd = new Date(`${bookingDateStr}T${latestEndStr}:00+05:30`);
-    // If end time is earlier or equal to start time (spans midnight), roll to next day
     if (bookingEnd.getTime() <= bookingStart.getTime()) {
       bookingEnd = new Date(bookingEnd.getTime() + 24 * 60 * 60 * 1000);
     }
@@ -93,10 +166,6 @@ export function getBookingTimeRange(bookingDateStr: string, timeSlots: string[])
 
 /**
  * Evaluates whether a customer self-cancellation is permitted according to time and lifecycle rules.
- *
- * @param bookingDateStr YYYY-MM-DD
- * @param timeSlots Array of time_slot strings (e.g. ["14:00 - 15:00", "15:00 - 16:00"])
- * @param now Optional override date for testing (defaults to server Date.now())
  */
 export function evaluateCancellationEligibility(
   bookingDateStr: string,
@@ -109,7 +178,6 @@ export function evaluateCancellationEligibility(
   const msUntilEnd = bookingEnd.getTime() - now;
   const cutoffMs = CANCEL_CUTOFF_HOURS * 60 * 60 * 1000;
 
-  // Rule 1: Past / Completed Booking (now >= bookingEnd)
   if (now >= bookingEnd.getTime()) {
     return {
       allowed: false,
@@ -122,7 +190,6 @@ export function evaluateCancellationEligibility(
     };
   }
 
-  // Rule 2: Active or Late Cancellation (< 3h before bookingStart)
   if (msUntilStart < cutoffMs) {
     return {
       allowed: false,
@@ -135,7 +202,6 @@ export function evaluateCancellationEligibility(
     };
   }
 
-  // Rule 3: Eligible Future Booking (now <= bookingStart - 3h)
   return {
     allowed: true,
     code: 'ELIGIBLE',
@@ -147,9 +213,6 @@ export function evaluateCancellationEligibility(
   };
 }
 
-/**
- * Backwards-compatible wrapper for single slot cancellation check.
- */
 export function isCancellationAllowed(bookingDateStr: string, slotStart: string): {
   allowed: boolean;
   msUntilBooking: number;
