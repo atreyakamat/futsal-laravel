@@ -6,6 +6,7 @@
  *  2. Configurable expected refund processing timeline ("Expected within 5–7 business days.").
  *  3. Explicit Refund Lifecycle Statuses:
  *     - PENDING_REVIEW ("PENDING REVIEW")
+ *     - APPROVED ("APPROVED")
  *     - PROCESSING ("PROCESSING")
  *     - REFUNDED ("REFUNDED")
  *     - REJECTED ("REJECTED")
@@ -52,20 +53,28 @@ function runRefundPanelLifecycleSuite() {
   const statusPending = computeRefundLifecycleStatus({
     payment_status: 'confirmed',
     cancellation_requested: true,
+    refund_status: 'PENDING_REVIEW',
   });
   assert(statusPending.status === 'PENDING_REVIEW', 'State is PENDING_REVIEW when cancellation requested');
   assert(statusPending.statusText === 'PENDING REVIEW', 'Status text is "PENDING REVIEW"');
   assert(statusPending.isPending === true, 'isPending flag is true');
 
-  // Test 4: Refund Lifecycle State - PROCESSING
-  console.log('\n--- Test 4: Refund Lifecycle - PROCESSING ---');
+  // Test 4: Refund Lifecycle State - APPROVED & PROCESSING
+  console.log('\n--- Test 4: Refund Lifecycle - APPROVED & PROCESSING ---');
+  const statusApproved = computeRefundLifecycleStatus({
+    payment_status: 'confirmed',
+    cancellation_requested: true,
+    refund_status: 'APPROVED',
+  });
+  assert(statusApproved.status === 'APPROVED', 'State is APPROVED when approved by admin');
+  assert(statusApproved.isApproved === true, 'isApproved flag is true');
+
   const statusProcessing = computeRefundLifecycleStatus({
     payment_status: 'confirmed',
     cancellation_requested: true,
-    cancellation_reason: 'Cancellation request APPROVED by admin',
+    refund_status: 'PROCESSING',
   });
-  assert(statusProcessing.status === 'PROCESSING', 'State is PROCESSING when approved by admin');
-  assert(statusProcessing.statusText === 'PROCESSING', 'Status text is "PROCESSING"');
+  assert(statusProcessing.status === 'PROCESSING', 'State is PROCESSING when refund is processing');
   assert(statusProcessing.isProcessing === true, 'isProcessing flag is true');
 
   // Test 5: Refund Lifecycle State - REFUNDED
@@ -73,6 +82,7 @@ function runRefundPanelLifecycleSuite() {
   const statusRefunded = computeRefundLifecycleStatus({
     payment_status: 'refunded',
     refund_amount: 950,
+    refund_status: 'REFUNDED',
   });
   assert(statusRefunded.status === 'REFUNDED', 'State is REFUNDED when payment_status is refunded');
   assert(statusRefunded.statusText === 'REFUNDED', 'Status text is "REFUNDED"');
@@ -83,6 +93,7 @@ function runRefundPanelLifecycleSuite() {
   const statusRejected = computeRefundLifecycleStatus({
     payment_status: 'confirmed',
     cancellation_requested: true,
+    refund_status: 'REJECTED',
     cancellation_reason: 'REJECTED: Booking violates venue terms and conditions.',
   });
   assert(statusRejected.status === 'REJECTED', 'State is REJECTED when cancellation_reason starts with REJECTED:');

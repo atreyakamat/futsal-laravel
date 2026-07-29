@@ -16,6 +16,7 @@ export default function CancelBookingBtn({
   totalAmount,
   refundTimeline = DEFAULT_REFUND_TIMELINE,
   payuMihpayid,
+  refundStatus,
 }: { 
   bookingRef: string; 
   bookingDateStr: string; 
@@ -28,6 +29,7 @@ export default function CancelBookingBtn({
   totalAmount: number;
   refundTimeline?: string;
   payuMihpayid?: string | null;
+  refundStatus?: string | null;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -40,12 +42,13 @@ export default function CancelBookingBtn({
   const { serviceFee, refundAmount: calculatedRefund } = calculateRefundAmount(totalAmount);
   const displayRefund = refundAmount ?? calculatedRefund;
 
-  // Compute structured lifecycle status
+  // Compute structured lifecycle status and messages
   const lifecycle = computeRefundLifecycleStatus({
     payment_status: paymentStatus,
     cancellation_requested: isCancellationRequested,
     cancellation_reason: cancellationReason,
     refund_amount: refundAmount,
+    refund_status: refundStatus,
   });
 
   const formattedDate = new Date(updatedAt).toLocaleDateString('en-IN', {
@@ -70,13 +73,15 @@ export default function CancelBookingBtn({
           </span>
         </div>
 
+        <p className="text-[11px] font-medium text-emerald-300">{lifecycle.customerMessage}</p>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-white/80 pt-2 border-t border-emerald-500/20">
           <div><span className="text-white/40">Booking Ref:</span> <span className="font-mono text-emerald-300">{bookingRef}</span></div>
           <div><span className="text-white/40">Original Amount:</span> ₹{totalAmount}</div>
           <div><span className="text-white/40">Service Fee (5%):</span> ₹{serviceFee}</div>
           <div><span className="text-white/40">Refund Amount:</span> <strong className="text-emerald-300 font-extrabold text-sm">₹{displayRefund}</strong></div>
-          <div><span className="text-white/40">Refund Processed On:</span> {formattedDate}</div>
-          <div><span className="text-white/40">Refund Reference:</span> <span className="font-mono">{payuMihpayid || bookingRef}</span></div>
+          <div><span className="text-white/40">Refund Date:</span> {formattedDate}</div>
+          <div><span className="text-white/40">Gateway Reference:</span> <span className="font-mono">{payuMihpayid || bookingRef}</span></div>
         </div>
       </div>
     );
@@ -97,11 +102,13 @@ export default function CancelBookingBtn({
           </span>
         </div>
 
+        <p className="text-[11px] font-medium text-red-300">{lifecycle.customerMessage}</p>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-white/80 pt-2 border-t border-red-500/20">
           <div><span className="text-white/40">Booking Ref:</span> <span className="font-mono text-red-300">{bookingRef}</span></div>
           <div><span className="text-white/40">Original Amount:</span> ₹{totalAmount}</div>
           <div><span className="text-white/40">Refund Status:</span> <strong className="text-red-300">Rejected</strong></div>
-          <div><span className="text-white/40">Evaluated On:</span> {formattedDate}</div>
+          <div><span className="text-white/40">Rejected On:</span> {formattedDate}</div>
         </div>
 
         <div className="text-[11px] text-red-300/90 bg-black/30 p-3 rounded-xl border border-red-500/20">
@@ -111,7 +118,7 @@ export default function CancelBookingBtn({
     );
   }
 
-  // Render Cancellation Requested Panel (Pending Review / Processing)
+  // Render Cancellation Requested Panel (Pending Review / Approved / Processing)
   if (isCancellationRequested) {
     return (
       <div className="mt-6 w-full p-5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs space-y-3">
@@ -125,12 +132,14 @@ export default function CancelBookingBtn({
           </span>
         </div>
 
+        <p className="text-[11px] font-medium text-amber-200/90">{lifecycle.customerMessage}</p>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-white/80 pt-2 border-t border-amber-500/20">
           <div><span className="text-white/40">Booking Reference:</span> <span className="font-mono text-primary">{bookingRef}</span></div>
-          <div><span className="text-white/40">Request Date &amp; Time:</span> {formattedDate}</div>
+          <div><span className="text-white/40">Cancellation Requested On:</span> {formattedDate}</div>
           <div><span className="text-white/40">Original Amount:</span> ₹{totalAmount}</div>
           <div><span className="text-white/40">Service Fee (5%):</span> ₹{serviceFee}</div>
-          <div><span className="text-white/40">Expected Refund:</span> <strong className="text-primary font-bold text-sm">₹{displayRefund}</strong></div>
+          <div><span className="text-white/40">Refund Amount:</span> <strong className="text-primary font-bold text-sm">₹{displayRefund}</strong></div>
           <div><span className="text-white/40">Refund Status:</span> <strong className="text-amber-300">{lifecycle.statusText}</strong></div>
         </div>
 

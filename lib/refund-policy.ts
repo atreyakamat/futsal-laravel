@@ -44,75 +44,114 @@ export function calculateRefundAmount(grossAmount: number): {
 }
 
 /**
- * Computes explicit Refund Lifecycle Status for Customer, Arena Admin, and Super Admin dashboards.
+ * Computes explicit Refund Lifecycle Status and exact customer messages for Customer Dashboard,
+ * Arena Admin, and Super Admin portals.
  */
 export function computeRefundLifecycleStatus(booking: {
   payment_status: string;
   cancellation_requested?: boolean;
   cancellation_reason?: string | null;
   refund_amount?: number | null;
+  refund_status?: string | null;
+  refund_reason?: string | null;
+  refund_reviewed_at?: Date | string | null;
+  refund_reviewed_by?: number | null;
+  refund_processed_at?: Date | string | null;
 }): {
   status: RefundLifecycleStatus;
   statusText: string;
   badgeClass: string;
+  customerMessage: string;
   isRefunded: boolean;
   isRejected: boolean;
   isPending: boolean;
   isProcessing: boolean;
   isApproved: boolean;
+  decisionText: string;
 } {
-  // 1. Refund Completed
-  if (booking.payment_status === 'refunded' || (booking.refund_amount && Number(booking.refund_amount) > 0 && booking.payment_status === 'cancelled')) {
+  const explicitStatus = (booking.refund_status || '').toUpperCase();
+  const reason = booking.refund_reason || booking.cancellation_reason || '';
+
+  // 1. REFUNDED
+  if (
+    explicitStatus === 'REFUNDED' ||
+    booking.payment_status === 'refunded' ||
+    (booking.refund_amount && Number(booking.refund_amount) > 0 && booking.payment_status === 'cancelled' && !reason.toUpperCase().startsWith('REJECTED:'))
+  ) {
     return {
       status: 'REFUNDED',
       statusText: 'REFUNDED',
       badgeClass: 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10',
+      customerMessage: 'Your refund has been successfully processed.',
       isRefunded: true,
       isRejected: false,
       isPending: false,
       isProcessing: false,
       isApproved: true,
+      decisionText: 'Accepted & Refunded',
     };
   }
 
-  // 2. Cancellation Rejected
-  if (booking.cancellation_reason && booking.cancellation_reason.toUpperCase().startsWith('REJECTED:')) {
+  // 2. REJECTED
+  if (explicitStatus === 'REJECTED' || reason.toUpperCase().startsWith('REJECTED:')) {
     return {
       status: 'REJECTED',
       statusText: 'REJECTED',
       badgeClass: 'border-red-500/30 text-red-400 bg-red-500/10',
+      customerMessage: 'Your cancellation request has been rejected.',
       isRefunded: false,
       isRejected: true,
       isPending: false,
       isProcessing: false,
       isApproved: false,
+      decisionText: 'Request Rejected',
     };
   }
 
-  // 3. Cancellation Approved & Processing
-  if (booking.cancellation_reason && booking.cancellation_reason.toUpperCase().includes('APPROVED')) {
+  // 3. PROCESSING
+  if (explicitStatus === 'PROCESSING') {
     return {
       status: 'PROCESSING',
       statusText: 'PROCESSING',
       badgeClass: 'border-blue-500/30 text-blue-400 bg-blue-500/10',
+      customerMessage: 'Your refund has been approved and is currently being processed.',
       isRefunded: false,
       isRejected: false,
       isPending: false,
       isProcessing: true,
       isApproved: true,
+      decisionText: 'Approved (Processing Refund)',
     };
   }
 
-  // 4. Pending Review (Default for cancellation_requested = true)
+  // 4. APPROVED
+  if (explicitStatus === 'APPROVED' || reason.toUpperCase().includes('APPROVED')) {
+    return {
+      status: 'APPROVED',
+      statusText: 'APPROVED',
+      badgeClass: 'border-blue-500/30 text-blue-300 bg-blue-500/10',
+      customerMessage: 'Your cancellation request has been approved.',
+      isRefunded: false,
+      isRejected: false,
+      isPending: false,
+      isProcessing: false,
+      isApproved: true,
+      decisionText: 'Request Approved',
+    };
+  }
+
+  // 5. PENDING_REVIEW (Default for cancellation_requested = true)
   return {
     status: 'PENDING_REVIEW',
     statusText: 'PENDING REVIEW',
     badgeClass: 'border-amber-500/30 text-amber-300 bg-amber-500/10',
+    customerMessage: 'Your cancellation request has been received and is awaiting review.',
     isRefunded: false,
     isRejected: false,
     isPending: true,
     isProcessing: false,
     isApproved: false,
+    decisionText: 'Awaiting Admin Review',
   };
 }
 

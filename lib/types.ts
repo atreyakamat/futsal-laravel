@@ -41,6 +41,11 @@ export interface BookingRow {
   cancellation_requested?: boolean;
   cancellation_reason?: string | null;
   refund_amount?: number | null;
+  refund_status?: 'NONE' | 'PENDING_REVIEW' | 'APPROVED' | 'PROCESSING' | 'REFUNDED' | 'REJECTED' | string | null;
+  refund_reviewed_at?: Date | string | null;
+  refund_reviewed_by?: number | null;
+  refund_reason?: string | null;
+  refund_processed_at?: Date | string | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -72,6 +77,11 @@ export interface BookingGroup {
   cancellation_requested: boolean;
   cancellation_reason: string | null;
   refund_amount: number | null;
+  refund_status: string;
+  refund_reviewed_at: Date | string | null;
+  refund_reviewed_by: number | null;
+  refund_reason: string | null;
+  refund_processed_at: Date | string | null;
   created_at: Date;
   updated_at: Date;
   slots: BookingSlotItem[];
