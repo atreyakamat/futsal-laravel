@@ -73,12 +73,13 @@ export async function POST(req: NextRequest) {
     const grossAmount = bookings.reduce((sum: number, b: any) => sum + Number(b.amount), 0);
     const { serviceFee, refundAmount } = calculateRefundAmount(grossAmount);
 
-    // Atomically mark parent BookingGroup as cancellation requested
+    // Atomically mark parent BookingGroup as cancellation requested with PENDING_REVIEW status
     await query(
       `UPDATE bookings
           SET cancellation_requested = TRUE,
               cancellation_reason = 'User Requested',
               refund_amount = ?,
+              refund_status = 'PENDING_REVIEW',
               updated_at = NOW()
         WHERE booking_ref = ? AND user_id = ?`,
       [refundAmount, ref, userId]
