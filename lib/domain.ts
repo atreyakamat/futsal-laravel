@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { query as dbQuery, queryOne, transaction } from '@/lib/db';
 import type { ArenaSummary, BookingRow, BookingGroup, BookingSlotItem, PricingRow, SlotLockRow } from '@/lib/types';
+import { getBookingTimeRange } from '@/lib/refund-policy';
 
 // Export query for use in other modules
 export const query = dbQuery;
@@ -150,7 +151,7 @@ export async function getGroupedBookingsForUser(userId: number): Promise<Booking
   const rows = await dbQuery<BookingRow>(
     `SELECT * FROM bookings
       WHERE user_id = ?
-        AND payment_status IN ('confirmed', 'pending')
+        AND payment_status IN ('confirmed', 'pending', 'cancelled')
       ORDER BY created_at DESC`,
     [userId]
   );
@@ -161,14 +162,14 @@ export async function getBookingsForUser(userId: number) {
   return dbQuery<BookingRow>(
     `SELECT * FROM bookings
       WHERE user_id = ?
-        AND payment_status IN ('confirmed', 'pending')
+        AND payment_status IN ('confirmed', 'pending', 'cancelled')
       ORDER BY created_at DESC`,
     [userId]
   );
 }
 
 export async function getBookingByTicket(ticketNumber: string) {
-  return queryOne<BookingRow>('SELECT * FROM bookings WHERE ticket_number = ? LIMIT 1', [ticketNumber]);
+  return queryOne<BookingRow>('SELECT * FROM bookings WHERE ticket_number = ? OR booking_ref = ? LIMIT 1', [ticketNumber, ticketNumber]);
 }
 
 export async function getBookingsForDate(arenaId: number, bookingDate: string) {
@@ -519,27 +520,129 @@ export async function findOrCreateUserByIdentifier(identifier: string) {
   return findUserByIdentifier(identifier);
 }
 
-export async function getSecurityBookings(ticketNumber: string) {
-  return dbQuery<BookingRow>(`SELECT * FROM bookings WHERE ticket_number = ? ORDER BY booking_date DESC`, [ticketNumber]);
+export async function getSecurityBookings(ticketOrRef: string) {
+  return dbQuery<BookingRow>(
+    `SELECT * FROM bookings WHERE ticket_number = ? OR booking_ref = ? ORDER BY time_slot ASC`,
+    [ticketOrRef, ticketOrRef]
+  );
 }
 
-export async function confirmEntryByTicket(ticketNumber: string, checkedInByUserId: number | null) {
-  const bookings = await getSecurityBookings(ticketNumber);
+/**
+ * Security Attendance Check-In Verification:
+ * Validates ticket/reference and marks ALL slots under parent booking_ref as checked-in.
+ */
+export async function confirmEntryByTicket(
+  ticketOrRef: string,
+  checkedInByUserId: number | null,
+  verificationMethod: 'qr' | 'manual' | 'ticket' = 'qr',
+  now: number = Date.now()
+): Promise<{
+  success: boolean;
+  code: 'ENTRY_APPROVED' | 'INVALID_TICKET' | 'ALREADY_CHECKED_IN' | 'CANCELLED' | 'REFUNDED' | 'EXPIRED';
+  message: string;
+  bookingGroup?: BookingGroup;
+}> {
+  const bookings = await getSecurityBookings(ticketOrRef);
 
-  if (bookings && bookings?.length === 0) {
-    return { success: false, message: 'Ticket not found.' };
+  if (!bookings || bookings.length === 0) {
+    return { success: false, code: 'INVALID_TICKET', message: 'Invalid Ticket.' };
   }
 
-  if (bookings[0]?.checked_in) {
-    return { success: false, message: 'Already checked in.' };
+  const first = bookings[0];
+  const ref = first.booking_ref;
+
+  // 1. Check Refunded Status
+  if (first.payment_status === 'refunded' || (first.refund_amount && Number(first.refund_amount) > 0)) {
+    return { success: false, code: 'REFUNDED', message: 'Ticket Refunded.' };
   }
 
+  // 2. Check Cancelled Status
+  if (first.payment_status === 'cancelled' || first.cancellation_requested) {
+    return { success: false, code: 'CANCELLED', message: 'Booking Cancelled.' };
+  }
+
+  // 3. Check Already Checked-In Status
+  if (first.checked_in) {
+    return { success: false, code: 'ALREADY_CHECKED_IN', message: 'Already Checked In.' };
+  }
+
+  // 4. Check Expired Status (game end time has passed without check-in)
+  const timeSlots = bookings.map((b) => b.time_slot);
+  const { bookingEnd } = getBookingTimeRange(first.booking_date, timeSlots);
+  if (now >= bookingEnd.getTime()) {
+    return { success: false, code: 'EXPIRED', message: 'Ticket Expired.' };
+  }
+
+  // Atomically update ALL slots belonging to this parent booking_ref
   await query(
     `UPDATE bookings
-        SET checked_in = TRUE, checked_in_at = NOW(), checked_in_by = ?, updated_at = NOW()
-      WHERE ticket_number = ?`,
-    [checkedInByUserId, ticketNumber]
+        SET checked_in = TRUE,
+            checked_in_at = NOW(),
+            checked_in_by = ?,
+            updated_at = NOW()
+      WHERE booking_ref = ?`,
+    [checkedInByUserId, ref]
   );
 
-  return { success: true, message: 'Entry confirmed.' };
+  const updatedGroup = await getBookingGroup(ref);
+
+  return {
+    success: true,
+    code: 'ENTRY_APPROVED',
+    message: '✓ Entry Approved',
+    bookingGroup: updatedGroup ?? undefined,
+  };
+}
+
+/**
+ * Computes unified Booking Lifecycle State across Customer, Admin, and Security portals.
+ */
+export function computeBookingLifecycleState(booking: {
+  payment_status: string;
+  cancellation_requested?: boolean;
+  refund_amount?: number | null;
+  checked_in?: boolean;
+  booking_date: string;
+  timeSlots: string[];
+  now?: number;
+}): {
+  state: 'UPCOMING' | 'CONFIRMED' | 'CHECKED_IN' | 'COMPLETED' | 'CANCELLATION_REQUESTED' | 'CANCELLED' | 'REFUNDED' | 'EXPIRED' | 'PENDING' | 'FAILED';
+  badgeText: string;
+  badgeClass: string;
+} {
+  const current = booking.now ?? Date.now();
+  const { bookingEnd } = getBookingTimeRange(booking.booking_date, booking.timeSlots);
+  const isPast = current >= bookingEnd.getTime();
+
+  if (booking.payment_status === 'cancelled' || booking.payment_status === 'refunded') {
+    if (booking.refund_amount && Number(booking.refund_amount) > 0) {
+      return { state: 'REFUNDED', badgeText: 'REFUNDED', badgeClass: 'border-emerald-500/20 text-emerald-400' };
+    }
+    return { state: 'CANCELLED', badgeText: 'CANCELLED', badgeClass: 'border-red-500/20 text-red-400' };
+  }
+
+  if (booking.cancellation_requested) {
+    return { state: 'CANCELLATION_REQUESTED', badgeText: 'CANCELLATION REQUESTED', badgeClass: 'border-amber-500/20 text-amber-300' };
+  }
+
+  if (booking.checked_in) {
+    if (isPast) {
+      return { state: 'COMPLETED', badgeText: 'COMPLETED', badgeClass: 'border-blue-500/20 text-blue-400' };
+    }
+    return { state: 'CHECKED_IN', badgeText: 'CHECKED IN', badgeClass: 'border-emerald-500/20 text-emerald-400' };
+  }
+
+  if (isPast) {
+    return { state: 'EXPIRED', badgeText: 'EXPIRED', badgeClass: 'border-white/10 text-white/40' };
+  }
+
+  if (booking.payment_status === 'pending') {
+    return { state: 'PENDING', badgeText: 'PENDING', badgeClass: 'border-yellow-500/20 text-yellow-500' };
+  }
+
+  if (booking.payment_status === 'failed') {
+    return { state: 'FAILED', badgeText: 'FAILED', badgeClass: 'border-red-500/20 text-red-500' };
+  }
+
+  return { state: 'UPCOMING', badgeText: 'UPCOMING', badgeClass: 'border-primary/20 text-primary' };
 }
