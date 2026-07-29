@@ -4,7 +4,7 @@
     "type": "module",
     "scripts": {
         "dev": "next dev",
-        "build": "rm -rf .next && next build",
+        "build": "next build",
         "postbuild": "node -e \"const fs = require('fs'); const file = '.next/standalone/server.js'; if(fs.existsSync(file)) { const code = fs.readFileSync(file, 'utf8'); const inject = 'process.env.HOSTNAME=\\'0.0.0.0\\';\\nprocess.on(\\'uncaughtException\\', err => fs.writeFileSync(\\'crash.log\\', err.stack));\\n'; fs.writeFileSync(file, inject + code); }\"",
         "start": "next start",
         "lint": "next lint",
@@ -33,6 +33,7 @@
         "zod": "^3.25.76"
     },
     "devDependencies": {
+        "@playwright/test": "^1.62.0",
         "@testing-library/dom": "^10.4.1",
         "@testing-library/jest-dom": "^6.9.1",
         "@testing-library/react": "^16.3.2",

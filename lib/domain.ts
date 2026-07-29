@@ -8,6 +8,19 @@ import { getBookingTimeRange } from '@/lib/refund-policy';
 export const query = dbQuery;
 export { queryOne, transaction } from '@/lib/db';
 
+export async function ensureSchemaColumns() {
+  try {
+    await dbQuery(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS refund_status VARCHAR(50) DEFAULT 'NONE'`);
+    await dbQuery(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS refund_reviewed_at TIMESTAMP NULL`);
+    await dbQuery(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS refund_reviewed_by INTEGER NULL`);
+    await dbQuery(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS refund_reason TEXT NULL`);
+    await dbQuery(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS refund_processed_at TIMESTAMP NULL`);
+    await dbQuery(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS verification_method VARCHAR(50) DEFAULT 'qr'`);
+  } catch {
+    // Columns already exist or handled
+  }
+}
+
 export async function getActiveArenas(): Promise<ArenaSummary[]> {
   const rows = await dbQuery<{
     id: number;
@@ -85,6 +98,7 @@ export async function expirePendingBookings() {
 }
 
 export async function getBookingsByRef(bookingRef: string) {
+  await ensureSchemaColumns();
   return dbQuery<BookingRow>('SELECT * FROM bookings WHERE booking_ref = ? ORDER BY time_slot ASC', [bookingRef]);
 }
 
@@ -132,6 +146,11 @@ export function groupBookingRows(rows: BookingRow[]): BookingGroup[] {
       cancellation_requested: Boolean(first.cancellation_requested),
       cancellation_reason: first.cancellation_reason ?? null,
       refund_amount: first.refund_amount ? Number(first.refund_amount) : null,
+      refund_status: first.refund_status || (first.payment_status === 'refunded' ? 'REFUNDED' : first.cancellation_requested ? 'PENDING_REVIEW' : 'NONE'),
+      refund_reviewed_at: first.refund_reviewed_at ?? null,
+      refund_reviewed_by: first.refund_reviewed_by ?? null,
+      refund_reason: first.refund_reason ?? first.cancellation_reason ?? null,
+      refund_processed_at: first.refund_processed_at ?? null,
       created_at: first.created_at,
       updated_at: first.updated_at,
       slots,
@@ -148,10 +167,11 @@ export async function getBookingGroup(bookingRef: string): Promise<BookingGroup 
 }
 
 export async function getGroupedBookingsForUser(userId: number): Promise<BookingGroup[]> {
+  await ensureSchemaColumns();
   const rows = await dbQuery<BookingRow>(
     `SELECT * FROM bookings
       WHERE user_id = ?
-        AND payment_status IN ('confirmed', 'pending', 'cancelled')
+        AND payment_status IN ('confirmed', 'pending', 'cancelled', 'refunded')
       ORDER BY created_at DESC`,
     [userId]
   );
@@ -159,16 +179,18 @@ export async function getGroupedBookingsForUser(userId: number): Promise<Booking
 }
 
 export async function getBookingsForUser(userId: number) {
+  await ensureSchemaColumns();
   return dbQuery<BookingRow>(
     `SELECT * FROM bookings
       WHERE user_id = ?
-        AND payment_status IN ('confirmed', 'pending', 'cancelled')
+        AND payment_status IN ('confirmed', 'pending', 'cancelled', 'refunded')
       ORDER BY created_at DESC`,
     [userId]
   );
 }
 
 export async function getBookingByTicket(ticketNumber: string) {
+  await ensureSchemaColumns();
   return queryOne<BookingRow>('SELECT * FROM bookings WHERE ticket_number = ? OR booking_ref = ? LIMIT 1', [ticketNumber, ticketNumber]);
 }
 
@@ -323,7 +345,6 @@ export async function createBookingBatch(params: {
   let effectiveUserId = params.userId;
 
   await transaction(async (connection) => {
-    // JIT User Creation: If no userId, find or create
     if (!effectiveUserId) {
       const [userRows] = await connection.execute(
         `SELECT id FROM users WHERE customer_mobile = ? OR email = ? LIMIT 1`,
@@ -336,7 +357,7 @@ export async function createBookingBatch(params: {
       } else {
         const [newUserRows] = await connection.execute(
           `INSERT INTO users (name, email, customer_mobile, role, created_at, updated_at)
-           VALUES (?, ?, ?, 'customer', NOW(), NOW())
+           VALUES (?, ?, ?, 'player', NOW(), NOW())
            RETURNING id`,
           [params.customerName, params.customerEmail || `user-${crypto.randomUUID().slice(0, 8)}@agnelarena.com`, params.customerMobile]
         );
@@ -428,12 +449,14 @@ export async function markPaymentFailed(bookingRef: string) {
 }
 
 export async function cancelBookingGroup(bookingRef: string, reason: string, refundAmount: number) {
+  await ensureSchemaColumns();
   await query(
     `UPDATE bookings
         SET cancellation_requested = TRUE,
             payment_status = 'cancelled',
             refund_amount = ?,
             cancellation_reason = ?,
+            refund_status = 'PENDING_REVIEW',
             updated_at = NOW()
       WHERE booking_ref = ?`,
     [refundAmount, reason, bookingRef]
@@ -521,6 +544,7 @@ export async function findOrCreateUserByIdentifier(identifier: string) {
 }
 
 export async function getSecurityBookings(ticketOrRef: string) {
+  await ensureSchemaColumns();
   return dbQuery<BookingRow>(
     `SELECT * FROM bookings WHERE ticket_number = ? OR booking_ref = ? ORDER BY time_slot ASC`,
     [ticketOrRef, ticketOrRef]
@@ -542,6 +566,7 @@ export async function confirmEntryByTicket(
   message: string;
   bookingGroup?: BookingGroup;
 }> {
+  await ensureSchemaColumns();
   const bookings = await getSecurityBookings(ticketOrRef);
 
   if (!bookings || bookings.length === 0) {
@@ -551,37 +576,33 @@ export async function confirmEntryByTicket(
   const first = bookings[0];
   const ref = first.booking_ref;
 
-  // 1. Check Refunded Status
-  if (first.payment_status === 'refunded' || (first.refund_amount && Number(first.refund_amount) > 0)) {
+  if (first.payment_status === 'refunded' || (first.refund_amount && Number(first.refund_amount) > 0 && first.refund_status === 'REFUNDED')) {
     return { success: false, code: 'REFUNDED', message: 'Ticket Refunded.' };
   }
 
-  // 2. Check Cancelled Status
   if (first.payment_status === 'cancelled' || first.cancellation_requested) {
     return { success: false, code: 'CANCELLED', message: 'Booking Cancelled.' };
   }
 
-  // 3. Check Already Checked-In Status
   if (first.checked_in) {
     return { success: false, code: 'ALREADY_CHECKED_IN', message: 'Already Checked In.' };
   }
 
-  // 4. Check Expired Status (game end time has passed without check-in)
   const timeSlots = bookings.map((b) => b.time_slot);
   const { bookingEnd } = getBookingTimeRange(first.booking_date, timeSlots);
   if (now >= bookingEnd.getTime()) {
     return { success: false, code: 'EXPIRED', message: 'Ticket Expired.' };
   }
 
-  // Atomically update ALL slots belonging to this parent booking_ref
   await query(
     `UPDATE bookings
         SET checked_in = TRUE,
             checked_in_at = NOW(),
             checked_in_by = ?,
+            verification_method = ?,
             updated_at = NOW()
       WHERE booking_ref = ?`,
-    [checkedInByUserId, ref]
+    [checkedInByUserId, verificationMethod, ref]
   );
 
   const updatedGroup = await getBookingGroup(ref);
