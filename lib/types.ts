@@ -31,9 +31,11 @@ export interface BookingRow {
   customer_mobile: string;
   customer_email: string | null;
   amount: number;
-  payment_status: 'pending' | 'confirmed' | 'failed' | 'cancelled' | 'expired';
+  payment_status: 'pending' | 'confirmed' | 'failed' | 'cancelled' | 'expired' | 'refunded';
   payment_method: 'online' | 'cash' | 'upi';
   checked_in: number | boolean;
+  checked_in_at?: Date | string | null;
+  checked_in_by?: number | null;
   is_free_booking: number | boolean;
   payu_mihpayid: string | null;
   cancellation_requested?: boolean;
@@ -63,15 +65,15 @@ export interface BookingGroup {
   customer_email: string | null;
   booking_date: string;
   total_amount: number;
-  payment_status: 'pending' | 'confirmed' | 'failed' | 'cancelled' | 'expired';
+  payment_status: string;
   payment_method: string | null;
   payu_mihpayid: string | null;
   is_free_booking: boolean;
   cancellation_requested: boolean;
   cancellation_reason: string | null;
   refund_amount: number | null;
-  created_at: string | Date;
-  updated_at: string | Date;
+  created_at: Date;
+  updated_at: Date;
   slots: BookingSlotItem[];
 }
 
@@ -81,6 +83,6 @@ export interface SlotLockRow {
   booking_date: string;
   time_slot: string;
   session_id: string;
-  locked_at: string;
-  expires_at: string;
+  locked_at: Date;
+  expires_at: Date;
 }
