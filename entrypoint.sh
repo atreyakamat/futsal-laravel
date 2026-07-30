@@ -5,7 +5,7 @@ echo "Starting FutsalGoa container..."
 
 
 echo "Applying Prisma Migrations..."
-npx prisma generate && npx prisma migrate deploy --schema=./prisma/schema.prisma || echo "Migration failed or already applied"
+npx prisma migrate deploy --schema=./prisma/schema.prisma
 
 echo "Applying database seeding and bootstrapping..."
 node scripts/seed-assagao.js || echo "Assagao seeding failed"

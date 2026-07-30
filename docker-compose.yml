@@ -5,8 +5,8 @@ services:
       dockerfile: Dockerfile
     container_name: futsal_next_app
     restart: unless-stopped
-    ports:
-      - "3001:3000"
+    expose:
+      - "3000"
     env_file:
       - .env
     environment:
@@ -27,6 +27,20 @@ services:
       postgres:
         condition: service_healthy
 
+  caddy:
+    image: caddy:2-alpine
+    container_name: futsal_caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
   postgres:
     image: postgres:16-alpine
     container_name: futsal_postgres
@@ -35,8 +49,6 @@ services:
       POSTGRES_DB: futsal_laravel
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-    ports:
-      - "5434:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -52,3 +64,5 @@ services:
 
 volumes:
   postgres_data:
+  caddy_data:
+  caddy_config:

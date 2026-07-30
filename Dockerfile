@@ -9,6 +9,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_DISABLE_SWC_WASM=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+RUN node -e "let p = require('./package.json'); p.scripts.postbuild = 'echo Done'; require('fs').writeFileSync('./package.json', JSON.stringify(p, null, 2));"
 RUN npm run db:generate
 RUN npm run build
 
