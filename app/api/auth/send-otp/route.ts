@@ -52,7 +52,8 @@ export async function POST(request: Request) {
   const otp = crypto.randomInt(100000, 999999).toString();
 
   await storeOtp(cleanIdentifier, otp);
-  console.info(`[OTP] ${cleanIdentifier}: ${otp}`);
+  // SECURITY: never log OTP value in production. Log send attempt only.
+  console.info(`[OTP] Sending to ${cleanIdentifier.slice(0, 4)}****`);
 
   // Trigger SMS/WhatsApp Provider if identifier is a mobile number
   if (isMobileNum) {

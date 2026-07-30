@@ -11,10 +11,18 @@ services:
       - .env
     environment:
       - IS_DOCKER=true
+      # Force production mode regardless of what .env sets
+      - NODE_ENV=production
       - DATABASE_URL=postgresql://postgres:postgres@arena-db:5432/futsal_laravel?schema=public
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3001}
       - ADMIN_EMAIL=${ADMIN_EMAIL:-superadmin@example.com}
       - ADMIN_MOBILE=${ADMIN_MOBILE:-+919999999999}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-Admin@123456}
+      # AiSensy WhatsApp provider
+      - AISENSY_API_KEY=${AISENSY_API_KEY}
+      - AISENSY_USERNAME=${AISENSY_USERNAME:-AITD Official}
+      - AISENSY_CAMPAIGN_NAME_OTP=${AISENSY_CAMPAIGN_NAME_OTP:-agnel_arena_otp}
+      - AISENSY_CAMPAIGN_NAME_BOOKING=${AISENSY_CAMPAIGN_NAME_BOOKING:-agnelarena_cofirm}
     depends_on:
       postgres:
         condition: service_healthy

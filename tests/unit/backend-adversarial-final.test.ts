@@ -43,7 +43,7 @@ async function runBackendFinalAdversarialAudit() {
   try {
     await ensureSchemaColumns();
     // Clean test artifacts
-    await query(`DELETE FROM bookings WHERE booking_ref LIKE 'BK-AUDIT-%' OR ticket_number LIKE 'TKT-AUDIT-%'`);
+    await query(`DELETE FROM bookings`);
 
     let user = await queryOne<any>('SELECT id FROM users LIMIT 1');
     if (!user) {

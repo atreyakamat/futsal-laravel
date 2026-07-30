@@ -13,7 +13,7 @@
 
 import http from 'http';
 
-const BASE_URL = 'http://localhost:3005';
+const BASE_URL = 'http://localhost:3001';
 let superAdminCookies = '';
 let arenaAdminCookies = '';
 let customerCookies = '';
@@ -23,17 +23,29 @@ let currentCookies = '';
 function makeRequest(method, path, body = null, headers = {}) {
   return new Promise((resolve, reject) => {
     const url = new URL(path, BASE_URL);
+    const requestHeaders = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Cookie': currentCookies,
+      ...headers,
+    };
+
+    // Auto CSRF detection
+    if (['POST', 'PUT', 'DELETE'].includes(method)) {
+      const csrfCookie = currentCookies.split('; ').find(c => c.startsWith('fg_csrf_token='));
+      if (csrfCookie) {
+        const signedToken = csrfCookie.split('=')[1];
+        const rawToken = signedToken.split('.')[0];
+        requestHeaders['x-csrf-token'] = rawToken;
+      }
+    }
+
     const options = {
       hostname: url.hostname,
       port: url.port,
       path: url.pathname + url.search,
       method,
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Cookie': currentCookies,
-        ...headers,
-      },
+      headers: requestHeaders,
     };
 
     const req = http.request(options, (res) => {
@@ -89,7 +101,7 @@ async function run() {
   let testArenaAdminId = null;
   let testAdminEmail = `admin_${Date.now()}@futsal.local`;
   let testAdminPassword = null;
-  let testCustomerEmail = `player_${Date.now()}@gmail.com`;
+  let testCustomerMobile = '9876543210';
   let imageApprovalId = null;
   const dateStr = new Date().toISOString().split('T')[0];
 
@@ -97,10 +109,17 @@ async function run() {
   console.log('--- PHASE 1: SUPER ADMIN INITIALIZATION ---');
   
   // 1. Super Admin Login
-  const loginRes = await makeRequest('POST', '/api/auth/super-admin/login', {
+  let loginRes = await makeRequest('POST', '/api/auth/super-admin/login', {
     email: 'superadmin@example.com',
     password: 'SuperAdmin@123',
   });
+  if (loginRes.status !== 200) {
+    console.log('⚠️  Trying fallback super admin email...');
+    loginRes = await makeRequest('POST', '/api/auth/super-admin/login', {
+      email: 'superadmin@agnelarenagoa.com',
+      password: 'SuperAdmin@123',
+    });
+  }
   if (loginRes.status === 200) {
     superAdminCookies = currentCookies;
     logStep('SA_LOGIN', 'PASS', 'Super Admin authenticated');
@@ -111,7 +130,7 @@ async function run() {
 
   // 2. Create Unique Test Arena
   const arenaName = `Audit Arena ${Date.now()}`;
-  const arenaRes = await makeRequest('POST', '/api/super-admin/arenas', {
+  const arenaRes = await makeRequest('POST', '/api/fg-admin/super-admin/arenas', {
     name: arenaName,
     slug: `audit-arena-${Date.now()}`,
     location: 'Goa South',
@@ -120,18 +139,24 @@ async function run() {
   if (arenaRes.status === 200 || arenaRes.status === 201) {
     testArenaId = arenaRes.body.data.id;
     logStep('CREATE_ARENA', 'PASS', `Created: ${arenaName}`);
+  } else {
+    logStep('CREATE_ARENA', 'FAIL', 'Could not create arena', JSON.stringify(arenaRes.body));
   }
 
   // 3. Set Arena Details & Direct Image Add (No permission needed for SA)
-  const detailRes = await makeRequest('PUT', `/api/super-admin/arenas/${testArenaId}`, {
+  const detailRes = await makeRequest('PUT', `/api/fg-admin/super-admin/arenas/${testArenaId}`, {
     address: 'Vasco Da Gama, Goa',
     contact_email: 'audit@arena.local',
     description: 'Updated description with premium branding',
   });
-  if (detailRes.status === 200) logStep('SET_DETAILS', 'PASS', 'Arena metadata and images configured');
+  if (detailRes.status === 200) {
+    logStep('SET_DETAILS', 'PASS', 'Arena metadata and images configured');
+  } else {
+    logStep('SET_DETAILS', 'FAIL', 'Could not set arena details', JSON.stringify(detailRes.body));
+  }
 
   // 4. Create Personnel (Admin & Security)
-  const adminRes = await makeRequest('POST', '/api/super-admin/admins', {
+  const adminRes = await makeRequest('POST', '/api/fg-admin/super-admin/admins', {
     arena_id: testArenaId,
     email: testAdminEmail,
     name: 'Audit Arena Manager',
@@ -140,24 +165,34 @@ async function run() {
     testArenaAdminId = adminRes.body.data.admin.id;
     testAdminPassword = adminRes.body.data.credentials.tempPassword;
     logStep('ADD_ADMIN', 'PASS', 'Arena Admin account provisioned');
+  } else {
+    logStep('ADD_ADMIN', 'FAIL', 'Could not create Arena Admin', JSON.stringify(adminRes.body));
   }
 
-  const securityRes = await makeRequest('POST', '/api/super-admin/security', {
+  const securityRes = await makeRequest('POST', '/api/fg-admin/super-admin/security', {
     arena_id: testArenaId,
     email: `sec_${Date.now()}@futsal.local`,
     name: 'Gate Security',
   });
-  if (securityRes.status === 200) logStep('ADD_SECURITY', 'PASS', 'Security staff provisioned');
+  if (securityRes.status === 200) {
+    logStep('ADD_SECURITY', 'PASS', 'Security staff provisioned');
+  } else {
+    logStep('ADD_SECURITY', 'FAIL', 'Could not create security staff', JSON.stringify(securityRes.body));
+  }
 
   // 5. Configure Slot Timings & Pricing
-  const timingRes = await makeRequest('POST', '/api/super-admin/arenas/timings', {
+  const timingRes = await makeRequest('POST', '/api/fg-admin/super-admin/arenas/timings', {
     arena_id: testArenaId,
     time_slot: '21:00-22:00',
     start_time: '21:00',
     end_time: '22:00',
     day_of_week: new Date().getDay() || 7,
   });
-  if (timingRes.status === 200) logStep('SET_TIMINGS', 'PASS', 'Night slot (21:00) configured with pricing');
+  if (timingRes.status === 200) {
+    logStep('SET_TIMINGS', 'PASS', 'Night slot (21:00) configured with pricing');
+  } else {
+    logStep('SET_TIMINGS', 'FAIL', 'Could not configure timings', JSON.stringify(timingRes.body));
+  }
 
   // --- PHASE 2: CUSTOMER JOURNEY (Discovery & Booking) ---
   console.log('\n--- PHASE 2: CUSTOMER JOURNEY ---');
@@ -165,7 +200,11 @@ async function run() {
 
   // 1. Landing Page -> Select Arena
   const viewRes = await makeRequest('GET', `/api/slots/status?arena_id=${testArenaId}&date=${dateStr}`);
-  if (viewRes.status === 200) logStep('CUST_VIEW', 'PASS', 'Customer discovered arena and checked availability');
+  if (viewRes.status === 200) {
+    logStep('CUST_VIEW', 'PASS', 'Customer discovered arena and checked availability');
+  } else {
+    logStep('CUST_VIEW', 'FAIL', 'Could not get slot status', JSON.stringify(viewRes.body));
+  }
 
   // 2. Lock Slot
   const lockRes = await makeRequest('POST', '/api/slots/lock', {
@@ -176,60 +215,76 @@ async function run() {
   if (lockRes.status === 200 && lockRes.body.success) {
     customerCookies = currentCookies;
     logStep('CUST_LOCK', 'PASS', 'Customer secured slot for 10-minute hold');
+  } else {
+    logStep('CUST_LOCK', 'FAIL', 'Could not lock slot', JSON.stringify(lockRes.body));
   }
 
   // 3. Auto-Account Creation (OTP Authentication)
-  const otpRes = await makeRequest('POST', '/api/auth/send-otp', { identifier: testCustomerEmail });
-  if (otpRes.status === 200) logStep('CUST_AUTH', 'PASS', `Account created/verified for ${testCustomerEmail}`);
+  const otpRes = await makeRequest('POST', '/api/auth/send-otp', { identifier: testCustomerMobile });
+  if (otpRes.status === 200) {
+    logStep('CUST_AUTH', 'PASS', `Account created/verified for ${testCustomerMobile}`);
+  } else {
+    logStep('CUST_AUTH', 'FAIL', 'Could not send OTP', JSON.stringify(otpRes.body));
+  }
 
   // --- PHASE 3: ARENA ADMIN MANAGEMENT ---
   console.log('\n--- PHASE 3: ARENA ADMIN MANAGEMENT ---');
   currentCookies = ''; 
 
   // 1. Login with Provisioned Credentials
-  const aaLoginRes = await makeRequest('POST', '/api/arena-admin/login', {
+  const aaLoginRes = await makeRequest('POST', '/api/auth/arena-admin/login', {
     email: testAdminEmail,
     password: testAdminPassword,
   });
   if (aaLoginRes.status === 200) {
     arenaAdminCookies = currentCookies;
     logStep('AA_LOGIN', 'PASS', 'Arena Admin successfully logged in');
+  } else {
+    logStep('AA_LOGIN', 'FAIL', 'Arena Admin login failed', JSON.stringify(aaLoginRes.body));
   }
 
   // 2. Request Approval for New Branding (Image Update)
-  const brandAppRes = await makeRequest('POST', '/api/admin/approvals', {
-    arena_id: testArenaId,
-    request_type: 'image_update',
-    payload_json: JSON.stringify({ cover_image: 'https://images.futsal.local/arena-new.jpg' }),
-    notes: 'Seasonal rebranding for monsoon tournament',
+  const brandAppRes = await makeRequest('POST', '/api/fg-admin/arena/requests', {
+    request_type: 'IMAGE_UPDATE',
+    payload: { cover_image: 'https://images.futsal.local/arena-new.jpg' },
+    reason: 'Seasonal rebranding for monsoon tournament',
   });
   if (brandAppRes.status === 200) {
-    imageApprovalId = brandAppRes.body.requestId;
     logStep('AA_REQ_IMAGE', 'PASS', 'Image change approval requested');
+  } else {
+    logStep('AA_REQ_IMAGE', 'FAIL', 'Could not request image change approval', JSON.stringify(brandAppRes.body));
   }
 
   // 3. Request Free Slot (Maintenance)
-  await makeRequest('POST', '/api/admin/approvals', {
-    arena_id: testArenaId,
-    request_type: 'admin_free_booking',
-    payload_json: JSON.stringify({ 
+  const freeAppRes = await makeRequest('POST', '/api/fg-admin/arena/requests', {
+    request_type: 'FREE_BOOKING_REQUEST',
+    payload: { 
       bookingDate: dateStr, 
       slots: ['09:00-10:00'],
       customerName: 'Pitch Cleaning'
-    }),
+    },
+    reason: 'Routine pitch cleaning',
   });
-  logStep('AA_REQ_FREE', 'PASS', 'Free slot (maintenance) approval requested');
+  if (freeAppRes.status === 200) {
+    logStep('AA_REQ_FREE', 'PASS', 'Free slot (maintenance) approval requested');
+  } else {
+    logStep('AA_REQ_FREE', 'FAIL', 'Could not request free slot approval', JSON.stringify(freeAppRes.body));
+  }
 
   // --- PHASE 4: SUPER ADMIN GOVERNANCE & APPROVALS ---
   console.log('\n--- PHASE 4: SUPER ADMIN GOVERNANCE ---');
   currentCookies = superAdminCookies;
 
   // 1. Oversee Approvals
-  const listAppRes = await makeRequest('GET', '/api/admin/approvals');
-  if (listAppRes.status === 200) logStep('SA_LIST_APP', 'PASS', 'Super Admin retrieved pending requests');
+  const listAppRes = await makeRequest('GET', '/api/fg-admin/super-admin/approvals');
+  if (listAppRes.status === 200) {
+    logStep('SA_LIST_APP', 'PASS', 'Super Admin retrieved pending requests');
+  } else {
+    logStep('SA_LIST_APP', 'FAIL', 'Could not retrieve approvals list', JSON.stringify(listAppRes.body));
+  }
 
   // 2. Verify and Audit
-  const auditRes = await makeRequest('GET', '/api/super-admin/audit-logs');
+  const auditRes = await makeRequest('GET', '/api/fg-admin/super-admin/audit-logs');
   if (auditRes.status === 200) {
     const logs = auditRes.body.data;
     const criticalActions = ['CREATE_ARENA', 'CREATE_ARENA_ADMIN', 'UPDATE_ARENA'];
@@ -240,6 +295,8 @@ async function run() {
     } else {
       logStep('FINAL_AUDIT', 'FAIL', 'Audit log trace incomplete');
     }
+  } else {
+    logStep('FINAL_AUDIT', 'FAIL', 'Could not fetch audit logs', JSON.stringify(auditRes.body));
   }
 
   // --- RESULTS ---
