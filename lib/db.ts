@@ -26,21 +26,14 @@ function getLocalPort(): string {
 }
 
 function resolveDatabaseUrl(rawUrl?: string): string | null {
-  if (!rawUrl) return null;
-
-  const isInsideDocker = fs.existsSync('/.dockerenv') || process.env.IS_DOCKER === 'true';
-  if (!isInsideDocker && (rawUrl.includes('@postgres:') || rawUrl.includes('@postgres/'))) {
-    const localPort = getLocalPort();
-    return rawUrl
-      .replace(/@postgres:5432/g, `@127.0.0.1:${localPort}`)
-      .replace(/@postgres:5434/g, `@127.0.0.1:${localPort}`)
-      .replace(/@postgres\//g, `@127.0.0.1:${localPort}/`);
-  }
-  return rawUrl;
+  return rawUrl || null;
 }
 
 function getPoolConfig() {
-  const databaseUrl = resolveDatabaseUrl(process.env.DATABASE_URL);
+  // When running inside Docker, the DATABASE_URL from the environment points to the Docker hostname.
+  // For local production builds (next start on a developer machine), we must not use the Docker‑only URL.
+  const isDocker = process.env.IS_DOCKER === 'true';
+  const databaseUrl = isDocker ? resolveDatabaseUrl(process.env.DATABASE_URL) : null;
 
   if (databaseUrl) {
     return {
@@ -49,6 +42,7 @@ function getPoolConfig() {
     };
   }
 
+  // Fallback to individual connection parameters suitable for a local Postgres instance.
   return {
     host: process.env.DB_HOST ?? '127.0.0.1',
     port: Number(getLocalPort()),
@@ -77,26 +71,9 @@ export function getPool() {
 }
 
 export async function query<T>(sql: string, params: any[] = []): Promise<T[]> {
-  try {
-    const pool = getPool();
-    const result = await pool.query(toPgPlaceholders(sql), params);
-    return (result?.rows || []) as T[];
-  } catch (err: any) {
-    if (err?.code === 'ENOTFOUND' && (err?.hostname === 'postgres' || String(err?.message).includes('postgres'))) {
-      const localPort = getLocalPort();
-      console.warn(`[DB Self-Heal] "postgres" host not found on local network — reconnecting to 127.0.0.1:${localPort}...`);
-      if (process.env.DATABASE_URL) {
-        process.env.DATABASE_URL = process.env.DATABASE_URL
-          .replace(/@postgres:5432/g, `@127.0.0.1:${localPort}`)
-          .replace(/@postgres:/g, `@127.0.0.1:${localPort}`);
-      }
-      resetPool();
-      const retryPool = getPool();
-      const retryResult = await retryPool.query(toPgPlaceholders(sql), params);
-      return (retryResult?.rows || []) as T[];
-    }
-    throw err;
-  }
+  const pool = getPool();
+  const result = await pool.query(toPgPlaceholders(sql), params);
+  return (result?.rows || []) as T[];
 }
 
 export async function queryOne<T>(sql: string, params: any[] = []) {
@@ -105,23 +82,7 @@ export async function queryOne<T>(sql: string, params: any[] = []) {
 }
 
 export async function transaction<T>(callback: (connection: TransactionExecutor) => Promise<T>) {
-  let connection;
-  try {
-    connection = await getPool().connect();
-  } catch (err: any) {
-    if (err?.code === 'ENOTFOUND' && (err?.hostname === 'postgres' || String(err?.message).includes('postgres'))) {
-      const localPort = getLocalPort();
-      if (process.env.DATABASE_URL) {
-        process.env.DATABASE_URL = process.env.DATABASE_URL
-          .replace(/@postgres:5432/g, `@127.0.0.1:${localPort}`)
-          .replace(/@postgres:/g, `@127.0.0.1:${localPort}`);
-      }
-      resetPool();
-      connection = await getPool().connect();
-    } else {
-      throw err;
-    }
-  }
+  const connection = await getPool().connect();
 
   const runner: TransactionExecutor = {
     async execute<R extends Record<string, unknown> = Record<string, unknown>>(sql: string, params: unknown[] = []) {

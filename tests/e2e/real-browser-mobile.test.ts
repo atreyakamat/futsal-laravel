@@ -20,7 +20,7 @@ import path from 'path';
 import fs from 'fs';
 import { ensureSchemaColumns } from '../../lib/domain';
 
-const PORT = 3090;
+const PORT = 3088;
 const BASE_URL = `http://localhost:${PORT}`;
 const ARTIFACTS_DIR = `C:\\Users\\atkam\\.gemini\\antigravity-cli\\brain\\a0f9fe20-b503-48f4-a355-e86cbaef028e`;
 
@@ -66,12 +66,12 @@ async function waitForServer(timeoutMs: number = 40000): Promise<boolean> {
 
 async function startServer(): Promise<void> {
   if (await pingUrl(`${BASE_URL}/`)) {
-    console.log(`✅ Reusing active Next.js Dev Server at ${BASE_URL}\n`);
+    console.log(`✅ Reusing active Next.js Production Server at ${BASE_URL}\n`);
     return;
   }
 
-  console.log(`\n🚀 Starting Next.js Dev Server on port ${PORT}...`);
-  nextServerProcess = spawn('npx', ['next', 'dev', '-p', String(PORT)], {
+  console.log(`\n🚀 Starting Next.js Production Server on port ${PORT}...`);
+  nextServerProcess = spawn('npx', ['next', 'start', '-p', String(PORT)], {
     shell: true,
     cwd: process.cwd(),
     env: { ...process.env, PORT: String(PORT) },
@@ -79,9 +79,9 @@ async function startServer(): Promise<void> {
 
   const ready = await waitForServer(60000);
   if (!ready) {
-    throw new Error(`Next.js dev server failed to start on ${BASE_URL}`);
+    throw new Error(`Next.js production server failed to start on ${BASE_URL}`);
   }
-  console.log(`✅ Next.js dev server active at ${BASE_URL}\n`);
+  console.log(`✅ Next.js production server active at ${BASE_URL}\n`);
 }
 
 function stopServer() {
@@ -300,9 +300,9 @@ async function runRealBrowserSuite() {
     // ==========================================================================
     // TEST 8: MULTI-VIEWPORT MOBILE MATRIX
     // ==========================================================================
-    console.log('\n--- TEST 8: Multi-Viewport Mobile Matrix (360, 375, 393, 412, 414, 430) ---');
+    console.log('\n--- TEST 8: Multi-Viewport Mobile Matrix (360x800, 375x667, 393x852, 412x915, 414x896, 430x932) ---');
     const viewports = [
-      { width: 360, height: 640 },
+      { width: 360, height: 800 },
       { width: 375, height: 667 },
       { width: 393, height: 852 },
       { width: 412, height: 915 },

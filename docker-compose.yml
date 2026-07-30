@@ -11,7 +11,7 @@ services:
       - .env
     environment:
       - IS_DOCKER=true
-      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/futsal_laravel?schema=public}
+      - DATABASE_URL=postgresql://postgres:postgres@arena-db:5432/futsal_laravel?schema=public
       - ADMIN_EMAIL=${ADMIN_EMAIL:-superadmin@example.com}
       - ADMIN_MOBILE=${ADMIN_MOBILE:-+919999999999}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-Admin@123456}
@@ -31,6 +31,11 @@ services:
       - "5434:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      default:
+        aliases:
+          - arena-db
+          - postgres
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d futsal_laravel"]
       interval: 5s
