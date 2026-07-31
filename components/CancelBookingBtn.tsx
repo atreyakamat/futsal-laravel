@@ -17,6 +17,7 @@ export default function CancelBookingBtn({
   refundTimeline = DEFAULT_REFUND_TIMELINE,
   payuMihpayid,
   refundStatus,
+  cutoffHours,
 }: { 
   bookingRef: string; 
   bookingDateStr: string; 
@@ -30,13 +31,16 @@ export default function CancelBookingBtn({
   refundTimeline?: string;
   payuMihpayid?: string | null;
   refundStatus?: string | null;
+  cutoffHours?: number;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  const activeCutoffHours = cutoffHours ?? 3;
+
   // Evaluate time eligibility for cancellation
-  const eligibility = evaluateCancellationEligibility(bookingDateStr, timeSlots);
+  const eligibility = evaluateCancellationEligibility(bookingDateStr, timeSlots, Date.now(), activeCutoffHours);
 
   // Calculate 5% fee and expected refund amount
   const { serviceFee, refundAmount: calculatedRefund } = calculateRefundAmount(totalAmount);
@@ -161,12 +165,12 @@ export default function CancelBookingBtn({
     );
   }
 
-  // Render Late Cancellation Window Closed (< 3h away)
+  // Render Late Cancellation Window Closed (< cutoff away)
   if (eligibility.code === 'LATE_CANCELLATION') {
     return (
-      <div className="mt-4 px-4 py-2 bg-white/5 border border-white/10 text-white/40 font-black rounded-xl text-[10px] uppercase tracking-widest text-center flex items-center justify-center gap-2" title="Cancellations are only allowed at least 3 hours before slot start time">
+      <div className="mt-4 px-4 py-2 bg-white/5 border border-white/10 text-white/40 font-black rounded-xl text-[10px] uppercase tracking-widest text-center flex items-center justify-center gap-2" title={`Cancellations are only allowed at least ${activeCutoffHours} hours before slot start time`}>
         <span className="material-symbols-outlined text-sm">lock_clock</span>
-        CANCELLATION WINDOW CLOSED (&lt; 3H)
+        CANCELLATION WINDOW CLOSED (&lt; {activeCutoffHours}H)
       </div>
     );
   }

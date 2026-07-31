@@ -15,7 +15,7 @@
  */
 
 export const REFUND_SERVICE_FEE_PCT = 5; // percentage deducted from eligible refunds
-export const CANCEL_CUTOFF_HOURS = 3;    // hours before slot start required for customer cancellation
+export const DEFAULT_CANCEL_CUTOFF_HOURS = 3; // default fallback if setting not configured
 export const DEFAULT_REFUND_TIMELINE = "Expected within 5–7 business days.";
 
 export interface CancellationEligibility {
@@ -26,6 +26,7 @@ export interface CancellationEligibility {
   bookingEnd: Date;
   msUntilStart: number;
   msUntilEnd: number;
+  cutoffHoursApplied: number;
 }
 
 export type RefundLifecycleStatus = 'PENDING_REVIEW' | 'APPROVED' | 'PROCESSING' | 'REFUNDED' | 'REJECTED';
@@ -209,13 +210,14 @@ export function getBookingTimeRange(bookingDateStr: string, timeSlots: string[])
 export function evaluateCancellationEligibility(
   bookingDateStr: string,
   timeSlots: string[],
-  now: number = Date.now()
+  now: number = Date.now(),
+  cutoffHours: number = DEFAULT_CANCEL_CUTOFF_HOURS
 ): CancellationEligibility {
   const { bookingStart, bookingEnd } = getBookingTimeRange(bookingDateStr, timeSlots);
 
   const msUntilStart = bookingStart.getTime() - now;
   const msUntilEnd = bookingEnd.getTime() - now;
-  const cutoffMs = CANCEL_CUTOFF_HOURS * 60 * 60 * 1000;
+  const cutoffMs = cutoffHours * 60 * 60 * 1000;
 
   if (now >= bookingEnd.getTime()) {
     return {
@@ -226,6 +228,7 @@ export function evaluateCancellationEligibility(
       bookingEnd,
       msUntilStart,
       msUntilEnd,
+      cutoffHoursApplied: cutoffHours,
     };
   }
 
@@ -233,11 +236,12 @@ export function evaluateCancellationEligibility(
     return {
       allowed: false,
       code: 'LATE_CANCELLATION',
-      message: 'Cancellations are only allowed at least 3 hours before the game starts.',
+      message: `Cancellations are only allowed at least ${cutoffHours} hours before the game starts.`,
       bookingStart,
       bookingEnd,
       msUntilStart,
       msUntilEnd,
+      cutoffHoursApplied: cutoffHours,
     };
   }
 
@@ -249,14 +253,15 @@ export function evaluateCancellationEligibility(
     bookingEnd,
     msUntilStart,
     msUntilEnd,
+    cutoffHoursApplied: cutoffHours,
   };
 }
 
-export function isCancellationAllowed(bookingDateStr: string, slotStart: string): {
+export function isCancellationAllowed(bookingDateStr: string, slotStart: string, cutoffHours: number = DEFAULT_CANCEL_CUTOFF_HOURS): {
   allowed: boolean;
   msUntilBooking: number;
 } {
-  const evalResult = evaluateCancellationEligibility(bookingDateStr, [slotStart]);
+  const evalResult = evaluateCancellationEligibility(bookingDateStr, [slotStart], Date.now(), cutoffHours);
   return {
     allowed: evalResult.allowed,
     msUntilBooking: evalResult.msUntilStart,

@@ -9,6 +9,7 @@ interface SuperAdminSettings {
   permissions: string[];
   is_active: boolean;
   last_login: string | null;
+  cancellation_cutoff_hours?: number;
 }
 
 interface Arena {
@@ -1351,6 +1352,49 @@ export default function SuperAdminDashboardClient() {
           {activeTab === 'settings' && (
             <div className="space-y-6 max-w-2xl">
               <h2 className="text-3xl font-bold italic tracking-tighter uppercase">Global <span className="text-primary">Settings</span></h2>
+              <div className="glass-card">
+                <h3 className="text-sm font-black italic uppercase mb-4 border-b border-white/10 pb-2">Platform Configuration</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-2">Cancellation Cutoff</label>
+                    <p className="text-xs text-gray-400 mb-3">Minimum time before a booking that customers are allowed to request cancellation.</p>
+                    <div className="flex gap-4 items-center">
+                      <select 
+                        className="bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-sm text-white font-bold outline-none focus:border-primary/50 transition-colors"
+                        value={settings.cancellation_cutoff_hours || 3}
+                        onChange={async (e) => {
+                          const val = e.target.value;
+                          setSettings(prev => prev ? { ...prev, cancellation_cutoff_hours: parseInt(val) } : prev);
+                        }}
+                      >
+                        {[3,4,5,6,7,8,9,10,11,12].map(h => (
+                          <option key={h} value={h}>{h} hours</option>
+                        ))}
+                      </select>
+                      <button 
+                        onClick={async () => {
+                          try {
+                            const res = await fetch('/api/fg-admin/super-admin/settings', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ action: 'UPDATE_CUTOFF', cutoff: settings.cancellation_cutoff_hours })
+                            });
+                            const data = await res.json();
+                            if (data.success) alert('Saved successfully!');
+                            else alert(data.message || 'Error saving setting');
+                          } catch (err) {
+                            alert('Network error while saving setting');
+                          }
+                        }}
+                        className="btn-primary !py-2 !px-6 !text-xs"
+                      >
+                        SAVE
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="glass-card">
                 <h3 className="text-sm font-black italic uppercase mb-4 border-b border-white/10 pb-2">Admin Profile</h3>
                 <div className="space-y-4">

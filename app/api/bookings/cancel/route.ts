@@ -53,9 +53,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Fetch dynamic cancellation cutoff setting
+    const settingRes = await query<any>(
+      `SELECT value FROM settings WHERE key = 'cancellation_cutoff_hours'`
+    );
+    let cutoffHours = 3;
+    if (settingRes && settingRes.length > 0 && settingRes[0].value) {
+      const parsed = parseInt(settingRes[0].value, 10);
+      if (!isNaN(parsed) && parsed >= 3 && parsed <= 12) {
+        cutoffHours = parsed;
+      }
+    }
+
     // Rule: Evaluate server-side time eligibility across all slots in BookingGroup
     const timeSlots = bookings.map((b: any) => b.time_slot);
-    const eligibility = evaluateCancellationEligibility(firstBooking.booking_date, timeSlots);
+    const eligibility = evaluateCancellationEligibility(firstBooking.booking_date, timeSlots, Date.now(), cutoffHours);
 
     if (!eligibility.allowed) {
       return NextResponse.json(

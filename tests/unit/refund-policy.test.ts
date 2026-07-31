@@ -3,13 +3,13 @@ import {
   calculateRefundAmount,
   isCancellationAllowed,
   REFUND_SERVICE_FEE_PCT,
-  CANCEL_CUTOFF_HOURS,
+  DEFAULT_CANCEL_CUTOFF_HOURS,
 } from '@/lib/refund-policy';
 
 describe('Refund Policy Unit Tests', () => {
   it('should have correct policy constants', () => {
     expect(REFUND_SERVICE_FEE_PCT).toBe(5);
-    expect(CANCEL_CUTOFF_HOURS).toBe(3);
+    expect(DEFAULT_CANCEL_CUTOFF_HOURS).toBe(3);
   });
 
   describe('calculateRefundAmount', () => {

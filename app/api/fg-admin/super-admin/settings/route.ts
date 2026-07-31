@@ -107,6 +107,14 @@ export async function GET(request: Request) {
       );
     }
 
+    // Fetch cutoff hours
+    const { query } = await import('@/lib/domain');
+    const settingRes = await query<any>(`SELECT value FROM settings WHERE key = 'cancellation_cutoff_hours'`);
+    let cancellation_cutoff_hours = 3;
+    if (settingRes && settingRes.length > 0 && settingRes[0].value) {
+      cancellation_cutoff_hours = parseInt(settingRes[0].value, 10) || 3;
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -115,6 +123,7 @@ export async function GET(request: Request) {
         role: 'super_admin',
         is_active: superAdmin.is_active,
         last_login: superAdmin.last_login,
+        cancellation_cutoff_hours,
       },
     });
   } catch (error) {
@@ -123,5 +132,54 @@ export async function GET(request: Request) {
       { success: false, message: 'Internal server error' },
       { status: 500 }
     );
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const superAdminId = await readSuperAdminId();
+    if (!superAdminId) {
+      return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    }
+
+    const payload = await request.json();
+    if (payload.action === 'UPDATE_CUTOFF') {
+      const cutoff = parseInt(payload.cutoff, 10);
+      if (isNaN(cutoff) || cutoff < 3 || cutoff > 12) {
+        return NextResponse.json({ success: false, message: 'Cutoff must be an integer between 3 and 12' }, { status: 400 });
+      }
+
+      const { query } = await import('@/lib/domain');
+      
+      // Get previous value for audit log
+      const prevSetting = await query<any>(`SELECT value FROM settings WHERE key = 'cancellation_cutoff_hours'`);
+      const prevValue = prevSetting && prevSetting.length > 0 ? prevSetting[0].value : '3';
+
+      // Upsert
+      await query(`
+        INSERT INTO settings (key, value, created_at, updated_at) 
+        VALUES ('cancellation_cutoff_hours', ?, NOW(), NOW())
+        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+      `, [cutoff.toString()]);
+
+      // Log audit
+      await logAuditAction(
+        superAdminId,
+        'UPDATE_SETTING',
+        'setting',
+        0,
+        { key: 'cancellation_cutoff_hours', old_value: prevValue, new_value: cutoff.toString() },
+        request.headers.get('x-forwarded-for') || 'unknown',
+        request.headers.get('user-agent') || 'unknown'
+      );
+
+      return NextResponse.json({ success: true, message: 'Cancellation cutoff updated successfully', cutoff });
+    }
+
+    return NextResponse.json({ success: false, message: 'Unknown action' }, { status: 400 });
+
+  } catch (error) {
+    console.error('Settings update error:', error);
+    return NextResponse.json({ success: false, message: 'Internal server error' }, { status: 500 });
   }
 }
