@@ -577,7 +577,7 @@ export default function SuperAdminDashboardClient() {
               { id: 'overview', label: 'Overview', icon: 'dashboard' },
               { id: 'arenas', label: 'Arena & Staff', icon: 'location_on' },
               { id: 'timings', label: 'Timings', icon: 'schedule' },
-              { id: 'bookings', label: 'Bookings', icon: 'calendar_today' },
+              { id: 'blocks', label: 'Block Slots', icon: 'block' },
               { id: 'approvals', label: 'Approvals', icon: 'check_circle' },
               { id: 'reports', label: 'Reports', icon: 'assessment' },
               { id: 'settings', label: 'Settings', icon: 'settings' },
@@ -597,6 +597,11 @@ export default function SuperAdminDashboardClient() {
             ))}
             
             <hr className="border-white/10 my-4" />
+            
+            <a href="/fg-admin/platform/bookings" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-colors text-gray-400 hover:text-white hover:bg-white/5">
+              <span className="material-symbols-outlined text-lg">book_online</span>
+              All Bookings
+            </a>
             
             <a href="/fg-admin/platform/audit-logs" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-colors text-gray-400 hover:text-white hover:bg-white/5">
               <span className="material-symbols-outlined text-lg">history</span>
@@ -1192,7 +1197,7 @@ export default function SuperAdminDashboardClient() {
             </div>
           )}
 
-          {activeTab === 'bookings' && selectedArenaId && (
+          {activeTab === 'blocks' && selectedArenaId && (
             <div className="space-y-8">
               <div className="flex items-center justify-between">
                 <h2 className="text-3xl font-bold italic tracking-tighter uppercase">Arena <span className="text-primary">Bookings</span></h2>

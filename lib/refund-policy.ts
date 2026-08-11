@@ -73,11 +73,10 @@ export function computeRefundLifecycleStatus(booking: {
   const explicitStatus = (booking.refund_status || '').toUpperCase();
   const reason = booking.refund_reason || booking.cancellation_reason || '';
 
-  // 1. REFUNDED
+  // 1. REFUNDED — Only explicit REFUNDED or payment_status === 'refunded'
   if (
     explicitStatus === 'REFUNDED' ||
-    booking.payment_status === 'refunded' ||
-    (booking.refund_amount && Number(booking.refund_amount) > 0 && booking.payment_status === 'cancelled' && !reason.toUpperCase().startsWith('REJECTED:'))
+    booking.payment_status === 'refunded'
   ) {
     return {
       status: 'REFUNDED',
@@ -110,7 +109,7 @@ export function computeRefundLifecycleStatus(booking: {
   }
 
   // 3. PROCESSING
-  if (explicitStatus === 'PROCESSING') {
+  if (explicitStatus === 'PROCESSING' || explicitStatus === 'INITIATED') {
     return {
       status: 'PROCESSING',
       statusText: 'PROCESSING',

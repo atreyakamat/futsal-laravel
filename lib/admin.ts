@@ -52,18 +52,19 @@ export async function getAdminContext(userId: number | null, sessionId?: string 
   if (roleCookie === 'super_admin') {
     const superAdmin = await queryOne<{
       id: number;
+      user_id: number | null;
       email: string;
       first_name: string | null;
       last_name: string | null;
       is_active: boolean;
     }>(
-      'SELECT id, email, first_name, last_name, is_active FROM super_admins WHERE id = ? LIMIT 1',
-      [userId]
+      'SELECT id, user_id, email, first_name, last_name, is_active FROM super_admins WHERE user_id = ? OR id = ? LIMIT 1',
+      [userId, userId]
     );
 
     if (superAdmin && superAdmin.is_active) {
       return {
-        id: superAdmin.id,
+        id: superAdmin.user_id || superAdmin.id,
         name: [superAdmin.first_name, superAdmin.last_name].filter(Boolean).join(' ') || superAdmin.email,
         email: superAdmin.email,
         role: 'super_admin',

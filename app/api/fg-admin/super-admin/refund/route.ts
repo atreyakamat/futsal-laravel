@@ -17,6 +17,7 @@ import { readSuperAdminId } from '@/lib/session';
 import { query } from '@/lib/domain';
 import { logAuditAction } from '@/lib/super-admin';
 import { calculateRefundAmount } from '@/lib/refund-policy';
+import { initiatePayuRefund } from '@/lib/payment';
 import { z } from 'zod';
 
 const schema = z.object({
@@ -43,22 +44,29 @@ export async function POST(req: NextRequest) {
     }
 
     const firstBooking = bookings[0];
+    console.log('[REFUND API PAYMENT_STATUS CHECK]', firstBooking.booking_ref, '-> payment_status:', firstBooking.payment_status);
     if (firstBooking.payment_status === 'cancelled') {
-      return NextResponse.json({ success: false, message: 'Booking is already cancelled' }, { status: 400 });
+      return NextResponse.json({ success: false, message: 'Refund already processed for this booking (idempotent block)' }, { status: 400 });
+    }
+    if (firstBooking.payment_status !== 'confirmed') {
+      return NextResponse.json({ success: false, message: 'Only confirmed bookings can be refunded' }, { status: 400 });
     }
 
-    // Calculate refund with 5% handling fee — no time check, super admin bypasses
+    // Calculate refund with 5% handling fee for combined BookingGroup amount
     const grossAmount = bookings.reduce((sum: number, b: any) => sum + Number(b.amount), 0);
     const { serviceFee, refundAmount } = calculateRefundAmount(grossAmount);
 
-    await query(
+    // Atomically transition payment_status from 'confirmed' to 'cancelled'
+    const updatedRows = await query<any>(
       `UPDATE bookings
           SET payment_status = 'cancelled',
+              refund_status = 'INITIATED',
               refund_amount = ?,
               cancellation_requested = FALSE,
               cancellation_reason = ?,
               updated_at = NOW()
-        WHERE booking_ref = ?`,
+        WHERE booking_ref = ? AND payment_status = 'confirmed'
+        RETURNING id`,
       [
         refundAmount,
         `Super Admin Override: ${payload.reason}`,
@@ -66,13 +74,34 @@ export async function POST(req: NextRequest) {
       ]
     );
 
-    // Audit log
+    if (!updatedRows || updatedRows.length === 0) {
+      return NextResponse.json({ success: false, message: 'Refund already processed or booking is not in confirmed state (idempotent block)' }, { status: 400 });
+    }
+
+    // Call PayU Refund API — EXACTLY ONE Call for the entire BookingGroup
+    const payuResult = await initiatePayuRefund({
+      bookingRef: payload.ref,
+      mihpayid: firstBooking.payu_mihpayid,
+      amount: refundAmount,
+      reason: payload.reason,
+    });
+
+    // Log audit action with Super Admin actor identity
     await logAuditAction(
       superAdminId,
       'FORCE_REFUND',
       'booking',
-      undefined,
-      { ref: payload.ref, grossAmount, serviceFee, refundAmount, overrideReason: payload.reason },
+      firstBooking.id,
+      {
+        ref: payload.ref,
+        grossAmount,
+        serviceFee,
+        refundAmount,
+        overrideReason: payload.reason,
+        payuTxnId: payuResult.payuTxnId,
+        payuRefundRequestId: payuResult.refundRequestId,
+        payuResponseStatus: payuResult.success ? 'SUCCESS' : (payuResult.environmentLimitation ? 'ENV_LIMITATION' : 'FAILED'),
+      },
       req.headers.get('x-forwarded-for') || 'unknown',
       req.headers.get('user-agent') || 'unknown'
     );
@@ -84,6 +113,13 @@ export async function POST(req: NextRequest) {
       serviceFee,
       refundAmount,
       overrideReason: payload.reason,
+      payuRefundDetails: {
+        refundRequestId: payuResult.refundRequestId,
+        payuTxnId: payuResult.payuTxnId,
+        payuSuccess: payuResult.success,
+        environmentLimitation: payuResult.environmentLimitation,
+        payuMessage: payuResult.message,
+      },
     });
   } catch (err: any) {
     if (err instanceof z.ZodError) {
