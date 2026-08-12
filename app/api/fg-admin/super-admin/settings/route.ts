@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { updateSuperAdminPassword, getSuperAdmin, logAuditAction } from '@/lib/super-admin';
+import { getGstConfig, setGstConfig } from '@/lib/gst-config';
 import * as bcrypt from 'bcryptjs';
 import { readSuperAdminId } from '@/lib/session';
 
@@ -127,6 +128,8 @@ export async function GET(request: Request) {
       }
     }
 
+    const gstConfig = await getGstConfig();
+
     return NextResponse.json({
       success: true,
       data: {
@@ -138,6 +141,11 @@ export async function GET(request: Request) {
         cancellation_cutoff_hours,
         refund_fee_mode,
         refund_fee_value,
+        gst_gstin: gstConfig.gstin,
+        gst_legal_name: gstConfig.legalName,
+        gst_registered_address: gstConfig.registeredAddress,
+        gst_hsn_sac: gstConfig.hsnSac,
+        gst_rate: gstConfig.rate,
       },
     });
   } catch (error) {
@@ -247,6 +255,40 @@ export async function POST(request: Request) {
         refund_fee_mode: mode,
         refund_fee_value: val
       });
+    }
+
+    if (payload.action === 'UPDATE_GST_CONFIG') {
+      const gstin = String(payload.gstin || '').trim();
+      const legalName = String(payload.legal_name || '').trim();
+      const registeredAddress = String(payload.registered_address || '').trim();
+      const hsnSac = String(payload.hsn_sac || '').trim();
+      const rate = parseFloat(payload.rate);
+
+      if (!gstin || !legalName) {
+        return NextResponse.json({ success: false, message: 'GSTIN and legal name are required' }, { status: 400 });
+      }
+      if (!hsnSac) {
+        return NextResponse.json({ success: false, message: 'HSN/SAC code is required' }, { status: 400 });
+      }
+      if (isNaN(rate) || rate < 0 || rate > 100) {
+        return NextResponse.json({ success: false, message: 'GST rate must be a number between 0 and 100' }, { status: 400 });
+      }
+
+      const prevConfig = await getGstConfig();
+
+      await setGstConfig({ gstin, legalName, registeredAddress, hsnSac, rate });
+
+      await logAuditAction(
+        superAdminId,
+        'UPDATE_GST_CONFIG',
+        'setting',
+        0,
+        { old: prevConfig, new: { gstin, legalName, registeredAddress, hsnSac, rate } },
+        request.headers.get('x-forwarded-for') || 'unknown',
+        request.headers.get('user-agent') || 'unknown'
+      );
+
+      return NextResponse.json({ success: true, message: 'GST configuration updated successfully' });
     }
 
     return NextResponse.json({ success: false, message: 'Unknown action' }, { status: 400 });

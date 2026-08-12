@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { confirmPayment, markPaymentFailed, getBookingsByRef, query } from '@/lib/domain';
 import { verifyPayuResponseHash, verifyPaymentWithPayu } from '@/lib/payment';
 import { sendTicketEmail } from '@/lib/ticket';
+import { issueTaxInvoice } from '@/lib/gst-documents';
 
 export async function POST(request: Request) {
   try {
@@ -83,6 +84,11 @@ export async function POST(request: Request) {
       if (!booking) {
         return NextResponse.redirect(new URL(`/booking/payment-failed/${bookingRef}`, baseUrl), 303);
       }
+
+      // Invoice-at-payment: issue the Tax Invoice the instant payment is
+      // confirmed. Never blocks the booking — failures are logged for the
+      // GST "needs attention" admin view to catch.
+      await issueTaxInvoice(bookingRef);
 
       await sendTicketEmail(bookingRef, baseUrl);
 

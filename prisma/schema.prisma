@@ -69,6 +69,10 @@ model Booking {
   cancellation_requested Boolean   @default(false)
   cancellation_reason    String?
   refund_amount          Decimal?  @db.Decimal(10, 2)
+  venue_payment_status       String    @default("NONE")
+  venue_payment_reference    String?
+  venue_payment_collected_by Int?
+  venue_payment_collected_at DateTime?
   created_at             DateTime  @default(now())
   updated_at             DateTime  @updatedAt
 
@@ -409,6 +413,62 @@ model RevokedSession {
   revoked_at DateTime @default(now())
 
   @@map("revoked_sessions")
+}
+
+model DocumentSequence {
+  id          Int      @id @default(autoincrement())
+  doc_type    String
+  fiscal_year String
+  last_number Int      @default(0)
+  updated_at  DateTime @updatedAt
+
+  @@unique([doc_type, fiscal_year])
+  @@map("document_sequences")
+}
+
+model TaxInvoice {
+  id               Int      @id @default(autoincrement())
+  booking_ref      String
+  invoice_no       String   @unique
+  issue_datetime   DateTime @default(now())
+  gross_amount     Decimal  @db.Decimal(10, 2)
+  taxable_value    Decimal  @db.Decimal(10, 2)
+  cgst             Decimal  @db.Decimal(10, 2)
+  sgst             Decimal  @db.Decimal(10, 2)
+  igst             Decimal  @default(0) @db.Decimal(10, 2)
+  rate             Decimal  @db.Decimal(5, 2)
+  hsn_sac          String
+  place_of_supply  String
+  gstin            String
+  legal_name       String
+  registered_address String?
+  customer_name    String
+  customer_mobile  String
+  customer_email   String?
+  description      String
+  created_at       DateTime @default(now())
+
+  @@index([booking_ref])
+  @@map("tax_invoices")
+}
+
+model CreditNote {
+  id                     Int      @id @default(autoincrement())
+  booking_ref            String
+  linked_invoice_id      Int
+  note_no                String   @unique
+  issue_date             DateTime @default(now())
+  amount                 Decimal  @db.Decimal(10, 2)
+  taxable_value_reversed Decimal  @db.Decimal(10, 2)
+  cgst_reversed          Decimal  @db.Decimal(10, 2)
+  sgst_reversed          Decimal  @db.Decimal(10, 2)
+  igst_reversed          Decimal  @default(0) @db.Decimal(10, 2)
+  reason                 String?
+  created_at             DateTime @default(now())
+
+  @@index([booking_ref])
+  @@index([linked_invoice_id])
+  @@map("credit_notes")
 }
 
 model PaymentCallback {

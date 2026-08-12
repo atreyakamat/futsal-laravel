@@ -1,8 +1,10 @@
 import { getBookingsByRef, getArenaById, getRefundPolicyConfig, formatRefundPolicyText } from '@/lib/domain';
+import { getArenaUpiVpa } from '@/lib/admin';
 import { mergeSlots, getDurationText } from '@/lib/slot-merge';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getTicketQrUrl } from '@/lib/ticket';
+import { generateQrDataUrl, buildUpiPaymentUri } from '@/lib/qr';
 
 type Props = {
   params: Promise<{ ref: string }>;
@@ -36,6 +38,22 @@ export default async function BookingSuccessPage({ params }: Props) {
   const mergedSlots = mergeSlots(slots).join(', ');
   const duration = getDurationText(slots);
   const qrUrl = await getTicketQrUrl(firstBooking.ticket_number ?? bookingRef);
+
+  const isOfflinePayment = firstBooking.payment_method === 'offline';
+  const venuePaid = firstBooking.venue_payment_status === 'PAID';
+  let upiQrUrl: string | null = null;
+  if (isOfflinePayment && !venuePaid) {
+    const upiVpa = await getArenaUpiVpa(arena.id);
+    if (upiVpa) {
+      const upiUri = buildUpiPaymentUri({
+        vpa: upiVpa,
+        payeeName: arena.name,
+        amount: totalAmount,
+        note: bookingRef,
+      });
+      upiQrUrl = await generateQrDataUrl(upiUri);
+    }
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-20">
@@ -74,12 +92,31 @@ export default async function BookingSuccessPage({ params }: Props) {
             </div>
             <div className="w-px h-10 bg-primary/20 hidden sm:block"></div>
             <div className="text-left">
-              <span className="label-classic !ml-0 mb-1">Paid Amount</span>
-              <span className="font-black text-white uppercase italic tracking-tight text-xl">₹{totalAmount}</span>
+              <span className="label-classic !ml-0 mb-1">{isOfflinePayment && !venuePaid ? 'Amount Due At Venue' : 'Paid Amount'}</span>
+              <span className={`font-black uppercase italic tracking-tight text-xl ${isOfflinePayment && !venuePaid ? 'text-amber-400' : 'text-white'}`}>₹{totalAmount}</span>
             </div>
           </div>
         </div>
       </div>
+
+      {isOfflinePayment && !venuePaid && (
+        <div className="max-w-2xl mx-auto mb-16 glass-card !p-10 border-amber-500/30 bg-amber-500/[0.03] text-center space-y-6">
+          <h2 className="text-2xl font-black uppercase tracking-tighter italic text-amber-400">
+            Pay ₹{totalAmount} At The Venue
+          </h2>
+          <p className="text-xs text-white/50 font-medium max-w-md mx-auto">
+            Your slot is reserved. Scan the QR below (or use the arena&apos;s UPI counter) to pay before or when you arrive, and show your ticket to staff to confirm payment.
+          </p>
+          {upiQrUrl ? (
+            <div className="bg-white p-4 rounded-2xl inline-block">
+              <img src={upiQrUrl} alt="UPI payment QR" className="w-40 h-40" />
+            </div>
+          ) : (
+            <p className="text-xs text-white/40 font-bold">Please pay ₹{totalAmount} at the venue counter.</p>
+          )}
+          <p className="text-[10px] text-white/30 font-bold uppercase tracking-widest">Reference: {bookingRef}</p>
+        </div>
+      )}
 
       <div className="grid md:grid-cols-2 gap-16 max-w-5xl mx-auto">
         {/* Ticket Card */}

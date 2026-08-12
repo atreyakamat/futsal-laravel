@@ -6,6 +6,21 @@ export function buildTicketVerificationUrl(ticketNumber: string, baseUrl = proce
 }
 
 /**
+ * Builds a standard UPI deep-link payment URI so wallet apps can pre-fill the
+ * venue's VPA, the exact booking amount, and the booking ref as a note.
+ */
+export function buildUpiPaymentUri(params: { vpa: string; payeeName: string; amount: number; note: string }): string {
+  const search = new URLSearchParams({
+    pa: params.vpa,
+    pn: params.payeeName,
+    am: params.amount.toFixed(2),
+    cu: 'INR',
+    tn: params.note,
+  });
+  return `upi://pay?${search.toString()}`;
+}
+
+/**
  * Generates a local QR code as a Base64-encoded PNG Data URL (data:image/png;base64,...).
  * No external API dependencies or networks requests are performed.
  *

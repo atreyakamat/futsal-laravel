@@ -10,6 +10,9 @@ export default function EditArenaForm({ arena }: { arena: any }) {
     cover_image: arena.cover_image || '',
     logo_url: arena.logo_url || '',
     status: arena.status || 'active',
+    payment_mode: arena.payment_mode || 'online',
+    upi_vpa: arena.upi_vpa || '',
+    gst_place_of_supply: arena.gst_place_of_supply || '',
   });
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -94,6 +97,48 @@ export default function EditArenaForm({ arena }: { arena: any }) {
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
           </select>
+        </div>
+        <div className="space-y-3">
+          <label className="label-classic">Payment Mode</label>
+          <select
+            className="input-field"
+            value={formData.payment_mode}
+            onChange={(e) => setFormData({ ...formData, payment_mode: e.target.value as 'online' | 'offline' })}
+          >
+            <option value="online">Online (PayU at checkout)</option>
+            <option value="offline">Offline (pay at venue via UPI)</option>
+          </select>
+          <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest">
+            Offline mode reserves the slot immediately and lets players pay at the venue; staff confirm payment afterward.
+          </p>
+        </div>
+        {formData.payment_mode === 'offline' && (
+          <div className="space-y-3">
+            <label className="label-classic">Venue UPI ID (VPA)</label>
+            <input
+              type="text"
+              className="input-field"
+              value={formData.upi_vpa}
+              onChange={(e) => setFormData({ ...formData, upi_vpa: e.target.value })}
+              placeholder="arenaname@upi"
+            />
+            <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest">
+              Used to generate the QR code players scan to pay at the venue.
+            </p>
+          </div>
+        )}
+        <div className="space-y-3">
+          <label className="label-classic">GST Place of Supply (State)</label>
+          <input
+            type="text"
+            className="input-field"
+            value={formData.gst_place_of_supply}
+            onChange={(e) => setFormData({ ...formData, gst_place_of_supply: e.target.value })}
+            placeholder="e.g. Goa"
+          />
+          <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest">
+            Required before any Tax Invoice can be issued for this turf — determined by where the turf is physically located, not the trust's registered address.
+          </p>
         </div>
         <button
           type="submit"
