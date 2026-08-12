@@ -30,10 +30,12 @@ function resolveDatabaseUrl(rawUrl?: string): string | null {
 }
 
 function getPoolConfig() {
-  // When running inside Docker, the DATABASE_URL from the environment points to the Docker hostname.
-  // For local production builds (next start on a developer machine), we must not use the Docker‑only URL.
-  const isDocker = process.env.IS_DOCKER === 'true';
-  const databaseUrl = isDocker ? resolveDatabaseUrl(process.env.DATABASE_URL) : null;
+  // Always prefer DATABASE_URL when it's set — whether it points to a Docker
+  // hostname or localhost is encoded in the URL itself, so there's no need
+  // to gate this behind a separate IS_DOCKER flag (a forgotten/missing flag
+  // previously caused a valid DATABASE_URL to be silently ignored in favor
+  // of the 127.0.0.1 fallback below).
+  const databaseUrl = resolveDatabaseUrl(process.env.DATABASE_URL);
 
   if (databaseUrl) {
     return {
