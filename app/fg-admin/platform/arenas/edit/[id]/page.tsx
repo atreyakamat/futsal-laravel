@@ -1,6 +1,6 @@
 import EditArenaForm from '@/components/EditArenaForm';
 import { readAuthUserId } from '@/lib/session';
-import { getAdminContext } from '@/lib/admin';
+import { getAdminContext, getArenaPaymentMode, getArenaUpiVpa, getArenaPlaceOfSupply } from '@/lib/admin';
 import { getArenaById } from '@/lib/domain';
 import { redirect } from 'next/navigation';
 
@@ -23,6 +23,11 @@ export default async function EditArenaPage({
     redirect('/fg-admin/platform/arenas');
   }
 
+  const paymentMode = await getArenaPaymentMode(arena.id);
+  const upiVpa = await getArenaUpiVpa(arena.id);
+  const gstPlaceOfSupply = await getArenaPlaceOfSupply(arena.id);
+  const arenaWithPayment = { ...arena, payment_mode: paymentMode, upi_vpa: upiVpa, gst_place_of_supply: gstPlaceOfSupply };
+
   return (
     <div className="max-w-4xl mx-auto px-6 py-20">
       <div className="mb-12">
@@ -34,7 +39,7 @@ export default async function EditArenaPage({
         </p>
       </div>
 
-      <EditArenaForm arena={arena} />
+      <EditArenaForm arena={arenaWithPayment} />
     </div>
   );
 }

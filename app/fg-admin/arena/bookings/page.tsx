@@ -4,6 +4,7 @@ import { getArenaById, query } from '@/lib/domain';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import RescheduleBookingBtn from '@/components/RescheduleBookingBtn';
+import MarkVenuePaidBtn from '@/components/MarkVenuePaidBtn';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +19,8 @@ interface SlotRow {
   payment_status: string;
   amount: number;
   cancellation_requested: boolean;
+  payment_method: string | null;
+  venue_payment_status: string | null;
 }
 
 interface BookingGroup {
@@ -30,6 +33,8 @@ interface BookingGroup {
   slots: { timeSlot: string; amount: number }[];
   totalAmount: number;
   cancellation_requested: boolean;
+  payment_method: string | null;
+  venue_payment_status: string | null;
 }
 
 export default async function ArenaAdminBookingsPage() {
@@ -46,7 +51,8 @@ export default async function ArenaAdminBookingsPage() {
 
   const rows = await query<SlotRow>(
     `SELECT id, ticket_number, booking_ref, customer_name, customer_mobile,
-            booking_date, time_slot, payment_status, amount, cancellation_requested
+            booking_date, time_slot, payment_status, amount, cancellation_requested,
+            payment_method, venue_payment_status
        FROM bookings
       WHERE arena_id = ?
       ORDER BY created_at DESC
@@ -66,6 +72,8 @@ export default async function ArenaAdminBookingsPage() {
         booking_date: row.booking_date,
         payment_status: row.payment_status,
         cancellation_requested: !!(row as any).cancellation_requested,
+        payment_method: row.payment_method,
+        venue_payment_status: row.venue_payment_status,
         slots: [],
         totalAmount: 0,
       });
@@ -148,6 +156,11 @@ export default async function ArenaAdminBookingsPage() {
                               ⚠ Cancel Requested
                             </span>
                           )}
+                          {g.payment_method === 'offline' && (
+                            <span className={`text-[9px] font-black uppercase tracking-widest block mt-1 ${g.venue_payment_status === 'PAID' ? 'text-primary' : 'text-amber-400'}`}>
+                              {g.venue_payment_status === 'PAID' ? '✓ Paid At Venue' : '⚠ Unpaid — Pay At Venue'}
+                            </span>
+                          )}
                         </div>
                       </div>
 
@@ -197,6 +210,12 @@ export default async function ArenaAdminBookingsPage() {
                     </div>
 
                     <div className="flex flex-col items-end gap-2">
+                      <MarkVenuePaidBtn
+                        bookingRef={g.booking_ref}
+                        totalAmount={g.totalAmount}
+                        paymentMethod={g.payment_method}
+                        venuePaymentStatus={g.venue_payment_status}
+                      />
                       <RescheduleBookingBtn
                         bookingRef={g.booking_ref}
                         currentDate={g.booking_date}

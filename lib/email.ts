@@ -106,10 +106,17 @@ export function generateBookingConfirmationEmail(
   customerName: string,
   totalAmount: number,
   ticketNumbers: string[],
-  qrCodeUrl: string
+  qrCodeUrl: string,
+  payAtVenue: boolean = false
 ): { subject: string; html: string; text: string } {
   const subject = `Booking Confirmed: ${bookingRef} - ${arenaName}`;
   const mergedSlots = timeSlots.join(', ');
+  const amountRowLabel = payAtVenue ? 'Amount Due At Venue' : 'Amount Paid';
+  const payAtVenueNotice = payAtVenue
+    ? `<div style="background: #fff8e1; border: 1px solid #ffd54f; border-radius: 8px; padding: 16px; margin: 20px 0; color: #7a5c00; font-size: 14px;">
+         <strong>Pay at the venue:</strong> Your slot is reserved. Please pay ₹${totalAmount.toFixed(2)} at the venue via UPI before or when you arrive, and show your ticket to staff to confirm payment.
+       </div>`
+    : '';
   const html = `
     <!DOCTYPE html>
     <html>
@@ -133,9 +140,10 @@ export function generateBookingConfirmationEmail(
             <tr><td style="padding: 8px 0; color: #666; font-size: 14px;">Date</td><td style="padding: 8px 0; font-weight: 700; text-align: right;">${new Date(bookingDate).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</td></tr>
             <tr><td style="padding: 8px 0; color: #666; font-size: 14px;">Time Slots</td><td style="padding: 8px 0; font-weight: 700; text-align: right; color: #0df220;">${mergedSlots}</td></tr>
             <tr><td style="padding: 8px 0; color: #666; font-size: 14px;">Tickets</td><td style="padding: 8px 0; font-weight: 700; text-align: right;">${ticketNumbers.join(', ')}</td></tr>
-            <tr><td style="padding: 8px 0; color: #666; font-size: 14px;">Amount Paid</td><td style="padding: 8px 0; font-weight: 700; text-align: right;">₹${totalAmount.toFixed(2)}</td></tr>
+            <tr><td style="padding: 8px 0; color: #666; font-size: 14px;">${amountRowLabel}</td><td style="padding: 8px 0; font-weight: 700; text-align: right;">₹${totalAmount.toFixed(2)}</td></tr>
           </table>
         </div>
+        ${payAtVenueNotice}
 
         <div style="text-align: center; margin: 30px 0;">
           <img src="${qrCodeUrl}" alt="QR Code Ticket" style="width: 150px; height: 150px; border: 4px solid #0df220; border-radius: 12px; background: white; padding: 8px;">

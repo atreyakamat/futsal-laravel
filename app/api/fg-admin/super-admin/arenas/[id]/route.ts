@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { query, queryOne } from '@/lib/db';
 import { logAuditAction } from '@/lib/super-admin';
 import { readSuperAdminId } from '@/lib/session';
+import { getArenaPaymentMode, setArenaPaymentMode, getArenaUpiVpa, setArenaUpiVpa, getArenaPlaceOfSupply, setArenaPlaceOfSupply } from '@/lib/admin';
 
 const updateSchema = z.object({
   name: z.string().min(1).max(255).optional(),
@@ -13,6 +14,9 @@ const updateSchema = z.object({
   cover_image: z.string().url().optional().or(z.literal('')),
   logo_url: z.string().url().optional().or(z.literal('')),
   status: z.enum(['active', 'inactive']).optional(),
+  payment_mode: z.enum(['online', 'offline']).optional(),
+  upi_vpa: z.string().max(100).optional().or(z.literal('')),
+  gst_place_of_supply: z.string().max(100).optional().or(z.literal('')),
 });
 
 export async function GET(
@@ -30,7 +34,7 @@ export async function GET(
       );
     }
 
-    const arena = await queryOne(
+    const arena = await queryOne<any>(
       'SELECT * FROM arenas WHERE id = ?',
       [Number(params.id)]
     );
@@ -42,9 +46,13 @@ export async function GET(
       );
     }
 
+    const paymentMode = await getArenaPaymentMode(arena.id);
+    const upiVpa = await getArenaUpiVpa(arena.id);
+    const gstPlaceOfSupply = await getArenaPlaceOfSupply(arena.id);
+
     return NextResponse.json({
       success: true,
-      data: arena,
+      data: { ...arena, payment_mode: paymentMode, upi_vpa: upiVpa, gst_place_of_supply: gstPlaceOfSupply },
     });
   } catch (error) {
     console.error('Fetch arena error:', error);
@@ -131,6 +139,16 @@ export async function PUT(
         `UPDATE arenas SET ${updates.join(', ')} WHERE id = ?`,
         values
       );
+    }
+
+    if (payload.payment_mode) {
+      await setArenaPaymentMode(Number(params.id), payload.payment_mode);
+    }
+    if (payload.upi_vpa !== undefined) {
+      await setArenaUpiVpa(Number(params.id), payload.upi_vpa || null);
+    }
+    if (payload.gst_place_of_supply !== undefined) {
+      await setArenaPlaceOfSupply(Number(params.id), payload.gst_place_of_supply || null);
     }
 
     // Log audit action

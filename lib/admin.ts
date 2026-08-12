@@ -8,6 +8,7 @@ import { sendEmail, generateApprovalNotificationEmail } from '@/lib/email';
 
 export type AdminRole = 'super_admin' | 'admin' | 'arena_admin' | 'security' | 'customer';
 export type EntryMode = 'open' | 'blocked' | 'free';
+export type PaymentMode = 'online' | 'offline';
 export type ApprovalRequestType = 'slot_template_update' | 'entry_mode_update' | 'admin_free_booking' | 'timing_update' | 'image_update';
 export type SecurityPermissions = {
   canVerifyTicket: boolean;
@@ -358,6 +359,39 @@ export async function getArenaSecurityPasscode(arenaId: number) {
 
 export async function setArenaSecurityPasscode(arenaId: number, passcode: string | null) {
   await setArenaSetting(arenaId, 'security_passcode', passcode);
+}
+
+/**
+ * Per-arena payment mode: 'online' (default, pays via PayU at checkout) or
+ * 'offline' (player reserves the slot and pays at the venue on the day via
+ * UPI QR; staff confirm the payment afterward via /api/fg-admin/arena/confirm-venue-payment).
+ */
+export async function getArenaPaymentMode(arenaId: number): Promise<PaymentMode> {
+  const setting = await getArenaSetting(arenaId, 'payment_mode');
+  return setting?.value === 'offline' ? 'offline' : 'online';
+}
+
+export async function setArenaPaymentMode(arenaId: number, mode: PaymentMode) {
+  await setArenaSetting(arenaId, 'payment_mode', mode);
+}
+
+export async function getArenaUpiVpa(arenaId: number): Promise<string | null> {
+  const setting = await getArenaSetting(arenaId, 'upi_vpa');
+  return setting?.value ?? null;
+}
+
+export async function setArenaUpiVpa(arenaId: number, vpa: string | null) {
+  await setArenaSetting(arenaId, 'upi_vpa', vpa);
+}
+
+/** GST "place of supply" — the state where the turf is physically located. */
+export async function getArenaPlaceOfSupply(arenaId: number): Promise<string | null> {
+  const setting = await getArenaSetting(arenaId, 'gst_place_of_supply');
+  return setting?.value ?? null;
+}
+
+export async function setArenaPlaceOfSupply(arenaId: number, state: string | null) {
+  await setArenaSetting(arenaId, 'gst_place_of_supply', state);
 }
 
 export async function replaceArenaPricing(arenaId: number, slots: SlotPricingInput[]) {

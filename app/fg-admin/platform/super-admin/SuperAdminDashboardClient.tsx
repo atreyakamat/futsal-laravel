@@ -12,6 +12,11 @@ interface SuperAdminSettings {
   cancellation_cutoff_hours?: number;
   refund_fee_mode?: string;
   refund_fee_value?: number;
+  gst_gstin?: string | null;
+  gst_legal_name?: string | null;
+  gst_registered_address?: string | null;
+  gst_hsn_sac?: string;
+  gst_rate?: number;
 }
 
 interface Arena {
@@ -1459,6 +1464,90 @@ export default function SuperAdminDashboardClient() {
                       </button>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              <div className="glass-card">
+                <h3 className="text-sm font-black italic uppercase mb-4 border-b border-white/10 pb-2">GST Configuration</h3>
+                <p className="text-xs text-gray-400 mb-4">Trust GSTIN and registration details used on every Tax Invoice / Credit Note. A single sequence is used across all turfs — each turf still needs its own "Place of Supply" state set on its Edit Arena page.</p>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-2">GSTIN</label>
+                    <input
+                      type="text"
+                      className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-sm text-white font-bold outline-none focus:border-primary/50 transition-colors"
+                      value={settings.gst_gstin || ''}
+                      onChange={(e) => setSettings(prev => prev ? { ...prev, gst_gstin: e.target.value } : prev)}
+                      placeholder="e.g. 30AAAAA0000A1Z5"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-2">Registered Legal Name</label>
+                    <input
+                      type="text"
+                      className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-sm text-white font-bold outline-none focus:border-primary/50 transition-colors"
+                      value={settings.gst_legal_name || ''}
+                      onChange={(e) => setSettings(prev => prev ? { ...prev, gst_legal_name: e.target.value } : prev)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-2">Registered Address</label>
+                    <input
+                      type="text"
+                      className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-sm text-white font-bold outline-none focus:border-primary/50 transition-colors"
+                      value={settings.gst_registered_address || ''}
+                      onChange={(e) => setSettings(prev => prev ? { ...prev, gst_registered_address: e.target.value } : prev)}
+                    />
+                  </div>
+                  <div className="flex gap-4">
+                    <div className="flex-1">
+                      <label className="block text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-2">HSN/SAC Code</label>
+                      <input
+                        type="text"
+                        className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-sm text-white font-bold outline-none focus:border-primary/50 transition-colors"
+                        value={settings.gst_hsn_sac || '997212'}
+                        onChange={(e) => setSettings(prev => prev ? { ...prev, gst_hsn_sac: e.target.value } : prev)}
+                      />
+                    </div>
+                    <div className="w-32">
+                      <label className="block text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-2">Rate (%)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.1"
+                        className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-sm text-white font-bold outline-none focus:border-primary/50 transition-colors"
+                        value={settings.gst_rate ?? 18}
+                        onChange={(e) => setSettings(prev => prev ? { ...prev, gst_rate: parseFloat(e.target.value) || 0 } : prev)}
+                      />
+                    </div>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const res = await fetch('/api/fg-admin/super-admin/settings', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            action: 'UPDATE_GST_CONFIG',
+                            gstin: settings.gst_gstin,
+                            legal_name: settings.gst_legal_name,
+                            registered_address: settings.gst_registered_address,
+                            hsn_sac: settings.gst_hsn_sac || '997212',
+                            rate: settings.gst_rate ?? 18,
+                          })
+                        });
+                        const data = await res.json();
+                        if (data.success) alert(data.message || 'GST configuration saved!');
+                        else alert(data.message || 'Error saving GST configuration');
+                      } catch (err) {
+                        alert('Network error while saving GST configuration');
+                      }
+                    }}
+                    className="btn-primary !py-2 !px-6 !text-xs"
+                  >
+                    SAVE GST CONFIGURATION
+                  </button>
                 </div>
               </div>
 

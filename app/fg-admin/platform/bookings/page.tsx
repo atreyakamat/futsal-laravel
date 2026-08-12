@@ -4,6 +4,7 @@ import { query } from '@/lib/domain';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import SuperAdminRefundBtn from '@/components/SuperAdminRefundBtn';
+import MarkVenuePaidBtn from '@/components/MarkVenuePaidBtn';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,6 +21,8 @@ interface BookingRow {
   payment_status: string;
   amount: number;
   created_at: string;
+  payment_method: string | null;
+  venue_payment_status: string | null;
 }
 
 /** A booking_ref group — all slots that share the same booking reference. */
@@ -34,6 +37,8 @@ interface BookingGroup {
   created_at: string;
   slots: { timeSlot: string; amount: number }[];
   totalAmount: number;
+  payment_method: string | null;
+  venue_payment_status: string | null;
 }
 
 export default async function AdminBookingsPage() {
@@ -55,7 +60,7 @@ export default async function AdminBookingsPage() {
   const rows = await query<BookingRow>(`
     SELECT b.id, b.arena_id, a.name AS arena_name, b.ticket_number, b.booking_ref,
            b.customer_name, b.customer_mobile, b.booking_date, b.time_slot,
-           b.payment_status, b.amount, b.created_at
+           b.payment_status, b.amount, b.created_at, b.payment_method, b.venue_payment_status
       FROM bookings b
       JOIN arenas a ON a.id = b.arena_id
       ${scopedClauses.length > 0 ? `WHERE ${scopedClauses.join(' AND ')}` : ''}
@@ -76,6 +81,8 @@ export default async function AdminBookingsPage() {
         payment_status: row.payment_status,
         ticket_number: row.ticket_number,
         created_at: row.created_at,
+        payment_method: row.payment_method,
+        venue_payment_status: row.venue_payment_status,
         slots: [],
         totalAmount: 0,
       });
@@ -205,6 +212,12 @@ export default async function AdminBookingsPage() {
                     </div>
 
                     <div className="flex flex-col items-end gap-2">
+                      <MarkVenuePaidBtn
+                        bookingRef={g.booking_ref}
+                        totalAmount={g.totalAmount}
+                        paymentMethod={g.payment_method}
+                        venuePaymentStatus={g.venue_payment_status}
+                      />
                       {context.role === 'super_admin' && (
                         <SuperAdminRefundBtn
                           bookingRef={g.booking_ref}

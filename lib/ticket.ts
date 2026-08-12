@@ -109,6 +109,7 @@ export async function sendTicketEmail(bookingRef: string, appUrl?: string) {
     const qrUrl = await getTicketQrUrl(ticket.ticketNumbers[0] ?? ticket.bookingRef);
     const totalAmount = bookings.reduce((sum, b) => sum + Number(b.amount), 0);
 
+    const payAtVenue = firstBooking.payment_method === 'offline' && firstBooking.venue_payment_status !== 'PAID';
     const { subject, html, text } = generateBookingConfirmationEmail(
       ticket.bookingRef,
       ticket.arenaName,
@@ -117,7 +118,8 @@ export async function sendTicketEmail(bookingRef: string, appUrl?: string) {
       ticket.customerName,
       totalAmount,
       ticket.ticketNumbers,
-      qrUrl
+      qrUrl,
+      payAtVenue
     );
 
     const result = await sendEmail({ to: firstBooking.customer_email, subject, html, text });

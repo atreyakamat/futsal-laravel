@@ -147,6 +147,8 @@ export function groupBookingRows(rows: BookingRow[]): BookingGroup[] {
       cancellation_requested: Boolean(first.cancellation_requested),
       cancellation_reason: first.cancellation_reason ?? null,
       refund_amount: first.refund_amount ? Number(first.refund_amount) : null,
+      venue_payment_status: first.venue_payment_status || 'NONE',
+      venue_payment_reference: first.venue_payment_reference ?? null,
       refund_status: first.refund_status || (first.payment_status === 'refunded' ? 'REFUNDED' : first.cancellation_requested ? 'PENDING_REVIEW' : 'NONE'),
       refund_reviewed_at: first.refund_reviewed_at ?? null,
       refund_reviewed_by: first.refund_reviewed_by ?? null,
@@ -327,6 +329,25 @@ export async function releaseLocks(sessionId: string, arenaId?: number, bookingD
   await query(`DELETE FROM slot_locks WHERE ${clauses.join(' AND ')}`, params);
 }
 
+/**
+ * Pure derivation of the booking's payment fields at creation time, factored
+ * out so it can be unit-tested without a DB connection. freeBooking always
+ * wins over offlinePayment if both are somehow set.
+ */
+export function resolveBookingPaymentFields(input: { freeBooking?: boolean; offlinePayment?: boolean }): {
+  payment_status: 'confirmed' | 'pending';
+  payment_method: 'free' | 'offline' | 'online';
+  venue_payment_status: 'NONE' | 'UNPAID';
+} {
+  if (input.freeBooking) {
+    return { payment_status: 'confirmed', payment_method: 'free', venue_payment_status: 'NONE' };
+  }
+  if (input.offlinePayment) {
+    return { payment_status: 'confirmed', payment_method: 'offline', venue_payment_status: 'UNPAID' };
+  }
+  return { payment_status: 'pending', payment_method: 'online', venue_payment_status: 'NONE' };
+}
+
 export async function createBookingBatch(params: {
   arenaId: number;
   bookingDate: string;
@@ -337,6 +358,7 @@ export async function createBookingBatch(params: {
   userId: number | null;
   sessionId: string;
   freeBooking?: boolean;
+  offlinePayment?: boolean;
 }) {
   await expirePendingBookings();
   const bookingRef = `REF-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
@@ -432,12 +454,15 @@ export async function createBookingBatch(params: {
 
       const ticketNumber = `TKT-${new Date().toISOString().slice(2, 10).replaceAll('-', '')}-${crypto.randomUUID().slice(0, 4).toUpperCase()}`;
 
+      const { payment_status: paymentStatus, payment_method: paymentMethod, venue_payment_status: venuePaymentStatus } =
+        resolveBookingPaymentFields({ freeBooking: params.freeBooking, offlinePayment: params.offlinePayment });
+
       await connection.execute(
         `INSERT INTO bookings (
           ticket_number, booking_ref, arena_id, user_id, booking_date, time_slot,
           customer_name, customer_mobile, customer_email, amount, payment_status,
-          payment_method, notes, checked_in, is_free_booking, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, FALSE, ?, NOW(), NOW())`,
+          payment_method, notes, checked_in, is_free_booking, venue_payment_status, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, FALSE, ?, ?, NOW(), NOW())`,
         [
           ticketNumber,
           bookingRef,
@@ -449,9 +474,10 @@ export async function createBookingBatch(params: {
           params.customerMobile,
           params.customerEmail,
           slotPrice,
-          params.freeBooking ? 'confirmed' : 'pending',
-          params.freeBooking ? 'free' : 'online',
+          paymentStatus,
+          paymentMethod,
           params.freeBooking ? true : false,
+          venuePaymentStatus,
         ]
       );
 
@@ -514,6 +540,16 @@ export async function cancelBookingGroup(bookingRef: string, reason: string, ref
 
 export async function getSetting(key: string) {
   return queryOne<{ key: string; value: string | null }>('SELECT "key", value FROM settings WHERE "key" = ? LIMIT 1', [key]);
+}
+
+export async function setSetting(key: string, value: string | null) {
+  await query(
+    `INSERT INTO settings ("key", value, created_at, updated_at)
+     VALUES (?, ?, NOW(), NOW())
+     ON CONFLICT ("key")
+     DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+    [key, value]
+  );
 }
 
 export async function getBooleanSetting(key: string, defaultValue = true) {

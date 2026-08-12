@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createBookingBatch, releaseLocks } from '@/lib/domain';
 import { getCookieValueFromRequest, getWritableSessionId, persistSessionCookie, AUTH_COOKIE, signValue, readAuthUserId, getCookieOptions, readAuthRole } from '@/lib/session';
-import { getArenaEntryMode } from '@/lib/admin';
+import { getArenaEntryMode, getArenaPaymentMode } from '@/lib/admin';
 import { sendTicketEmail } from '@/lib/ticket';
 import { verifyCsrfMiddleware } from '@/lib/csrf-middleware';
 import { normalizePhoneNumber } from '@/lib/phone';
@@ -58,6 +58,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, message: 'This arena is temporarily blocked for bookings.' }, { status: 403 });
   }
 
+  // Payment mode is always resolved server-side from the arena's own setting —
+  // never trust a client-supplied flag here, or a tampered request could force
+  // an online-only arena into an unpaid "offline" booking.
+  const paymentMode = entryMode === 'free' ? 'online' : await getArenaPaymentMode(payload.arena_id);
+  const offlinePayment = entryMode !== 'free' && paymentMode === 'offline';
+
   let result;
   try {
     result = await createBookingBatch({
@@ -70,6 +76,7 @@ export async function POST(request: Request) {
       userId: (authRole === 'super_admin' || authRole === 'arena_admin' || authRole === 'security') ? null : authUserId,
       sessionId,
       freeBooking: entryMode === 'free',
+      offlinePayment,
     });
   } catch (error) {
     console.error('[Booking Process Error]:', error);
@@ -93,14 +100,14 @@ export async function POST(request: Request) {
 
   await releaseLocks(sessionId, payload.arena_id, payload.date, payload.slots);
 
-  if (entryMode === 'free') {
+  if (entryMode === 'free' || offlinePayment) {
     const proto = request.headers.get('x-forwarded-proto') || 'http';
     const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'localhost:3000';
     const dynamicBaseUrl = process.env.NEXT_PUBLIC_APP_URL || `${proto}://${host}`;
     await sendTicketEmail(result.bookingRef, dynamicBaseUrl);
   }
 
-  const redirectTarget = entryMode === 'free'
+  const redirectTarget = (entryMode === 'free' || offlinePayment)
     ? `/booking/success/${result.bookingRef}`
     : `/payment/checkout/${result.bookingRef}`;
 

@@ -32,7 +32,7 @@ export interface BookingRow {
   customer_email: string | null;
   amount: number;
   payment_status: 'pending' | 'confirmed' | 'failed' | 'cancelled' | 'expired' | 'refunded';
-  payment_method: 'online' | 'cash' | 'upi';
+  payment_method: 'online' | 'offline' | 'free' | 'cash' | 'upi' | string | null;
   checked_in: number | boolean;
   checked_in_at?: Date | string | null;
   checked_in_by?: number | null;
@@ -41,6 +41,10 @@ export interface BookingRow {
   cancellation_requested?: boolean;
   cancellation_reason?: string | null;
   refund_amount?: number | null;
+  venue_payment_status?: 'NONE' | 'UNPAID' | 'PAID' | string | null;
+  venue_payment_reference?: string | null;
+  venue_payment_collected_by?: number | null;
+  venue_payment_collected_at?: Date | string | null;
   refund_status?: 'NONE' | 'PENDING_REVIEW' | 'APPROVED' | 'PROCESSING' | 'REFUNDED' | 'REJECTED' | string | null;
   refund_reviewed_at?: Date | string | null;
   refund_reviewed_by?: number | null;
@@ -77,6 +81,8 @@ export interface BookingGroup {
   cancellation_requested: boolean;
   cancellation_reason: string | null;
   refund_amount: number | null;
+  venue_payment_status: string;
+  venue_payment_reference: string | null;
   refund_status: string;
   refund_reviewed_at: Date | string | null;
   refund_reviewed_by: number | null;

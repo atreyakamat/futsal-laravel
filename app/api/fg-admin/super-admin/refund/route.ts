@@ -18,6 +18,7 @@ import { query, ensureSchemaColumns, getRefundPolicyConfig } from '@/lib/domain'
 import { logAuditAction } from '@/lib/super-admin';
 import { calculateRefundAmount } from '@/lib/refund-policy';
 import { initiatePayuRefund } from '@/lib/payment';
+import { issueCreditNote } from '@/lib/gst-documents';
 import { z } from 'zod';
 
 const schema = z.object({
@@ -54,6 +55,53 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: 'Only confirmed bookings can be refunded' }, { status: 400 });
     }
 
+    // Offline (pay-at-venue) bookings never go through PayU — there's no
+    // payu_mihpayid and, if nothing was collected yet, nothing to refund at all.
+    const isOfflineBooking = firstBooking.payment_method === 'offline';
+    const wasVenuePaymentCollected = isOfflineBooking && firstBooking.venue_payment_status === 'PAID';
+
+    if (isOfflineBooking && !wasVenuePaymentCollected) {
+      const updatedRows = await query<any>(
+        `UPDATE bookings
+            SET payment_status = 'cancelled',
+                refund_status = 'NOT_APPLICABLE',
+                refund_amount = 0,
+                cancellation_requested = FALSE,
+                cancellation_reason = ?,
+                updated_at = NOW()
+          WHERE booking_ref = ? AND payment_status = 'confirmed'
+          RETURNING id`,
+        [`Super Admin Override: ${payload.reason}`, payload.ref]
+      );
+
+      if (!updatedRows || updatedRows.length === 0) {
+        return NextResponse.json({ success: false, message: 'Refund already processed or booking is not in confirmed state (idempotent block)' }, { status: 400 });
+      }
+
+      await logAuditAction(
+        superAdminId,
+        'FORCE_REFUND',
+        'booking',
+        firstBooking.id,
+        { ref: payload.ref, note: 'Offline booking with no venue payment collected — nothing to refund', overrideReason: payload.reason },
+        req.headers.get('x-forwarded-for') || 'unknown',
+        req.headers.get('user-agent') || 'unknown'
+      );
+
+      // No-op if no invoice exists (the expected case here), but defensively
+      // correct if one somehow does.
+      await issueCreditNote(payload.ref, 0, `Super Admin Override: ${payload.reason}`);
+
+      return NextResponse.json({
+        success: true,
+        message: 'Booking cancelled. No payment had been collected at the venue, so no refund is due.',
+        grossAmount: 0,
+        serviceFee: 0,
+        refundAmount: 0,
+        overrideReason: payload.reason,
+      });
+    }
+
     // Calculate refund using active policy configuration for combined BookingGroup amount
     const refundPolicyConfig = await getRefundPolicyConfig();
     await ensureSchemaColumns();
@@ -82,13 +130,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: 'Refund already processed or booking is not in confirmed state (idempotent block)' }, { status: 400 });
     }
 
-    // Call PayU Refund API — EXACTLY ONE Call for the entire BookingGroup
-    const payuResult = await initiatePayuRefund({
-      bookingRef: payload.ref,
-      mihpayid: firstBooking.payu_mihpayid,
-      amount: refundAmount,
-      reason: payload.reason,
-    });
+    // Offline bookings never touched PayU, so there's no transaction to refund
+    // through the gateway — the venue must return the cash/UPI payment manually.
+    const payuResult = wasVenuePaymentCollected
+      ? {
+          success: false,
+          environmentLimitation: false,
+          message: 'Offline booking — no PayU transaction exists. Venue must manually return the payment collected at check-in.',
+          refundRequestId: null,
+          payuTxnId: null,
+        }
+      : await initiatePayuRefund({
+          bookingRef: payload.ref,
+          mihpayid: firstBooking.payu_mihpayid,
+          amount: refundAmount,
+          reason: payload.reason,
+        });
 
     // Log audit action with Super Admin actor identity
     await logAuditAction(
@@ -122,6 +179,12 @@ export async function POST(req: NextRequest) {
     } catch (err) {
       console.error('Failed to persist payu_refund_request_id for booking_ref', payload.ref, err);
     }
+
+    // Invoice-at-payment means a Tax Invoice normally already exists for
+    // this booking — issue a Credit Note reversing it. No-ops if no invoice
+    // exists (shouldn't happen for a 'confirmed' booking, but never blocks
+    // the refund itself).
+    await issueCreditNote(payload.ref, refundAmount, `Super Admin Override: ${payload.reason}`);
 
     return NextResponse.json({
       success: true,
