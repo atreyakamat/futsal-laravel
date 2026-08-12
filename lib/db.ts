@@ -1,5 +1,6 @@
 import pkg from 'pg';
 import type { Pool as PoolType } from 'pg';
+import fs from 'fs';
 const { Pool } = pkg;
 
 declare global {
@@ -20,8 +21,19 @@ function toPgPlaceholders(sql: string) {
   return sql.replace(/\?/g, () => `$${++index}`);
 }
 
+function getLocalPort(): string {
+  return process.env.LOCAL_DB_PORT || process.env.DB_PORT || '5432';
+}
+
+function resolveDatabaseUrl(rawUrl?: string): string | null {
+  return rawUrl || null;
+}
+
 function getPoolConfig() {
-  const databaseUrl = process.env.DATABASE_URL;
+  // When running inside Docker, the DATABASE_URL from the environment points to the Docker hostname.
+  // For local production builds (next start on a developer machine), we must not use the Docker‑only URL.
+  const isDocker = process.env.IS_DOCKER === 'true';
+  const databaseUrl = isDocker ? resolveDatabaseUrl(process.env.DATABASE_URL) : null;
 
   if (databaseUrl) {
     return {
@@ -30,14 +42,24 @@ function getPoolConfig() {
     };
   }
 
+  // Fallback to individual connection parameters suitable for a local Postgres instance.
   return {
     host: process.env.DB_HOST ?? '127.0.0.1',
-    port: Number(process.env.DB_PORT ?? '5432'),
+    port: Number(getLocalPort()),
     user: process.env.DB_USERNAME ?? 'postgres',
     password: process.env.DB_PASSWORD ?? 'postgres',
-    database: process.env.DB_DATABASE ?? 'agnel_laravel',
+    database: process.env.DB_DATABASE ?? 'futsal_laravel',
     max: 10,
   };
+}
+
+export function resetPool() {
+  if (globalThis.pgPool) {
+    try {
+      globalThis.pgPool.end();
+    } catch (_) {}
+    globalThis.pgPool = undefined;
+  }
 }
 
 export function getPool() {
@@ -48,7 +70,7 @@ export function getPool() {
   return globalThis.pgPool;
 }
 
-export async function query<T>(sql: string, params: any[] = []) {
+export async function query<T>(sql: string, params: any[] = []): Promise<T[]> {
   const pool = getPool();
   const result = await pool.query(toPgPlaceholders(sql), params);
   return (result?.rows || []) as T[];
@@ -61,6 +83,7 @@ export async function queryOne<T>(sql: string, params: any[] = []) {
 
 export async function transaction<T>(callback: (connection: TransactionExecutor) => Promise<T>) {
   const connection = await getPool().connect();
+
   const runner: TransactionExecutor = {
     async execute<R extends Record<string, unknown> = Record<string, unknown>>(sql: string, params: unknown[] = []) {
       const result = await connection.query(toPgPlaceholders(sql), params);

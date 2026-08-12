@@ -5,7 +5,6 @@ import './globals.css';
 import '@/lib/env-validate';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import FloatingContact from '@/components/FloatingContact';
 import { readAuthUserId, readAuthRole, readArenaId } from '@/lib/session';
 
 const spaceGrotesk = Space_Grotesk({
@@ -71,7 +70,7 @@ export default async function RootLayout({
     role = await readAuthRole();
     arenaId = await readArenaId();
     
-    if (userId) {
+    if (userId && role !== 'super_admin') {
       const { findUserById } = await import('@/lib/domain');
       const user = await findUserById(userId);
       if (user) {
@@ -93,7 +92,6 @@ export default async function RootLayout({
       <body className={spaceGrotesk.className}>
         <Header userId={userId} role={role} arenaId={arenaId} userName={userName} />
         {children}
-        <FloatingContact />
         <Footer />
       </body>
     </html>

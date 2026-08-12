@@ -41,8 +41,9 @@ export default function CustomerProfilePage() {
     setError('');
     setSuccess('');
 
-    if (!name || !mobile) {
-      setError('Name and mobile number are required.');
+    const trimmedEmail = email.trim();
+    if (!name || !trimmedEmail || !mobile) {
+      setError('Name, email address, and mobile number are required.');
       return;
     }
 
@@ -51,11 +52,14 @@ export default function CustomerProfilePage() {
       const res = await fetch('/api/dashboard/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, customer_mobile: mobile }),
+        body: JSON.stringify({ name, email: trimmedEmail, customer_mobile: mobile }),
       });
       const result = await res.json();
       if (res.ok && result.success) {
         setSuccess('Profile updated successfully!');
+        if (result.data?.email) {
+          setEmail(result.data.email);
+        }
       } else {
         setError(result.message || 'Failed to update profile');
       }
@@ -95,20 +99,20 @@ export default function CustomerProfilePage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-20 space-y-12">
-      <div className="flex justify-between items-center">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 sm:py-20 space-y-8 sm:space-y-12 overflow-x-hidden">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
         <div>
-          <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter italic mb-2">
+          <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter italic mb-2 break-words max-w-full">
             My <span className="text-primary text-stroke">Profile</span>
           </h1>
-          <p className="label-classic !ml-0 font-bold">Manage your customer contact details</p>
+          <p className="label-classic !ml-0 font-bold break-words max-w-full">Manage your customer contact details</p>
         </div>
-        <Link href="/dashboard" className="btn-secondary !py-2 !px-4 !rounded-xl text-[10px]">
+        <Link href="/dashboard" className="btn-secondary !py-2 !px-4 !rounded-xl text-[10px] whitespace-nowrap">
           ← DASHBOARD
         </Link>
       </div>
 
-      <div className="glass-card">
+      <div className="glass-card max-w-full overflow-hidden">
         <form onSubmit={handleUpdate} className="space-y-6 max-w-xl">
           <h2 className="text-2xl font-black uppercase italic text-primary">Personal Details</h2>
           <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest">
@@ -145,11 +149,13 @@ export default function CustomerProfilePage() {
               <label className="label-classic">Email Address</label>
               <input
                 type="email"
-                className="input-field opacity-60 cursor-not-allowed"
+                className="input-field"
                 value={email}
-                disabled
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="user@example.com"
+                required
+                disabled={updating}
               />
-              <span className="text-[9px] text-white/20 uppercase tracking-widest font-bold">Email address cannot be changed</span>
             </div>
 
             <div className="space-y-2">

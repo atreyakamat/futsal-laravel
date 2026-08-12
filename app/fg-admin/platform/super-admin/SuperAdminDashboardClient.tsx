@@ -9,6 +9,9 @@ interface SuperAdminSettings {
   permissions: string[];
   is_active: boolean;
   last_login: string | null;
+  cancellation_cutoff_hours?: number;
+  refund_fee_mode?: string;
+  refund_fee_value?: number;
 }
 
 interface Arena {
@@ -576,7 +579,7 @@ export default function SuperAdminDashboardClient() {
               { id: 'overview', label: 'Overview', icon: 'dashboard' },
               { id: 'arenas', label: 'Arena & Staff', icon: 'location_on' },
               { id: 'timings', label: 'Timings', icon: 'schedule' },
-              { id: 'bookings', label: 'Bookings', icon: 'calendar_today' },
+              { id: 'blocks', label: 'Block Slots', icon: 'block' },
               { id: 'approvals', label: 'Approvals', icon: 'check_circle' },
               { id: 'reports', label: 'Reports', icon: 'assessment' },
               { id: 'settings', label: 'Settings', icon: 'settings' },
@@ -596,6 +599,11 @@ export default function SuperAdminDashboardClient() {
             ))}
             
             <hr className="border-white/10 my-4" />
+            
+            <a href="/fg-admin/platform/bookings" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-colors text-gray-400 hover:text-white hover:bg-white/5">
+              <span className="material-symbols-outlined text-lg">book_online</span>
+              All Bookings
+            </a>
             
             <a href="/fg-admin/platform/audit-logs" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-colors text-gray-400 hover:text-white hover:bg-white/5">
               <span className="material-symbols-outlined text-lg">history</span>
@@ -1191,7 +1199,7 @@ export default function SuperAdminDashboardClient() {
             </div>
           )}
 
-          {activeTab === 'bookings' && selectedArenaId && (
+          {activeTab === 'blocks' && selectedArenaId && (
             <div className="space-y-8">
               <div className="flex items-center justify-between">
                 <h2 className="text-3xl font-bold italic tracking-tighter uppercase">Arena <span className="text-primary">Bookings</span></h2>
@@ -1351,6 +1359,109 @@ export default function SuperAdminDashboardClient() {
           {activeTab === 'settings' && (
             <div className="space-y-6 max-w-2xl">
               <h2 className="text-3xl font-bold italic tracking-tighter uppercase">Global <span className="text-primary">Settings</span></h2>
+              <div className="glass-card">
+                <h3 className="text-sm font-black italic uppercase mb-4 border-b border-white/10 pb-2">Platform Configuration</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-2">Cancellation Cutoff</label>
+                    <p className="text-xs text-gray-400 mb-3">Minimum time before a booking that customers are allowed to request cancellation.</p>
+                    <div className="flex gap-4 items-center">
+                      <select 
+                        className="bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-sm text-white font-bold outline-none focus:border-primary/50 transition-colors"
+                        value={settings.cancellation_cutoff_hours || 3}
+                        onChange={async (e) => {
+                          const val = e.target.value;
+                          setSettings(prev => prev ? { ...prev, cancellation_cutoff_hours: parseInt(val) } : prev);
+                        }}
+                      >
+                        {[3,4,5,6,7,8,9,10,11,12].map(h => (
+                          <option key={h} value={h}>{h} hours</option>
+                        ))}
+                      </select>
+                      <button 
+                        onClick={async () => {
+                          try {
+                            const res = await fetch('/api/fg-admin/super-admin/settings', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ action: 'UPDATE_CUTOFF', cutoff: settings.cancellation_cutoff_hours })
+                            });
+                            const data = await res.json();
+                            if (data.success) alert('Saved successfully!');
+                            else alert(data.message || 'Error saving setting');
+                          } catch (err) {
+                            alert('Network error while saving setting');
+                          }
+                        }}
+                        className="btn-primary !py-2 !px-6 !text-xs"
+                      >
+                        SAVE
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-white/10">
+                    <label className="block text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-2">Refund Policy Configuration</label>
+                    <p className="text-xs text-gray-400 mb-3">Configure refund fee deduction mode (Flat monetary amount vs Percentage).</p>
+                    <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                      <div>
+                        <span className="block text-[9px] text-gray-500 uppercase font-bold mb-1">Fee Type</span>
+                        <select 
+                          className="bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-sm text-white font-bold outline-none focus:border-primary/50 transition-colors"
+                          value={settings.refund_fee_mode || 'FIXED'}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setSettings(prev => prev ? { ...prev, refund_fee_mode: val } : prev);
+                          }}
+                        >
+                          <option value="FIXED">Fixed Amount (₹)</option>
+                          <option value="PERCENTAGE">Percentage (%)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <span className="block text-[9px] text-gray-500 uppercase font-bold mb-1">Deduction Value</span>
+                        <input 
+                          type="number"
+                          min="0"
+                          step="1"
+                          className="w-28 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white font-bold outline-none focus:border-primary/50 transition-colors"
+                          value={settings.refund_fee_value !== undefined ? settings.refund_fee_value : 300}
+                          onChange={(e) => {
+                            const val = parseFloat(e.target.value) || 0;
+                            setSettings(prev => prev ? { ...prev, refund_fee_value: val } : prev);
+                          }}
+                        />
+                      </div>
+
+                      <button 
+                        onClick={async () => {
+                          try {
+                            const res = await fetch('/api/fg-admin/super-admin/settings', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ 
+                                action: 'UPDATE_REFUND_POLICY', 
+                                mode: settings.refund_fee_mode || 'FIXED',
+                                value: settings.refund_fee_value !== undefined ? settings.refund_fee_value : 300
+                              })
+                            });
+                            const data = await res.json();
+                            if (data.success) alert(data.message || 'Refund policy updated successfully!');
+                            else alert(data.message || 'Error updating refund policy');
+                          } catch (err) {
+                            alert('Network error while updating refund policy');
+                          }
+                        }}
+                        className="btn-primary !py-2 !px-6 !text-xs self-end sm:self-auto mt-2 sm:mt-5"
+                      >
+                        SAVE REFUND POLICY
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="glass-card">
                 <h3 className="text-sm font-black italic uppercase mb-4 border-b border-white/10 pb-2">Admin Profile</h3>
                 <div className="space-y-4">

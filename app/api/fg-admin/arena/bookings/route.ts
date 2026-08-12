@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { readAuthUserId, readArenaId } from '@/lib/session';
 import { getAdminContext } from '@/lib/admin';
-import { query } from '@/lib/db';
+import { query, groupBookingRows } from '@/lib/domain';
+import type { BookingRow } from '@/lib/types';
 
 export async function GET() {
   try {
@@ -17,29 +18,21 @@ export async function GET() {
       return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 });
     }
 
-    // Fetch bookings for this arena (most recent 50)
-    const bookings = await query<{
-      id: number;
-      ticket_number: string;
-      booking_ref: string;
-      customer_name: string;
-      customer_mobile: string;
-      booking_date: string;
-      time_slot: string;
-      payment_status: string;
-      amount: number;
-      created_at: string;
-    }>(`
-      SELECT id, ticket_number, booking_ref, customer_name, customer_mobile, booking_date, time_slot, payment_status, amount, created_at
+    // Fetch raw booking rows for this arena (most recent 200)
+    const rawRows = await query<BookingRow>(`
+      SELECT *
         FROM bookings
        WHERE arena_id = ?
        ORDER BY created_at DESC
-       LIMIT 50
+       LIMIT 200
     `, [arenaId]);
+
+    // Aggregate raw slot rows into domain BookingGroup parent entities
+    const groupedBookings = groupBookingRows(rawRows);
 
     return NextResponse.json({
       success: true,
-      data: bookings,
+      data: groupedBookings,
     });
   } catch (error) {
     console.error('Arena bookings error:', error);

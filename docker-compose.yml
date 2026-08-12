@@ -5,18 +5,41 @@ services:
       dockerfile: Dockerfile
     container_name: futsal_next_app
     restart: unless-stopped
-    ports:
-      - "3001:3000"
+    expose:
+      - "3000"
     env_file:
       - .env
     environment:
-      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/futsal_laravel?schema=public}
+      - IS_DOCKER=true
+      # Force production mode regardless of what .env sets
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:postgres@arena-db:5432/futsal_laravel?schema=public
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3001}
       - ADMIN_EMAIL=${ADMIN_EMAIL:-superadmin@example.com}
       - ADMIN_MOBILE=${ADMIN_MOBILE:-+919999999999}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-Admin@123456}
+      # AiSensy WhatsApp provider
+      - AISENSY_API_KEY=${AISENSY_API_KEY}
+      - AISENSY_USERNAME=${AISENSY_USERNAME:-AITD Official}
+      - AISENSY_CAMPAIGN_NAME_OTP=${AISENSY_CAMPAIGN_NAME_OTP:-agnel_arena_otp}
+      - AISENSY_CAMPAIGN_NAME_BOOKING=${AISENSY_CAMPAIGN_NAME_BOOKING:-agnelarena_cofirm}
     depends_on:
       postgres:
         condition: service_healthy
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: futsal_caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
 
   postgres:
     image: postgres:16-alpine
@@ -26,10 +49,13 @@ services:
       POSTGRES_DB: futsal_laravel
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-    ports:
-      - "5434:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      default:
+        aliases:
+          - arena-db
+          - postgres
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d futsal_laravel"]
       interval: 5s
@@ -38,3 +64,5 @@ services:
 
 volumes:
   postgres_data:
+  caddy_data:
+  caddy_config:

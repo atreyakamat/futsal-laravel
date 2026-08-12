@@ -67,36 +67,40 @@ export async function middleware(req: NextRequest) {
   // Rate limiting for auth routes
   if (AUTH_ROUTES.some(route => pathname.startsWith(route))) {
     const ip = await getClientIp(req);
-    const rateLimit = await authRateLimiter(ip);
-    if (!rateLimit.allowed) {
-      return new NextResponse(JSON.stringify({ 
-        success: false, 
-        message: 'Too many requests. Please try again later.' 
-      }), {
-        status: 429,
-        headers: { 
-          'Content-Type': 'application/json',
-          'Retry-After': Math.ceil((rateLimit.resetTime - Date.now()) / 1000).toString(),
-        },
-      });
+    if (ip !== 'unknown' && ip !== '127.0.0.1' && ip !== '::1') {
+      const rateLimit = await authRateLimiter(ip);
+      if (!rateLimit.allowed) {
+        return new NextResponse(JSON.stringify({ 
+          success: false, 
+          message: 'Too many requests. Please try again later.' 
+        }), {
+          status: 429,
+          headers: { 
+            'Content-Type': 'application/json',
+            'Retry-After': Math.ceil((rateLimit.resetTime - Date.now()) / 1000).toString(),
+          },
+        });
+      }
     }
   }
 
   // Rate limiting for API routes
   if (pathname.startsWith('/api/') && !AUTH_ROUTES.some(route => pathname.startsWith(route))) {
     const ip = await getClientIp(req);
-    const rateLimit = await apiRateLimiter(ip);
-    if (!rateLimit.allowed) {
-      return new NextResponse(JSON.stringify({ 
-        success: false, 
-        message: 'Rate limit exceeded. Please slow down.' 
-      }), {
-        status: 429,
-        headers: { 
-          'Content-Type': 'application/json',
-          'Retry-After': Math.ceil((rateLimit.resetTime - Date.now()) / 1000).toString(),
-        },
-      });
+    if (ip !== 'unknown' && ip !== '127.0.0.1' && ip !== '::1') {
+      const rateLimit = await apiRateLimiter(ip);
+      if (!rateLimit.allowed) {
+        return new NextResponse(JSON.stringify({ 
+          success: false, 
+          message: 'Rate limit exceeded. Please slow down.' 
+        }), {
+          status: 429,
+          headers: { 
+            'Content-Type': 'application/json',
+            'Retry-After': Math.ceil((rateLimit.resetTime - Date.now()) / 1000).toString(),
+          },
+        });
+      }
     }
   }
 

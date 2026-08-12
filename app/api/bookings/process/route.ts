@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createBookingBatch, releaseLocks } from '@/lib/domain';
-import { getCookieValueFromRequest, getWritableSessionId, persistSessionCookie, AUTH_COOKIE, signValue, readAuthUserId, getCookieOptions } from '@/lib/session';
+import { getCookieValueFromRequest, getWritableSessionId, persistSessionCookie, AUTH_COOKIE, signValue, readAuthUserId, getCookieOptions, readAuthRole } from '@/lib/session';
 import { getArenaEntryMode } from '@/lib/admin';
 import { sendTicketEmail } from '@/lib/ticket';
 import { verifyCsrfMiddleware } from '@/lib/csrf-middleware';
@@ -51,6 +51,7 @@ export async function POST(request: Request) {
 
   const sessionId = getWritableSessionId(request);
   const authUserId = await readAuthUserId();
+  const authRole = await readAuthRole();
   const entryMode = await getArenaEntryMode(payload.arena_id);
 
   if (entryMode === 'blocked') {
@@ -66,7 +67,7 @@ export async function POST(request: Request) {
       customerName: payload.customer_name,
       customerMobile: payload.customer_mobile,
       customerEmail: payload.customer_email ?? null,
-      userId: authUserId,
+      userId: (authRole === 'super_admin' || authRole === 'arena_admin' || authRole === 'security') ? null : authUserId,
       sessionId,
       freeBooking: entryMode === 'free',
     });
@@ -115,7 +116,7 @@ export async function POST(request: Request) {
     : NextResponse.redirect(new URL(redirectTarget, baseUrl), 303);
 
   const cookieOpts = getCookieOptions();
-  if (result.userId) {
+  if (result.userId && authRole !== 'super_admin' && authRole !== 'arena_admin' && authRole !== 'security') {
     response.cookies.set(AUTH_COOKIE, await signValue(String(result.userId)), cookieOpts);
     response.cookies.delete('fg_guest_identifier');
   }

@@ -28,8 +28,8 @@ export async function createSuperAdmin(email: string, password: string, permissi
  * Verify super admin credentials
  */
 export async function verifySuperAdminCredentials(email: string, password: string) {
-  const superAdmin = await queryOne<{ id: number; email: string; password_hash: string; is_active: boolean }>(
-    'SELECT id, email, password_hash, is_active FROM super_admins WHERE email = ?',
+  const superAdmin = await queryOne<{ id: number; user_id: number | null; email: string; password_hash: string; is_active: boolean }>(
+    'SELECT id, user_id, email, password_hash, is_active FROM super_admins WHERE email = ?',
     [email]
   );
 

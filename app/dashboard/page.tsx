@@ -1,4 +1,4 @@
-import { getBookingsForUser, getArenaById } from '@/lib/domain';
+import { getBookingsForUser, getArenaById, query, getRefundPolicyConfig } from '@/lib/domain';
 import { readAuthUserId } from '@/lib/session';
 import { mergeSlots, getDurationText } from '@/lib/slot-merge';
 import Link from 'next/link';
@@ -22,6 +22,20 @@ export default async function DashboardPage() {
 
   const allBookings = (await getBookingsForUser(userId)) || [];
   
+  // Fetch dynamic cancellation cutoff & refund policy settings
+  const settingRes = await query<any>(
+    `SELECT value FROM settings WHERE key = 'cancellation_cutoff_hours'`
+  );
+  let cutoffHours = 3;
+  if (settingRes && settingRes.length > 0 && settingRes[0].value) {
+    const parsed = parseInt(settingRes[0].value, 10);
+    if (!isNaN(parsed) && parsed >= 3 && parsed <= 12) {
+      cutoffHours = parsed;
+    }
+  }
+
+  const refundPolicyConfig = await getRefundPolicyConfig();
+
   // Group by booking_ref
   const groups: Record<string, typeof allBookings> = {};
   for (const b of allBookings) {
@@ -42,7 +56,7 @@ export default async function DashboardPage() {
   const bookingRefs = Object.keys(groups);
   const todayStr = new Date().toISOString().split('T')[0];
   
-  // Sort refs by booking date (newest first for history, closest first for upcoming)
+  // Sort refs by booking date
   const upcomingRefs = bookingRefs
     .filter((ref) => {
       const status = groups[ref][0].payment_status;
@@ -87,7 +101,7 @@ export default async function DashboardPage() {
                     <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">
                       REF:
                     </span>
-                    <span className="text-[10px] font-black text-primary px-3 py-1 rounded-full bg-primary/10 border border-primary/20 uppercase tracking-widest">
+                    <span className="text-[10px] font-black text-primary px-3 py-1 rounded-full bg-primary/10 border border-primary/20 uppercase tracking-widest font-mono">
                       {ref}
                     </span>
                   </div>
@@ -156,13 +170,21 @@ export default async function DashboardPage() {
                   PAYMENT FAILED
                 </div>
               )}
-              
+
               <CancelBookingBtn
                 bookingRef={ref}
                 bookingDateStr={firstBooking.booking_date}
-                slotStart={firstBooking.time_slot.split(' - ')[0]}
+                timeSlots={slots}
                 isCancellationRequested={!!(firstBooking as any).cancellation_requested}
                 paymentStatus={firstBooking.payment_status}
+                refundAmount={firstBooking.refund_amount ? Number(firstBooking.refund_amount) : null}
+                cancellationReason={(firstBooking as any).cancellation_reason ?? null}
+                updatedAt={firstBooking.updated_at || new Date()}
+                totalAmount={totalAmount}
+                payuMihpayid={firstBooking.payu_mihpayid}
+                cutoffHours={cutoffHours}
+                refundFeeMode={refundPolicyConfig.mode}
+                refundFeeValue={refundPolicyConfig.value}
               />
             </div>
           </div>

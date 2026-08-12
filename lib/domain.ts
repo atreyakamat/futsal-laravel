@@ -1,11 +1,26 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { query as dbQuery, queryOne, transaction } from '@/lib/db';
-import type { ArenaSummary, BookingRow, PricingRow, SlotLockRow } from '@/lib/types';
+import type { ArenaSummary, BookingRow, BookingGroup, BookingSlotItem, PricingRow, SlotLockRow } from '@/lib/types';
+import { getBookingTimeRange } from '@/lib/refund-policy';
 
 // Export query for use in other modules
 export const query = dbQuery;
 export { queryOne, transaction } from '@/lib/db';
+
+export async function ensureSchemaColumns() {
+  try {
+    await dbQuery(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS refund_status VARCHAR(50) DEFAULT 'NONE'`);
+    await dbQuery(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS refund_reviewed_at TIMESTAMP NULL`);
+    await dbQuery(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS refund_reviewed_by INTEGER NULL`);
+    await dbQuery(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS refund_reason TEXT NULL`);
+    await dbQuery(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS refund_processed_at TIMESTAMP NULL`);
+    await dbQuery(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payu_refund_request_id TEXT NULL`);
+    await dbQuery(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS verification_method VARCHAR(50) DEFAULT 'qr'`);
+  } catch {
+    // Columns already exist or handled
+  }
+}
 
 export async function getActiveArenas(): Promise<ArenaSummary[]> {
   const rows = await dbQuery<{
@@ -84,21 +99,100 @@ export async function expirePendingBookings() {
 }
 
 export async function getBookingsByRef(bookingRef: string) {
+  await ensureSchemaColumns();
   return dbQuery<BookingRow>('SELECT * FROM bookings WHERE booking_ref = ? ORDER BY time_slot ASC', [bookingRef]);
 }
 
+/**
+ * Domain Aggregate Helper:
+ * Groups raw database `BookingRow[]` into single structured `BookingGroup` entities (Parent Booking).
+ * Ensures that multi-slot checkouts sharing the same `booking_ref` are treated as ONE booking unit.
+ */
+export function groupBookingRows(rows: BookingRow[]): BookingGroup[] {
+  const groupsMap = new Map<string, BookingRow[]>();
+  for (const row of rows) {
+    if (!groupsMap.has(row.booking_ref)) {
+      groupsMap.set(row.booking_ref, []);
+    }
+    groupsMap.get(row.booking_ref)!.push(row);
+  }
+
+  const result: BookingGroup[] = [];
+  for (const [ref, groupRows] of groupsMap.entries()) {
+    const first = groupRows[0];
+    const totalAmount = groupRows.reduce((sum, r) => sum + Number(r.amount), 0);
+    const slots: BookingSlotItem[] = groupRows.map((r) => ({
+      id: r.id,
+      ticket_number: r.ticket_number,
+      booking_date: r.booking_date,
+      time_slot: r.time_slot,
+      amount: Number(r.amount),
+      checked_in: Boolean(r.checked_in),
+    }));
+
+    result.push({
+      booking_ref: ref,
+      primary_ticket_number: first.ticket_number,
+      arena_id: first.arena_id,
+      user_id: first.user_id,
+      customer_name: first.customer_name,
+      customer_mobile: first.customer_mobile,
+      customer_email: first.customer_email,
+      booking_date: first.booking_date,
+      total_amount: totalAmount,
+      payment_status: first.payment_status,
+      payment_method: first.payment_method,
+      payu_mihpayid: first.payu_mihpayid,
+      is_free_booking: Boolean(first.is_free_booking),
+      cancellation_requested: Boolean(first.cancellation_requested),
+      cancellation_reason: first.cancellation_reason ?? null,
+      refund_amount: first.refund_amount ? Number(first.refund_amount) : null,
+      refund_status: first.refund_status || (first.payment_status === 'refunded' ? 'REFUNDED' : first.cancellation_requested ? 'PENDING_REVIEW' : 'NONE'),
+      refund_reviewed_at: first.refund_reviewed_at ?? null,
+      refund_reviewed_by: first.refund_reviewed_by ?? null,
+      refund_reason: first.refund_reason ?? first.cancellation_reason ?? null,
+      refund_processed_at: first.refund_processed_at ?? null,
+      created_at: first.created_at,
+      updated_at: first.updated_at,
+      slots,
+    });
+  }
+
+  return result;
+}
+
+export async function getBookingGroup(bookingRef: string): Promise<BookingGroup | null> {
+  const rows = await getBookingsByRef(bookingRef);
+  if (!rows || rows.length === 0) return null;
+  return groupBookingRows(rows)[0] ?? null;
+}
+
+export async function getGroupedBookingsForUser(userId: number): Promise<BookingGroup[]> {
+  await ensureSchemaColumns();
+  const rows = await dbQuery<BookingRow>(
+    `SELECT * FROM bookings
+      WHERE user_id = ?
+        AND payment_status IN ('confirmed', 'pending', 'cancelled', 'refunded')
+      ORDER BY created_at DESC`,
+    [userId]
+  );
+  return groupBookingRows(rows);
+}
+
 export async function getBookingsForUser(userId: number) {
+  await ensureSchemaColumns();
   return dbQuery<BookingRow>(
     `SELECT * FROM bookings
       WHERE user_id = ?
-        AND payment_status IN ('confirmed', 'pending')
+        AND payment_status IN ('confirmed', 'pending', 'cancelled', 'refunded')
       ORDER BY created_at DESC`,
     [userId]
   );
 }
 
 export async function getBookingByTicket(ticketNumber: string) {
-  return queryOne<BookingRow>('SELECT * FROM bookings WHERE ticket_number = ? LIMIT 1', [ticketNumber]);
+  await ensureSchemaColumns();
+  return queryOne<BookingRow>('SELECT * FROM bookings WHERE ticket_number = ? OR booking_ref = ? LIMIT 1', [ticketNumber, ticketNumber]);
 }
 
 export async function getBookingsForDate(arenaId: number, bookingDate: string) {
@@ -252,7 +346,6 @@ export async function createBookingBatch(params: {
   let effectiveUserId = params.userId;
 
   await transaction(async (connection) => {
-    // JIT User Creation: If no userId, find or create
     if (!effectiveUserId) {
       const [userRows] = await connection.execute(
         `SELECT id FROM users WHERE customer_mobile = ? OR email = ? LIMIT 1`,
@@ -265,11 +358,58 @@ export async function createBookingBatch(params: {
       } else {
         const [newUserRows] = await connection.execute(
           `INSERT INTO users (name, email, customer_mobile, role, created_at, updated_at)
-           VALUES (?, ?, ?, 'customer', NOW(), NOW())
+           VALUES (?, ?, ?, 'player', NOW(), NOW())
            RETURNING id`,
           [params.customerName, params.customerEmail || `user-${crypto.randomUUID().slice(0, 8)}@agnelarena.com`, params.customerMobile]
         );
         effectiveUserId = (newUserRows as any[])[0].id;
+      }
+    }
+
+    // If we have an authenticated user (effectiveUserId), update their profile
+    // only for non-empty values provided in the booking payload. Do NOT overwrite
+    // existing values with empty/nulls. Preserve uniqueness of email.
+    if (effectiveUserId) {
+      const [userRows] = await connection.execute(
+        `SELECT id, name, email, customer_mobile FROM users WHERE id = ? LIMIT 1`,
+        [effectiveUserId]
+      );
+      const currentUser = (userRows as any[])[0] || null;
+      if (currentUser) {
+        const updates: string[] = [];
+        const paramsForUpdate: any[] = [];
+
+        // Name: update if provided and non-empty and different
+        if (params.customerName && params.customerName.trim() !== '' && params.customerName !== currentUser.name) {
+          updates.push('name = ?');
+          paramsForUpdate.push(params.customerName);
+        }
+
+        // Mobile: update if provided and non-empty and different
+        if (params.customerMobile && params.customerMobile.trim() !== '' && params.customerMobile !== currentUser.customer_mobile) {
+          updates.push('customer_mobile = ?');
+          paramsForUpdate.push(params.customerMobile);
+        }
+
+        // Email: update if provided and non-empty and different and not used by another user
+        if (params.customerEmail && params.customerEmail.trim() !== '' && params.customerEmail !== currentUser.email) {
+          const [existingEmailRows] = await connection.execute(
+            `SELECT id FROM users WHERE LOWER(email) = ? AND id != ? LIMIT 1`,
+            [String(params.customerEmail).toLowerCase(), effectiveUserId]
+          );
+          if (((existingEmailRows as any[]) || []).length === 0) {
+            updates.push('email = ?');
+            paramsForUpdate.push(params.customerEmail);
+          }
+        }
+
+        if (updates.length > 0) {
+          paramsForUpdate.push(effectiveUserId);
+          await connection.execute(
+            `UPDATE users SET ${updates.join(', ')}, updated_at = NOW() WHERE id = ?`,
+            paramsForUpdate
+          );
+        }
       }
     }
 
@@ -336,7 +476,7 @@ export async function createBookingBatch(params: {
 export async function confirmPayment(bookingRef: string, mihpayid: string | null) {
   const bookings = await getBookingsByRef(bookingRef);
 
-  if (bookings && bookings?.length === 0) {
+  if (!bookings || bookings.length === 0) {
     return null;
   }
 
@@ -354,6 +494,22 @@ export async function confirmPayment(bookingRef: string, mihpayid: string | null
 
 export async function markPaymentFailed(bookingRef: string) {
   await query(`UPDATE bookings SET payment_status = 'failed', updated_at = NOW() WHERE booking_ref = ?`, [bookingRef]);
+}
+
+export async function cancelBookingGroup(bookingRef: string, reason: string, refundAmount: number) {
+  await ensureSchemaColumns();
+  await query(
+    `UPDATE bookings
+        SET cancellation_requested = TRUE,
+            payment_status = 'cancelled',
+            refund_amount = ?,
+            cancellation_reason = ?,
+            refund_status = 'PENDING_REVIEW',
+            updated_at = NOW()
+      WHERE booking_ref = ?`,
+    [refundAmount, reason, bookingRef]
+  );
+  return true;
 }
 
 export async function getSetting(key: string) {
@@ -399,6 +555,13 @@ export async function removeOtp(identifier: string) {
   await query('DELETE FROM user_otps WHERE identifier = ?', [identifier]);
 }
 
+export async function findUserById(id: number) {
+  return queryOne<{ id: number; name: string; email: string; customer_mobile: string | null; role: string }>(
+    `SELECT id, name, email, customer_mobile, role FROM users WHERE id = ? LIMIT 1`,
+    [id]
+  );
+}
+
 export async function findUserByIdentifier(identifier: string) {
   return queryOne<{ id: number; name: string; email: string; customer_mobile: string | null; role: string }>(
     `SELECT id, name, email, customer_mobile, role
@@ -428,31 +591,152 @@ export async function findOrCreateUserByIdentifier(identifier: string) {
   return findUserByIdentifier(identifier);
 }
 
-export async function getSecurityBookings(ticketNumber: string) {
-  return dbQuery<BookingRow>(`SELECT * FROM bookings WHERE ticket_number = ? ORDER BY booking_date DESC`, [ticketNumber]);
+export async function getSecurityBookings(ticketOrRef: string) {
+  await ensureSchemaColumns();
+  return dbQuery<BookingRow>(
+    `SELECT * FROM bookings WHERE ticket_number = ? OR booking_ref = ? ORDER BY time_slot ASC`,
+    [ticketOrRef, ticketOrRef]
+  );
 }
 
-export async function confirmEntryByTicket(ticketNumber: string, checkedInByUserId: number | null) {
-  const bookings = await getSecurityBookings(ticketNumber);
+/**
+ * Security Attendance Check-In Verification:
+ * Validates ticket/reference and marks ALL slots under parent booking_ref as checked-in.
+ */
+export async function confirmEntryByTicket(
+  ticketOrRef: string,
+  checkedInByUserId: number | null,
+  verificationMethod: 'qr' | 'manual' | 'ticket' = 'qr',
+  now: number = Date.now()
+): Promise<{
+  success: boolean;
+  code: 'ENTRY_APPROVED' | 'INVALID_TICKET' | 'ALREADY_CHECKED_IN' | 'CANCELLED' | 'REFUNDED' | 'EXPIRED';
+  message: string;
+  bookingGroup?: BookingGroup;
+}> {
+  await ensureSchemaColumns();
+  const bookings = await getSecurityBookings(ticketOrRef);
 
-  if (bookings && bookings?.length === 0) {
-    return { success: false, message: 'Ticket not found.' };
+  if (!bookings || bookings.length === 0) {
+    return { success: false, code: 'INVALID_TICKET', message: 'Invalid Ticket.' };
   }
 
-  if (bookings[0]?.checked_in) {
-    return { success: false, message: 'Already checked in.' };
+  const first = bookings[0];
+  const ref = first.booking_ref;
+
+  if (first.payment_status === 'refunded' || (first.refund_amount && Number(first.refund_amount) > 0 && first.refund_status === 'REFUNDED')) {
+    return { success: false, code: 'REFUNDED', message: 'Ticket Refunded.' };
+  }
+
+  if (first.payment_status === 'cancelled' || first.cancellation_requested) {
+    return { success: false, code: 'CANCELLED', message: 'Booking Cancelled.' };
+  }
+
+  if (first.checked_in) {
+    return { success: false, code: 'ALREADY_CHECKED_IN', message: 'Already Checked In.' };
+  }
+
+  const timeSlots = bookings.map((b) => b.time_slot);
+  const { bookingEnd } = getBookingTimeRange(first.booking_date, timeSlots);
+  if (now >= bookingEnd.getTime()) {
+    return { success: false, code: 'EXPIRED', message: 'Ticket Expired.' };
   }
 
   await query(
     `UPDATE bookings
-        SET checked_in = TRUE, checked_in_at = NOW(), checked_in_by = ?, updated_at = NOW()
-      WHERE ticket_number = ?`,
-    [checkedInByUserId, ticketNumber]
+        SET checked_in = TRUE,
+            checked_in_at = NOW(),
+            checked_in_by = ?,
+            verification_method = ?,
+            updated_at = NOW()
+      WHERE booking_ref = ?`,
+    [checkedInByUserId, verificationMethod, ref]
   );
 
-  return { success: true, message: 'Entry confirmed.' };
+  const updatedGroup = await getBookingGroup(ref);
+
+  return {
+    success: true,
+    code: 'ENTRY_APPROVED',
+    message: '✓ Entry Approved',
+    bookingGroup: updatedGroup ?? undefined,
+  };
 }
 
-export async function findUserById(id: number) {
-  return queryOne<{ id: number; name: string; email: string; customer_mobile: string; role: string }>('SELECT id, name, email, customer_mobile, role FROM users WHERE id = ? LIMIT 1', [id]);
+/**
+ * Computes unified Booking Lifecycle State across Customer, Admin, and Security portals.
+ */
+export function computeBookingLifecycleState(booking: {
+  payment_status: string;
+  cancellation_requested?: boolean;
+  refund_amount?: number | null;
+  checked_in?: boolean;
+  booking_date: string;
+  timeSlots: string[];
+  now?: number;
+}): {
+  state: 'UPCOMING' | 'CONFIRMED' | 'CHECKED_IN' | 'COMPLETED' | 'CANCELLATION_REQUESTED' | 'CANCELLED' | 'REFUNDED' | 'EXPIRED' | 'PENDING' | 'FAILED';
+  badgeText: string;
+  badgeClass: string;
+} {
+  const current = booking.now ?? Date.now();
+  const { bookingEnd } = getBookingTimeRange(booking.booking_date, booking.timeSlots);
+  const isPast = current >= bookingEnd.getTime();
+
+  if (booking.payment_status === 'cancelled' || booking.payment_status === 'refunded') {
+    if (booking.refund_amount && Number(booking.refund_amount) > 0) {
+      return { state: 'REFUNDED', badgeText: 'REFUNDED', badgeClass: 'border-emerald-500/20 text-emerald-400' };
+    }
+    return { state: 'CANCELLED', badgeText: 'CANCELLED', badgeClass: 'border-red-500/20 text-red-400' };
+  }
+
+  if (booking.cancellation_requested) {
+    return { state: 'CANCELLATION_REQUESTED', badgeText: 'CANCELLATION REQUESTED', badgeClass: 'border-amber-500/20 text-amber-300' };
+  }
+
+  if (booking.checked_in) {
+    if (isPast) {
+      return { state: 'COMPLETED', badgeText: 'COMPLETED', badgeClass: 'border-blue-500/20 text-blue-400' };
+    }
+    return { state: 'CHECKED_IN', badgeText: 'CHECKED IN', badgeClass: 'border-emerald-500/20 text-emerald-400' };
+  }
+
+  if (isPast) {
+    return { state: 'EXPIRED', badgeText: 'EXPIRED', badgeClass: 'border-white/10 text-white/40' };
+  }
+
+  if (booking.payment_status === 'pending') {
+    return { state: 'PENDING', badgeText: 'PENDING', badgeClass: 'border-yellow-500/20 text-yellow-500' };
+  }
+
+  if (booking.payment_status === 'failed') {
+    return { state: 'FAILED', badgeText: 'FAILED', badgeClass: 'border-red-500/20 text-red-500' };
+  }
+
+  return { state: 'UPCOMING', badgeText: 'UPCOMING', badgeClass: 'border-primary/20 text-primary' };
+}
+
+export async function getRefundPolicyConfig(): Promise<{ mode: 'PERCENTAGE' | 'FIXED'; value: number }> {
+  try {
+    const settings = await dbQuery<{ key: string; value: string }>(
+      `SELECT key, value FROM settings WHERE key IN ('refund_fee_mode', 'refund_fee_value')`
+    );
+    const modeSetting = settings.find((s) => s.key === 'refund_fee_mode')?.value;
+    const valueSetting = settings.find((s) => s.key === 'refund_fee_value')?.value;
+
+    const mode: 'PERCENTAGE' | 'FIXED' = modeSetting?.toUpperCase() === 'PERCENTAGE' ? 'PERCENTAGE' : 'FIXED';
+    const parsedVal = valueSetting ? parseFloat(valueSetting) : (mode === 'PERCENTAGE' ? 5 : 300);
+    const value = !isNaN(parsedVal) && parsedVal >= 0 ? parsedVal : (mode === 'PERCENTAGE' ? 5 : 300);
+
+    return { mode, value };
+  } catch (err) {
+    return { mode: 'FIXED', value: 300 };
+  }
+}
+
+export function formatRefundPolicyText(policy: { mode: 'PERCENTAGE' | 'FIXED'; value: number }): string {
+  if (policy.mode === 'PERCENTAGE') {
+    return `${policy.value}% cancellation charge`;
+  }
+  return `₹${policy.value} booking charge`;
 }

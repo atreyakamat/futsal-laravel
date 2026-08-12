@@ -2,68 +2,219 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { evaluateCancellationEligibility, calculateRefundAmount, computeRefundLifecycleStatus, DEFAULT_REFUND_TIMELINE } from '@/lib/refund-policy';
 
 export default function CancelBookingBtn({ 
   bookingRef, 
   bookingDateStr, 
-  slotStart, 
+  timeSlots, 
   isCancellationRequested,
-  paymentStatus
+  paymentStatus,
+  refundAmount,
+  cancellationReason,
+  updatedAt,
+  totalAmount,
+  refundTimeline = DEFAULT_REFUND_TIMELINE,
+  payuMihpayid,
+  refundStatus,
+  cutoffHours,
+  refundFeeMode = 'FIXED',
+  refundFeeValue = 300,
 }: { 
   bookingRef: string; 
   bookingDateStr: string; 
-  slotStart: string;
+  timeSlots: string[];
   isCancellationRequested: boolean;
   paymentStatus: string;
+  refundAmount: number | null;
+  cancellationReason: string | null;
+  updatedAt: string | Date;
+  totalAmount: number;
+  refundTimeline?: string;
+  payuMihpayid?: string | null;
+  refundStatus?: string | null;
+  cutoffHours?: number;
+  refundFeeMode?: 'FIXED' | 'PERCENTAGE';
+  refundFeeValue?: number;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Check if booking is in the past or < 6 hours away
-  const bookingDateTime = new Date(`${bookingDateStr}T${slotStart}:00+05:30`);
-  const msUntilBooking = bookingDateTime.getTime() - Date.now();
-  const isTooLate = msUntilBooking < 6 * 60 * 60 * 1000;
-  
-  if (paymentStatus === 'cancelled' || paymentStatus === 'refunded') {
+  const activeCutoffHours = cutoffHours ?? 3;
+
+  // Evaluate time eligibility for cancellation
+  const eligibility = evaluateCancellationEligibility(bookingDateStr, timeSlots, Date.now(), activeCutoffHours);
+
+  // Calculate fee and expected refund amount based on active policy
+  const { serviceFee, refundAmount: calculatedRefund, feeMode, feeValue } = calculateRefundAmount(totalAmount, {
+    mode: refundFeeMode,
+    value: refundFeeValue,
+  });
+  const displayRefund = refundAmount ?? calculatedRefund;
+
+  const feeLabel = feeMode === 'PERCENTAGE' ? `Cancellation Fee (${feeValue}%):` : `Cancellation Fee:`;
+
+  // Compute structured lifecycle status and messages
+  const lifecycle = computeRefundLifecycleStatus({
+    payment_status: paymentStatus,
+    cancellation_requested: isCancellationRequested,
+    cancellation_reason: cancellationReason,
+    refund_amount: refundAmount,
+    refund_status: refundStatus,
+  });
+
+  const formattedDate = new Date(updatedAt).toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  // Render Completed / Refunded State Panel
+  if (lifecycle.isRefunded) {
     return (
-      <div className="mt-4 px-4 py-2 border border-red-500/20 bg-red-500/10 text-red-500 font-bold rounded-lg text-xs text-center uppercase tracking-widest">
-        Booking Cancelled
+      <div className="mt-6 w-full p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 font-black uppercase tracking-wider text-sm">
+            <span className="material-symbols-outlined text-lg">check_circle</span>
+            Refund Information
+          </div>
+          <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase bg-emerald-500/20 border border-emerald-500/30 text-emerald-300">
+            REFUNDED
+          </span>
+        </div>
+
+        <p className="text-[11px] font-medium text-emerald-300">{lifecycle.customerMessage}</p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-white/80 pt-2 border-t border-emerald-500/20">
+          <div><span className="text-white/40">Booking Ref:</span> <span className="font-mono text-emerald-300">{bookingRef}</span></div>
+          <div><span className="text-white/40">Original Amount:</span> ₹{totalAmount}</div>
+          <div><span className="text-white/40">{feeLabel}</span> ₹{serviceFee}</div>
+          <div><span className="text-white/40">Refund Amount:</span> <strong className="text-emerald-300 font-extrabold text-sm">₹{displayRefund}</strong></div>
+          <div><span className="text-white/40">Refund Date:</span> {formattedDate}</div>
+          <div><span className="text-white/40">Gateway Reference:</span> <span className="font-mono">{payuMihpayid || bookingRef}</span></div>
+        </div>
       </div>
     );
   }
 
+  // Render Rejected State Panel
+  if (lifecycle.isRejected) {
+    const rawReason = cancellationReason?.replace(/^REJECTED:\s*/i, '') || 'Cancellation request rejected by administration.';
+    return (
+      <div className="mt-6 w-full p-5 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 font-black uppercase tracking-wider text-sm">
+            <span className="material-symbols-outlined text-lg">cancel</span>
+            Refund Information
+          </div>
+          <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase bg-red-500/20 border border-red-500/30 text-red-300">
+            REJECTED
+          </span>
+        </div>
+
+        <p className="text-[11px] font-medium text-red-300">{lifecycle.customerMessage}</p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-white/80 pt-2 border-t border-red-500/20">
+          <div><span className="text-white/40">Booking Ref:</span> <span className="font-mono text-red-300">{bookingRef}</span></div>
+          <div><span className="text-white/40">Original Amount:</span> ₹{totalAmount}</div>
+          <div><span className="text-white/40">Refund Status:</span> <strong className="text-red-300">Rejected</strong></div>
+          <div><span className="text-white/40">Rejected On:</span> {formattedDate}</div>
+        </div>
+
+        <div className="text-[11px] text-red-300/90 bg-black/30 p-3 rounded-xl border border-red-500/20">
+          <strong className="text-red-400">Rejection Reason:</strong> {rawReason}
+        </div>
+      </div>
+    );
+  }
+
+  // Render Cancellation Requested Panel (Pending Review / Approved / Processing)
   if (isCancellationRequested) {
     return (
-      <div className="mt-4 px-4 py-2 border border-yellow-500/20 bg-yellow-500/10 text-yellow-500 font-bold rounded-lg text-xs text-center uppercase tracking-widest">
-        Cancellation Requested
+      <div className="mt-6 w-full p-5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 font-black uppercase tracking-wider text-sm">
+            <span className="material-symbols-outlined text-lg">pending_actions</span>
+            Refund Information
+          </div>
+          <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${lifecycle.badgeClass}`}>
+            {lifecycle.statusText}
+          </span>
+        </div>
+
+        <p className="text-[11px] font-medium text-amber-200/90">{lifecycle.customerMessage}</p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-white/80 pt-2 border-t border-amber-500/20">
+          <div><span className="text-white/40">Booking Reference:</span> <span className="font-mono text-primary">{bookingRef}</span></div>
+          <div><span className="text-white/40">Cancellation Requested On:</span> {formattedDate}</div>
+          <div><span className="text-white/40">Original Amount:</span> ₹{totalAmount}</div>
+          <div><span className="text-white/40">{feeLabel}</span> ₹{serviceFee}</div>
+          <div><span className="text-white/40">Refund Amount:</span> <strong className="text-primary font-bold text-sm">₹{displayRefund}</strong></div>
+          <div><span className="text-white/40">Refund Status:</span> <strong className="text-amber-300">{lifecycle.statusText}</strong></div>
+        </div>
+
+        <div className="text-[11px] text-white/70 bg-black/30 p-3 rounded-xl border border-white/10 flex items-center gap-2">
+          <span className="material-symbols-outlined text-base text-primary">schedule</span>
+          <span><strong>Expected Processing Time:</strong> {refundTimeline}</span>
+        </div>
       </div>
     );
   }
 
-  if (isTooLate || paymentStatus !== 'confirmed') {
+  // Render Completed / Past Booking State
+  if (eligibility.code === 'PAST_BOOKING') {
+    return (
+      <div className="mt-4 px-4 py-2 bg-white/5 border border-white/10 text-white/40 font-black rounded-xl text-[10px] uppercase tracking-widest text-center flex items-center justify-center gap-2">
+        <span className="material-symbols-outlined text-sm">task_alt</span>
+        GAME COMPLETED
+      </div>
+    );
+  }
+
+  // Render Late Cancellation Window Closed (< cutoff away)
+  if (eligibility.code === 'LATE_CANCELLATION') {
+    return (
+      <div className="mt-4 px-4 py-2 bg-white/5 border border-white/10 text-white/40 font-black rounded-xl text-[10px] uppercase tracking-widest text-center flex items-center justify-center gap-2" title={`Cancellations are only allowed at least ${activeCutoffHours} hours before slot start time`}>
+        <span className="material-symbols-outlined text-sm">lock_clock</span>
+        CANCELLATION WINDOW CLOSED (&lt; {activeCutoffHours}H)
+      </div>
+    );
+  }
+
+  if (paymentStatus !== 'confirmed') {
     return null;
   }
 
   const handleCancel = async () => {
-    if (!confirm('Are you sure you want to request a cancellation for this booking? The refund amount will be decided by the admin.')) {
+    const feeDescription = feeMode === 'PERCENTAGE' ? `${feeValue}% cancellation fee (₹${serviceFee})` : `cancellation fee of ₹${serviceFee}`;
+    if (!confirm(`Request cancellation for Booking ${bookingRef}?\n\nA ${feeDescription} will be deducted. Your expected refund is ₹${calculatedRefund}.\n\nExpected Refund Timeline: ${refundTimeline}`)) {
       return;
     }
     
     setLoading(true);
+    setErrorMsg(null);
+
     try {
       const res = await fetch('/api/bookings/cancel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ref: bookingRef })
       });
+
       const data = await res.json();
+
       if (data.success) {
-        alert('Cancellation requested successfully.');
+        alert(`Cancellation requested successfully. Expected refund: ₹${data.refundAmount}. Timeline: ${refundTimeline}`);
         router.refresh();
       } else {
-        alert(data.message || 'Failed to cancel');
+        setErrorMsg(data.message || 'Failed to cancel booking');
+        alert(data.message || 'Cancellation rejected');
       }
-    } catch (e) {
+    } catch {
+      setErrorMsg('An unexpected network error occurred.');
       alert('An error occurred.');
     } finally {
       setLoading(false);
@@ -71,13 +222,18 @@ export default function CancelBookingBtn({
   };
 
   return (
-    <button 
-      onClick={handleCancel}
-      disabled={loading}
-      className="mt-4 w-full md:w-auto px-4 py-3 bg-white/5 hover:bg-red-500/10 hover:text-red-500 border border-white/10 hover:border-red-500/30 text-white/70 font-bold rounded-xl text-xs uppercase tracking-widest transition-colors flex items-center justify-center gap-2"
-    >
-      {loading ? 'Processing...' : 'Request Cancellation'}
-      <span className="material-symbols-outlined text-base">cancel</span>
-    </button>
+    <div className="mt-4 w-full md:w-auto">
+      {errorMsg && (
+        <p className="text-[10px] text-red-400 font-bold mb-2 uppercase tracking-wider">{errorMsg}</p>
+      )}
+      <button 
+        onClick={handleCancel}
+        disabled={loading}
+        className="w-full md:w-auto px-4 py-3 bg-white/5 hover:bg-red-500/10 hover:text-red-500 border border-white/10 hover:border-red-500/30 text-white/70 font-bold rounded-xl text-xs uppercase tracking-widest transition-colors flex items-center justify-center gap-2"
+      >
+        {loading ? 'Processing...' : 'Request Cancellation'}
+        <span className="material-symbols-outlined text-base">cancel</span>
+      </button>
+    </div>
   );
 }

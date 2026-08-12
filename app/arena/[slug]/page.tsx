@@ -1,6 +1,7 @@
-import { getArenaBySlug, getArenaPricing } from '@/lib/domain';
+import { getArenaBySlug, getArenaPricing, queryOne } from '@/lib/domain';
 import BookingSystem from '@/components/BookingSystem';
 import { getOrCreateCsrfToken } from '@/lib/csrf';
+import { readAuthUserId } from '@/lib/session';
 import Link from 'next/link';
 
 type Props = {
@@ -29,6 +30,12 @@ export default async function ArenaPage({ params, searchParams }: Props) {
   const minPrice = safePricing?.length > 0 ? Math.min(...safePricing.map(p => Number(p.price))) : 500;
   const selectedDate = typeof resolvedSearchParams.date === 'string' ? resolvedSearchParams.date : new Date().toISOString().split('T')[0];
   const csrfToken = await getOrCreateCsrfToken();
+  
+  const userId = await readAuthUserId();
+  let currentUser = null;
+  if (userId) {
+    currentUser = await queryOne<{ name?: string; email?: string; customer_mobile?: string }>('SELECT name, email, customer_mobile FROM users WHERE id = ?', [userId]);
+  }
 
   return (
     <div className="min-h-screen">
@@ -81,7 +88,14 @@ export default async function ArenaPage({ params, searchParams }: Props) {
       </section>
 
       <div className="relative z-10 -mt-4 sm:-mt-8">
-        <BookingSystem arenaId={arena.id} initialDate={selectedDate} csrfToken={csrfToken} />
+        <BookingSystem 
+          arenaId={arena.id} 
+          initialDate={selectedDate} 
+          csrfToken={csrfToken} 
+          initialCustomerName={currentUser?.name || ''}
+          initialCustomerMobile={currentUser?.customer_mobile || ''}
+          initialCustomerEmail={currentUser?.email || ''}
+        />
       </div>
     </div>
   );

@@ -42,9 +42,10 @@ export async function POST(request: Request) {
       },
     });
 
-    // Set auth cookie with super admin ID encoded with role indicator
+    // Set auth cookie with super_admins.id (NOT users.id) to prevent identity contamination
+    const effectiveUserId = superAdmin.id;
     const cookieOpts = getCookieOptions(60 * 60 * 24 * 7);
-    response.cookies.set('fg_auth_user', await signValue(`${superAdmin.id}`), cookieOpts);
+    response.cookies.set('fg_auth_user', await signValue(`${effectiveUserId}`), cookieOpts);
 
     // Set role cookie
     response.cookies.set('fg_auth_role', await signValue('super_admin'), cookieOpts);

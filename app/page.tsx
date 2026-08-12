@@ -1,10 +1,34 @@
 import { getActiveArenas } from '@/lib/domain';
 import ArenaGrid from '@/components/ArenaGrid';
+import { readAuthUserId, readAuthRole } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
   const arenas = await getActiveArenas();
+
+  let userId: number | null = null;
+  let role: string | null = null;
+  try {
+    userId = await readAuthUserId();
+    role = await readAuthRole();
+  } catch (e) {
+    // Unauthenticated fallback
+  }
+
+  let authCtaHref = '/dashboard';
+  let authCtaLabel = 'Dashboard';
+
+  if (role === 'super_admin') {
+    authCtaHref = '/fg-admin/platform/super-admin';
+    authCtaLabel = 'Super Admin';
+  } else if (role === 'arena_admin') {
+    authCtaHref = '/fg-admin/arena/dashboard';
+    authCtaLabel = 'Arena Admin';
+  } else if (role === 'security') {
+    authCtaHref = '/fg-admin/security/scan';
+    authCtaLabel = 'Verify Tickets';
+  }
 
   return (
     <div className="min-h-screen">
@@ -30,9 +54,15 @@ export default async function Home() {
             <a href="#arenas" className="px-10 py-4 btn-primary rounded-full text-sm">
               EXPLORE ARENAS
             </a>
-            <a href="/login" className="px-10 py-4 glass rounded-full text-sm font-bold tracking-widest hover:bg-white/5 transition-all">
-              USER LOGIN
-            </a>
+            {userId ? (
+              <a href={authCtaHref} className="px-10 py-4 glass rounded-full text-sm font-bold tracking-widest hover:bg-white/5 transition-all uppercase">
+                {authCtaLabel}
+              </a>
+            ) : (
+              <a href="/login" className="px-10 py-4 glass rounded-full text-sm font-bold tracking-widest hover:bg-white/5 transition-all">
+                USER LOGIN
+              </a>
+            )}
           </div>
         </div>
       </section>

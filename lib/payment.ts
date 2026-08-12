@@ -1,11 +1,32 @@
 import crypto from 'crypto';
 
+/**
+ * Allowed payment methods enforced via PayU API.
+ * Per Basil Sir (23-Jul-2026):
+ *   ✅ UPI (no UPI credit)
+ *   ✅ Debit card (DC)
+ *   ✅ Wallets (CASH)
+ *   ✅ Net Banking (NB)
+ *   ❌ Credit card (CC - excluded)
+ *   ❌ EMI / BNPL (excluded)
+ *
+ * PayU codes: UPI = UPI, DC = Debit Card, CASH = Wallets, NB = Net Banking
+ */
+export const DEFAULT_ENFORCE_PAYMETHOD = 'UPI|DC|CASH|NB';
+
+/**
+ * Returns the enforce_paymethod string to pass to PayU's payment form.
+ * Configurable via process.env.PAYU_ENFORCE_PAYMETHOD.
+ */
+export function getEnforcePaymethod(): string {
+  return process.env.PAYU_ENFORCE_PAYMETHOD || DEFAULT_ENFORCE_PAYMETHOD;
+}
+
 export function getPayuConfig() {
   const isProd = process.env.PAYU_ENV === 'production' || process.env.PAYU_TEST_MODE === 'false';
   
-  // Use user-defined credentials if present (regardless of env mode), otherwise fallback to sandbox defaults.
-  const merchantKey = process.env.PAYU_MERCHANT_KEY || process.env.PAYU_KEY || process.env.PAYU_TEST_KEY || 'bPLpnO';
-  const merchantSalt = process.env.PAYU_MERCHANT_SALT || process.env.PAYU_SALT || process.env.PAYU_TEST_SALT || 'IgE6ICwOJngI1nZwAnwkX6yK0pWJxOXE';
+  const merchantKey = process.env.PAYU_MERCHANT_KEY || process.env.PAYU_KEY || process.env.PAYU_TEST_KEY || '';
+  const merchantSalt = process.env.PAYU_MERCHANT_SALT || process.env.PAYU_SALT || process.env.PAYU_TEST_SALT || '';
 
   const payuBaseUrl = process.env.PAYU_BASE_URL || (isProd ? 'https://secure.payu.in' : 'https://test.payu.in');
   const payuUrl = `${payuBaseUrl}/_payment`;
@@ -93,7 +114,6 @@ export async function verifyPaymentWithPayu(txnid: string) {
   const { merchantKey, merchantSalt } = getPayuConfig();
   const command = 'verify_payment';
 
-  // Hash formula: sha512(key|command|var1|SALT)
   const hashString = `${merchantKey}|${command}|${txnid}|${merchantSalt}`;
   const hash = crypto.createHash('sha512').update(hashString).digest('hex').toLowerCase();
 
@@ -120,5 +140,127 @@ export async function verifyPaymentWithPayu(txnid: string) {
   } catch (err) {
     console.error('PayU API verification error:', err);
     return null;
+  }
+}
+
+export interface PayuRefundResult {
+  success: boolean;
+  refundRequestId?: string;
+  payuTxnId?: string;
+  response?: any;
+  message: string;
+  environmentLimitation?: boolean;
+}
+
+export async function initiatePayuRefund(params: {
+  bookingRef: string;
+  mihpayid?: string | null;
+  amount: number;
+  reason?: string;
+}): Promise<PayuRefundResult> {
+  const { merchantKey, merchantSalt } = getPayuConfig();
+  const isProd = process.env.PAYU_ENV === 'production' || process.env.PAYU_TEST_MODE === 'false';
+  const postserviceUrl = isProd 
+    ? 'https://info.payu.in/merchant/postservice.php?form=2'
+    : 'https://test.payu.in/merchant/postservice.php?form=2';
+
+  const command = 'cancel_refund_transaction';
+  const var1 = params.mihpayid || params.bookingRef;
+  const tokenId = `REF-${params.bookingRef}-${Date.now().toString().slice(-6)}`;
+  const amountStr = params.amount.toFixed(2);
+
+  const hashString = `${merchantKey}|${command}|${var1}|${merchantSalt}`;
+  const hash = crypto.createHash('sha512').update(hashString).digest('hex').toLowerCase();
+
+  const formData = new URLSearchParams();
+  formData.append('key', merchantKey);
+  formData.append('command', command);
+  formData.append('hash', hash);
+  formData.append('var1', var1);
+  formData.append('var2', tokenId);
+  formData.append('var3', amountStr);
+
+  try {
+    const res = await fetch(postserviceUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: formData.toString(),
+    });
+
+    const data = await res.json();
+
+    if (data.status === 1 || data.status === '1' || data.msg?.toLowerCase().includes('success') || data.msg?.toLowerCase().includes('initiated')) {
+      return {
+        success: true,
+        refundRequestId: tokenId,
+        payuTxnId: var1,
+        response: data,
+        message: data.msg || 'Refund initiated successfully via PayU.',
+      };
+    }
+
+    // Check if error is due to test environment sandbox limitation
+    const isEnvLimitation = !isProd || String(data.msg || '').toLowerCase().includes('invalid transaction') || String(data.msg || '').toLowerCase().includes('not found');
+
+    return {
+      success: false,
+      refundRequestId: tokenId,
+      payuTxnId: var1,
+      response: data,
+      message: data.msg || 'PayU refund request failed',
+      environmentLimitation: isEnvLimitation,
+    };
+  } catch (err: any) {
+    console.error('PayU refund API error:', err);
+    return {
+      success: false,
+      refundRequestId: tokenId,
+      payuTxnId: var1,
+      response: { error: err.message },
+      message: `Network error calling PayU refund API: ${err.message}`,
+      environmentLimitation: true,
+    };
+  }
+}
+
+export async function checkPayuRefundStatus(refundRequestId: string): Promise<{
+  success: boolean;
+  status: string;
+  response: any;
+}> {
+  const { merchantKey, merchantSalt } = getPayuConfig();
+  const isProd = process.env.PAYU_ENV === 'production' || process.env.PAYU_TEST_MODE === 'false';
+  const postserviceUrl = isProd 
+    ? 'https://info.payu.in/merchant/postservice.php?form=2'
+    : 'https://test.payu.in/merchant/postservice.php?form=2';
+
+  const command = 'check_action_status';
+  const hashString = `${merchantKey}|${command}|${refundRequestId}|${merchantSalt}`;
+  const hash = crypto.createHash('sha512').update(hashString).digest('hex').toLowerCase();
+
+  const formData = new URLSearchParams();
+  formData.append('key', merchantKey);
+  formData.append('command', command);
+  formData.append('hash', hash);
+  formData.append('var1', refundRequestId);
+
+  try {
+    const res = await fetch(postserviceUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: formData.toString(),
+    });
+    const data = await res.json();
+    return {
+      success: data.status === 1 || data.status === '1',
+      status: data.action_status || data.status_msg || (data.status === 1 ? 'SUCCESS' : 'PENDING'),
+      response: data,
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      status: 'UNKNOWN',
+      response: { error: err.message },
+    };
   }
 }

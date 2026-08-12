@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readAuthUserId } from '@/lib/session';
 import { query } from '@/lib/domain';
+import { evaluateCancellationEligibility, calculateRefundAmount } from '@/lib/refund-policy';
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,35 +12,101 @@ export async function POST(req: NextRequest) {
 
     const { ref } = await req.json();
     if (!ref) {
-      return NextResponse.json({ success: false, message: 'Booking ref is required' }, { status: 400 });
+      return NextResponse.json({ success: false, message: 'Booking reference is required' }, { status: 400 });
     }
 
-    // Verify ownership and timing
-    const bookings = await query<any>(`SELECT * FROM bookings WHERE booking_ref = ? AND user_id = ?`, [ref, userId]);
+    // Fetch all slot rows for this parent booking_ref belonging to user
+    const bookings = await query<any>(
+      `SELECT * FROM bookings WHERE booking_ref = ? AND user_id = ?`,
+      [ref, userId]
+    );
+
     if (!bookings || bookings.length === 0) {
       return NextResponse.json({ success: false, message: 'Booking not found' }, { status: 404 });
     }
 
     const firstBooking = bookings[0];
-    const slotStart = firstBooking.time_slot.split(' - ')[0];
-    const bookingDateStr = firstBooking.booking_date; // YYYY-MM-DD
-    
-    // Construct Date assuming IST (UTC+5:30)
-    const bookingDateTime = new Date(`${bookingDateStr}T${slotStart}:00+05:30`);
-    const msUntilBooking = bookingDateTime.getTime() - Date.now();
-    
-    // Check if less than 6 hours away
-    if (msUntilBooking < 6 * 60 * 60 * 1000) {
-      return NextResponse.json({ success: false, message: 'Cancellations are only allowed up to 6 hours prior to the slot time.' }, { status: 400 });
+
+    // Rule: Reject duplicate cancellation requests
+    if (firstBooking.cancellation_requested || firstBooking.payment_status === 'cancelled' || firstBooking.payment_status === 'refunded') {
+      return NextResponse.json(
+        {
+          success: false,
+          code: 'CANCELLATION_ALREADY_REQUESTED',
+          message: 'A cancellation request has already been submitted for this booking.',
+          refundEligible: false,
+        },
+        { status: 400 }
+      );
     }
 
-    // Mark as cancellation requested
+    // Rule: Must be a confirmed booking
+    if (firstBooking.payment_status !== 'confirmed') {
+      return NextResponse.json(
+        {
+          success: false,
+          code: 'NOT_CONFIRMED',
+          message: 'Only confirmed bookings can be cancelled.',
+          refundEligible: false,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Fetch dynamic cancellation cutoff setting
+    const settingRes = await query<any>(
+      `SELECT value FROM settings WHERE key = 'cancellation_cutoff_hours'`
+    );
+    let cutoffHours = 3;
+    if (settingRes && settingRes.length > 0 && settingRes[0].value) {
+      const parsed = parseInt(settingRes[0].value, 10);
+      if (!isNaN(parsed) && parsed >= 3 && parsed <= 12) {
+        cutoffHours = parsed;
+      }
+    }
+
+    // Rule: Evaluate server-side time eligibility across all slots in BookingGroup
+    const timeSlots = bookings.map((b: any) => b.time_slot);
+    const eligibility = evaluateCancellationEligibility(firstBooking.booking_date, timeSlots, Date.now(), cutoffHours);
+
+    if (!eligibility.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          code: eligibility.code,
+          message: eligibility.message,
+          refundEligible: false,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Calculate gross total across all slots in BookingGroup
+    const { getRefundPolicyConfig } = await import('@/lib/domain');
+    const refundPolicyConfig = await getRefundPolicyConfig();
+    const grossAmount = bookings.reduce((sum: number, b: any) => sum + Number(b.amount), 0);
+    const { serviceFee, refundAmount } = calculateRefundAmount(grossAmount, refundPolicyConfig);
+
+    // Atomically mark parent BookingGroup as cancellation requested with PENDING_REVIEW status
     await query(
-      `UPDATE bookings SET cancellation_requested = TRUE, cancellation_reason = 'User Requested' WHERE booking_ref = ? AND user_id = ?`,
-      [ref, userId]
+      `UPDATE bookings
+          SET cancellation_requested = TRUE,
+              cancellation_reason = 'User Requested',
+              refund_amount = ?,
+              refund_status = 'PENDING_REVIEW',
+              updated_at = NOW()
+        WHERE booking_ref = ? AND user_id = ?`,
+      [refundAmount, ref, userId]
     );
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      message: 'Cancellation request submitted. Our team will process your refund shortly.',
+      refundEligible: true,
+      grossAmount,
+      serviceFee,
+      refundAmount,
+    });
   } catch (err: any) {
     console.error('[API Cancel Booking Error]', err);
     return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 });
