@@ -18,6 +18,8 @@ export default function CancelBookingBtn({
   payuMihpayid,
   refundStatus,
   cutoffHours,
+  refundFeeMode = 'FIXED',
+  refundFeeValue = 300,
 }: { 
   bookingRef: string; 
   bookingDateStr: string; 
@@ -32,6 +34,8 @@ export default function CancelBookingBtn({
   payuMihpayid?: string | null;
   refundStatus?: string | null;
   cutoffHours?: number;
+  refundFeeMode?: 'FIXED' | 'PERCENTAGE';
+  refundFeeValue?: number;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -42,9 +46,14 @@ export default function CancelBookingBtn({
   // Evaluate time eligibility for cancellation
   const eligibility = evaluateCancellationEligibility(bookingDateStr, timeSlots, Date.now(), activeCutoffHours);
 
-  // Calculate 5% fee and expected refund amount
-  const { serviceFee, refundAmount: calculatedRefund } = calculateRefundAmount(totalAmount);
+  // Calculate fee and expected refund amount based on active policy
+  const { serviceFee, refundAmount: calculatedRefund, feeMode, feeValue } = calculateRefundAmount(totalAmount, {
+    mode: refundFeeMode,
+    value: refundFeeValue,
+  });
   const displayRefund = refundAmount ?? calculatedRefund;
+
+  const feeLabel = feeMode === 'PERCENTAGE' ? `Cancellation Fee (${feeValue}%):` : `Cancellation Fee:`;
 
   // Compute structured lifecycle status and messages
   const lifecycle = computeRefundLifecycleStatus({
@@ -82,7 +91,7 @@ export default function CancelBookingBtn({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-white/80 pt-2 border-t border-emerald-500/20">
           <div><span className="text-white/40">Booking Ref:</span> <span className="font-mono text-emerald-300">{bookingRef}</span></div>
           <div><span className="text-white/40">Original Amount:</span> ₹{totalAmount}</div>
-          <div><span className="text-white/40">Service Fee (5%):</span> ₹{serviceFee}</div>
+          <div><span className="text-white/40">{feeLabel}</span> ₹{serviceFee}</div>
           <div><span className="text-white/40">Refund Amount:</span> <strong className="text-emerald-300 font-extrabold text-sm">₹{displayRefund}</strong></div>
           <div><span className="text-white/40">Refund Date:</span> {formattedDate}</div>
           <div><span className="text-white/40">Gateway Reference:</span> <span className="font-mono">{payuMihpayid || bookingRef}</span></div>
@@ -142,7 +151,7 @@ export default function CancelBookingBtn({
           <div><span className="text-white/40">Booking Reference:</span> <span className="font-mono text-primary">{bookingRef}</span></div>
           <div><span className="text-white/40">Cancellation Requested On:</span> {formattedDate}</div>
           <div><span className="text-white/40">Original Amount:</span> ₹{totalAmount}</div>
-          <div><span className="text-white/40">Service Fee (5%):</span> ₹{serviceFee}</div>
+          <div><span className="text-white/40">{feeLabel}</span> ₹{serviceFee}</div>
           <div><span className="text-white/40">Refund Amount:</span> <strong className="text-primary font-bold text-sm">₹{displayRefund}</strong></div>
           <div><span className="text-white/40">Refund Status:</span> <strong className="text-amber-300">{lifecycle.statusText}</strong></div>
         </div>
@@ -180,7 +189,8 @@ export default function CancelBookingBtn({
   }
 
   const handleCancel = async () => {
-    if (!confirm(`Request cancellation for Booking ${bookingRef}?\n\nA 5% service fee (₹${serviceFee}) will be deducted. Your expected refund is ₹${calculatedRefund}.\n\nExpected Refund Timeline: ${refundTimeline}`)) {
+    const feeDescription = feeMode === 'PERCENTAGE' ? `${feeValue}% cancellation fee (₹${serviceFee})` : `cancellation fee of ₹${serviceFee}`;
+    if (!confirm(`Request cancellation for Booking ${bookingRef}?\n\nA ${feeDescription} will be deducted. Your expected refund is ₹${calculatedRefund}.\n\nExpected Refund Timeline: ${refundTimeline}`)) {
       return;
     }
     

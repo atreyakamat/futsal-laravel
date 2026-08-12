@@ -107,12 +107,24 @@ export async function GET(request: Request) {
       );
     }
 
-    // Fetch cutoff hours
+    // Fetch cutoff hours and refund policy settings
     const { query } = await import('@/lib/domain');
-    const settingRes = await query<any>(`SELECT value FROM settings WHERE key = 'cancellation_cutoff_hours'`);
+    const settingsRows = await query<{ key: string; value: string }>(
+      `SELECT key, value FROM settings WHERE key IN ('cancellation_cutoff_hours', 'refund_fee_mode', 'refund_fee_value')`
+    );
     let cancellation_cutoff_hours = 3;
-    if (settingRes && settingRes.length > 0 && settingRes[0].value) {
-      cancellation_cutoff_hours = parseInt(settingRes[0].value, 10) || 3;
+    let refund_fee_mode = 'FIXED';
+    let refund_fee_value = 300;
+
+    for (const row of settingsRows) {
+      if (row.key === 'cancellation_cutoff_hours') {
+        cancellation_cutoff_hours = parseInt(row.value, 10) || 3;
+      } else if (row.key === 'refund_fee_mode') {
+        refund_fee_mode = row.value.toUpperCase() === 'PERCENTAGE' ? 'PERCENTAGE' : 'FIXED';
+      } else if (row.key === 'refund_fee_value') {
+        const val = parseFloat(row.value);
+        if (!isNaN(val) && val >= 0) refund_fee_value = val;
+      }
     }
 
     return NextResponse.json({
@@ -124,6 +136,8 @@ export async function GET(request: Request) {
         is_active: superAdmin.is_active,
         last_login: superAdmin.last_login,
         cancellation_cutoff_hours,
+        refund_fee_mode,
+        refund_fee_value,
       },
     });
   } catch (error) {
@@ -143,14 +157,14 @@ export async function POST(request: Request) {
     }
 
     const payload = await request.json();
+    const { query } = await import('@/lib/domain');
+
     if (payload.action === 'UPDATE_CUTOFF') {
       const cutoff = parseInt(payload.cutoff, 10);
       if (isNaN(cutoff) || cutoff < 3 || cutoff > 12) {
         return NextResponse.json({ success: false, message: 'Cutoff must be an integer between 3 and 12' }, { status: 400 });
       }
 
-      const { query } = await import('@/lib/domain');
-      
       // Get previous value for audit log
       const prevSetting = await query<any>(`SELECT value FROM settings WHERE key = 'cancellation_cutoff_hours'`);
       const prevValue = prevSetting && prevSetting.length > 0 ? prevSetting[0].value : '3';
@@ -174,6 +188,65 @@ export async function POST(request: Request) {
       );
 
       return NextResponse.json({ success: true, message: 'Cancellation cutoff updated successfully', cutoff });
+    }
+
+    if (payload.action === 'UPDATE_REFUND_POLICY') {
+      const mode = String(payload.mode || '').toUpperCase();
+      const val = parseFloat(payload.value);
+
+      if (mode !== 'FIXED' && mode !== 'PERCENTAGE') {
+        return NextResponse.json({ success: false, message: 'Refund fee mode must be FIXED or PERCENTAGE' }, { status: 400 });
+      }
+
+      if (isNaN(val) || val < 0) {
+        return NextResponse.json({ success: false, message: 'Refund fee value must be a non-negative monetary or percentage number' }, { status: 400 });
+      }
+
+      if (mode === 'PERCENTAGE' && val > 100) {
+        return NextResponse.json({ success: false, message: 'Percentage fee value cannot exceed 100%' }, { status: 400 });
+      }
+
+      // Get previous settings for audit log
+      const prevSettings = await query<{ key: string; value: string }>(
+        `SELECT key, value FROM settings WHERE key IN ('refund_fee_mode', 'refund_fee_value')`
+      );
+      const prevMode = prevSettings.find(s => s.key === 'refund_fee_mode')?.value || 'FIXED';
+      const prevVal = prevSettings.find(s => s.key === 'refund_fee_value')?.value || '300';
+
+      // Upsert mode
+      await query(`
+        INSERT INTO settings (key, value, created_at, updated_at) 
+        VALUES ('refund_fee_mode', ?, NOW(), NOW())
+        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+      `, [mode]);
+
+      // Upsert value
+      await query(`
+        INSERT INTO settings (key, value, created_at, updated_at) 
+        VALUES ('refund_fee_value', ?, NOW(), NOW())
+        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+      `, [val.toString()]);
+
+      // Audit log
+      await logAuditAction(
+        superAdminId,
+        'UPDATE_REFUND_POLICY',
+        'setting',
+        0,
+        {
+          refund_fee_mode: { old: prevMode, new: mode },
+          refund_fee_value: { old: prevVal, new: val.toString() }
+        },
+        request.headers.get('x-forwarded-for') || 'unknown',
+        request.headers.get('user-agent') || 'unknown'
+      );
+
+      return NextResponse.json({
+        success: true,
+        message: `Refund policy updated to ${mode} mode (${mode === 'FIXED' ? '₹' : ''}${val}${mode === 'PERCENTAGE' ? '%' : ''})`,
+        refund_fee_mode: mode,
+        refund_fee_value: val
+      });
     }
 
     return NextResponse.json({ success: false, message: 'Unknown action' }, { status: 400 });

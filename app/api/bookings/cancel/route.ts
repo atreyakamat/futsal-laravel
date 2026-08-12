@@ -82,8 +82,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Calculate gross total across all slots in BookingGroup
+    const { getRefundPolicyConfig } = await import('@/lib/domain');
+    const refundPolicyConfig = await getRefundPolicyConfig();
     const grossAmount = bookings.reduce((sum: number, b: any) => sum + Number(b.amount), 0);
-    const { serviceFee, refundAmount } = calculateRefundAmount(grossAmount);
+    const { serviceFee, refundAmount } = calculateRefundAmount(grossAmount, refundPolicyConfig);
 
     // Atomically mark parent BookingGroup as cancellation requested with PENDING_REVIEW status
     await query(

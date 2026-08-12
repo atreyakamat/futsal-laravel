@@ -53,6 +53,13 @@ let dbBookings: any[] = [];
 function setupQueryMock() {
   mockQuery.mockImplementation(async (sql: string, _params?: any[]) => {
     if (typeof sql !== 'string') return [];
+    // Settings query from getRefundPolicyConfig — return 5% percentage fee
+    if (sql.includes('FROM settings') && sql.includes('refund_fee')) {
+      return [
+        { key: 'refund_fee_mode', value: 'PERCENTAGE' },
+        { key: 'refund_fee_value', value: '5' },
+      ];
+    }
     if (sql.startsWith('SELECT')) {
       return [...dbBookings];
     }

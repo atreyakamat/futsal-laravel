@@ -1,5 +1,5 @@
-import { getArenaById, getArenaPricing } from '@/lib/domain';
-import { readGuestIdentifier } from '@/lib/session';
+import { getArenaById, getArenaPricing, queryOne } from '@/lib/domain';
+import { readGuestIdentifier, readAuthUserId } from '@/lib/session';
 import { mergeSlots, getDurationText } from '@/lib/slot-merge';
 import { getPayuConfig } from '@/lib/payment';
 import { getArenaEntryMode } from '@/lib/admin';
@@ -19,9 +19,19 @@ export default async function CheckoutPage({ searchParams }: Props) {
   const slotsJson = typeof resolvedSearchParams.slots === 'string' ? resolvedSearchParams.slots : '[]';
 
   // Optional pre-filled customer details from query params
-  const paramName = typeof resolvedSearchParams.name === 'string' ? resolvedSearchParams.name : '';
-  const paramMobile = typeof resolvedSearchParams.mobile === 'string' ? resolvedSearchParams.mobile : '';
-  const paramEmail = typeof resolvedSearchParams.email === 'string' ? resolvedSearchParams.email : '';
+  let paramName = typeof resolvedSearchParams.name === 'string' ? resolvedSearchParams.name : '';
+  let paramMobile = typeof resolvedSearchParams.mobile === 'string' ? resolvedSearchParams.mobile : '';
+  let paramEmail = typeof resolvedSearchParams.email === 'string' ? resolvedSearchParams.email : '';
+
+  const userId = await readAuthUserId();
+  if (userId) {
+    const currentUser = await queryOne<{ name?: string; email?: string; customer_mobile?: string }>('SELECT name, email, customer_mobile FROM users WHERE id = ?', [userId]);
+    if (currentUser) {
+      paramName = currentUser.name || paramName;
+      paramMobile = currentUser.customer_mobile || paramMobile;
+      paramEmail = currentUser.email || paramEmail;
+    }
+  }
 
   let slots: string[] = [];
   try {
@@ -67,7 +77,7 @@ export default async function CheckoutPage({ searchParams }: Props) {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-20">
-      <div className="flex items-center gap-4 sm:gap-6 mb-8 sm:mb-16">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 mb-8 sm:mb-16">
         <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-inner flex-shrink-0">
           <span className="material-symbols-outlined text-2xl sm:text-3xl">shield_lock</span>
         </div>
@@ -220,18 +230,18 @@ export default async function CheckoutPage({ searchParams }: Props) {
                   </span>
                 </div>
                 <div className="space-y-4">
-                  <div className="p-4 sm:p-5 rounded-xl sm:rounded-2xl bg-white/[0.03] border border-white/5">
+                  <div className="p-4 sm:p-5 rounded-xl sm:rounded-2xl bg-white/[0.03] border border-white/5 break-words overflow-hidden">
                     <span className="label-classic !ml-0 mb-2">Time Slots</span>
-                    <span className="text-xl sm:text-2xl font-black text-white italic tracking-tighter uppercase">
+                    <span className="text-xl sm:text-2xl font-black text-white italic tracking-tighter uppercase break-words block max-w-full">
                       {mergeSlots(slots).join(', ')}
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div className="pt-6 sm:pt-8 border-t border-white/5 flex justify-between items-end">
+              <div className="pt-6 sm:pt-8 border-t border-white/5 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 overflow-hidden">
                 <span className="label-classic !ml-0">Total Amount</span>
-                <span className="text-3xl sm:text-5xl font-black text-white italic tracking-tighter">₹{checkoutTotal}</span>
+                <span className="text-3xl sm:text-5xl font-black text-white italic tracking-tighter break-words max-w-full">₹{checkoutTotal}</span>
               </div>
             </div>
           </div>

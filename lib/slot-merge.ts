@@ -1,62 +1,101 @@
-function parseSlot(slot: string) {
-  const [start] = slot.split('-');
-  return start;
-}
-
-function toMinutes(time: string) {
-  const [hours, minutes] = time.split(':').map(Number);
+function toMinutes(time?: string) {
+  if (!time) return 0;
+  const parts = time.trim().split(':').map(Number);
+  const hours = parts[0] || 0;
+  const minutes = parts[1] || 0;
   return hours * 60 + minutes;
 }
 
-function toTime(minutes: number) {
-  const hours = String(Math.floor(minutes / 60)).padStart(2, '0');
-  const mins = String(minutes % 60).padStart(2, '0');
-  return `${hours}:${mins}`;
+function parseSlotTimes(slot: string): { startMin: number; endMin: number } | null {
+  if (!slot || typeof slot !== 'string') return null;
+  // Extract all time-like strings (e.g. "20:00") from the slot string
+  const parts = slot.match(/\d{1,2}:\d{2}/g) || [];
+  if (parts.length < 2) return null;
+
+  const startMin = toMinutes(parts[0]);
+  let endMin = toMinutes(parts[1]);
+
+  if (endMin <= startMin && endMin === 0) {
+    endMin = 24 * 60; // 00:00 midnight wrap
+  }
+
+  return { startMin, endMin };
+}
+
+function parseSlot(slot: string) {
+  const times = parseSlotTimes(slot);
+  return times ? times.startMin : 0;
 }
 
 export function mergeSlots(slots: string[]) {
-  if (!slots || !Array.isArray(slots) || slots?.length === 0) return [];
-  const sorted = [...slots].sort((a, b) => toMinutes(parseSlot(a)) - toMinutes(parseSlot(b)));
-  const merged: string[] = [];
+  if (!slots || !Array.isArray(slots) || slots.length === 0) return [];
+  
+  const parsed = slots
+    .map((slot) => {
+      const times = parseSlotTimes(slot);
+      return times ? { slot, start: times.startMin, end: times.endMin } : null;
+    })
+    .filter((s): s is { slot: string; start: number; end: number } => s !== null);
 
-  for (const slot of sorted) {
-    if (!merged || merged?.length === 0) {
-      merged.push(slot);
+  if (parsed.length === 0) return slots;
+
+  parsed.sort((a, b) => a.start - b.start);
+
+  const merged: { start: number; end: number }[] = [];
+
+  for (const item of parsed) {
+    if (merged.length === 0) {
+      merged.push({ start: item.start, end: item.end });
       continue;
     }
 
-    const last = merged.at(-1);
-    if (!last) {
-      merged.push(slot);
-      continue;
-    }
-    const [lastStart, lastEnd] = last.split('-');
-    const [currentStart, currentEnd] = slot.split('-');
-
-    if (lastEnd === currentStart) {
-      merged[merged.length - 1] = `${lastStart}-${currentEnd}`;
+    const last = merged[merged.length - 1];
+    if (last.end === item.start) {
+      last.end = item.end;
     } else {
-      merged.push(slot);
+      merged.push({ start: item.start, end: item.end });
     }
   }
 
-  return merged;
+  function toTimeString(mins: number): string {
+    const h = Math.floor(mins / 60) % 24;
+    const m = mins % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  }
+
+  return merged.map((m) => `${toTimeString(m.start)}-${toTimeString(m.end)}`);
 }
 
 export function formatSlot(slot: string) {
   return slot;
 }
 
-export function getDurationText(slots: string[]) {
+export function getDurationText(slots: string[]): string {
   if (!slots || !Array.isArray(slots) || slots.length === 0) {
-    return '0 hrs';
+    return '0 HRS';
   }
 
-  const first = slots[0]?.split('-')[0];
-  const last = slots.at(-1)?.split('-')[1];
-  if (!first || !last) return '0 hrs';
-  const durationMinutes = toMinutes(last) - toMinutes(first);
-  const hours = durationMinutes / 60;
+  let totalMinutes = 0;
 
-  return `${hours} hr${hours === 1 ? '' : 's'}`;
+  for (const slot of slots) {
+    // Accept either a string slot ("09:00-10:00") or an object with `time_slot` property
+    let slotStr: any = slot;
+    if (slot && typeof slot === 'object' && typeof (slot as any).time_slot === 'string') {
+      slotStr = (slot as any).time_slot;
+    }
+    const times = typeof slotStr === 'string' ? parseSlotTimes(slotStr) : null;
+    if (times) {
+      const diff = times.endMin - times.startMin;
+      if (diff > 0) {
+        totalMinutes += diff;
+      }
+    }
+  }
+
+  if (totalMinutes <= 0) return '0 HRS';
+
+  const hours = totalMinutes / 60;
+  const formattedHours = Number.isInteger(hours) ? hours.toString() : hours.toFixed(1).replace(/\.0$/, '');
+
+  return `${formattedHours} ${hours === 1 ? 'HR' : 'HRS'}`;
 }

@@ -52,9 +52,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: 'Only confirmed bookings can be refunded' }, { status: 400 });
     }
 
-    // Calculate refund with 5% handling fee for combined BookingGroup amount
+    // Calculate refund using active policy configuration for combined BookingGroup amount
+    const { getRefundPolicyConfig } = await import('@/lib/domain');
+    const refundPolicyConfig = await getRefundPolicyConfig();
     const grossAmount = bookings.reduce((sum: number, b: any) => sum + Number(b.amount), 0);
-    const { serviceFee, refundAmount } = calculateRefundAmount(grossAmount);
+    const { serviceFee, refundAmount, feeMode, feeValue } = calculateRefundAmount(grossAmount, refundPolicyConfig);
 
     // Atomically transition payment_status from 'confirmed' to 'cancelled'
     const updatedRows = await query<any>(

@@ -1,4 +1,4 @@
-import { getBookingsForUser, getArenaById, query } from '@/lib/domain';
+import { getBookingsForUser, getArenaById, query, getRefundPolicyConfig } from '@/lib/domain';
 import { readAuthUserId } from '@/lib/session';
 import { mergeSlots, getDurationText } from '@/lib/slot-merge';
 import Link from 'next/link';
@@ -22,7 +22,7 @@ export default async function DashboardPage() {
 
   const allBookings = (await getBookingsForUser(userId)) || [];
   
-  // Fetch dynamic cancellation cutoff setting
+  // Fetch dynamic cancellation cutoff & refund policy settings
   const settingRes = await query<any>(
     `SELECT value FROM settings WHERE key = 'cancellation_cutoff_hours'`
   );
@@ -33,6 +33,8 @@ export default async function DashboardPage() {
       cutoffHours = parsed;
     }
   }
+
+  const refundPolicyConfig = await getRefundPolicyConfig();
 
   // Group by booking_ref
   const groups: Record<string, typeof allBookings> = {};
@@ -181,6 +183,8 @@ export default async function DashboardPage() {
                 totalAmount={totalAmount}
                 payuMihpayid={firstBooking.payu_mihpayid}
                 cutoffHours={cutoffHours}
+                refundFeeMode={refundPolicyConfig.mode}
+                refundFeeValue={refundPolicyConfig.value}
               />
             </div>
           </div>

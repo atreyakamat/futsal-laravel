@@ -10,6 +10,8 @@ interface SuperAdminSettings {
   is_active: boolean;
   last_login: string | null;
   cancellation_cutoff_hours?: number;
+  refund_fee_mode?: string;
+  refund_fee_value?: number;
 }
 
 interface Arena {
@@ -1394,6 +1396,66 @@ export default function SuperAdminDashboardClient() {
                         className="btn-primary !py-2 !px-6 !text-xs"
                       >
                         SAVE
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-white/10">
+                    <label className="block text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-2">Refund Policy Configuration</label>
+                    <p className="text-xs text-gray-400 mb-3">Configure refund fee deduction mode (Flat monetary amount vs Percentage).</p>
+                    <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                      <div>
+                        <span className="block text-[9px] text-gray-500 uppercase font-bold mb-1">Fee Type</span>
+                        <select 
+                          className="bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-sm text-white font-bold outline-none focus:border-primary/50 transition-colors"
+                          value={settings.refund_fee_mode || 'FIXED'}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setSettings(prev => prev ? { ...prev, refund_fee_mode: val } : prev);
+                          }}
+                        >
+                          <option value="FIXED">Fixed Amount (₹)</option>
+                          <option value="PERCENTAGE">Percentage (%)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <span className="block text-[9px] text-gray-500 uppercase font-bold mb-1">Deduction Value</span>
+                        <input 
+                          type="number"
+                          min="0"
+                          step="1"
+                          className="w-28 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white font-bold outline-none focus:border-primary/50 transition-colors"
+                          value={settings.refund_fee_value !== undefined ? settings.refund_fee_value : 300}
+                          onChange={(e) => {
+                            const val = parseFloat(e.target.value) || 0;
+                            setSettings(prev => prev ? { ...prev, refund_fee_value: val } : prev);
+                          }}
+                        />
+                      </div>
+
+                      <button 
+                        onClick={async () => {
+                          try {
+                            const res = await fetch('/api/fg-admin/super-admin/settings', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ 
+                                action: 'UPDATE_REFUND_POLICY', 
+                                mode: settings.refund_fee_mode || 'FIXED',
+                                value: settings.refund_fee_value !== undefined ? settings.refund_fee_value : 300
+                              })
+                            });
+                            const data = await res.json();
+                            if (data.success) alert(data.message || 'Refund policy updated successfully!');
+                            else alert(data.message || 'Error updating refund policy');
+                          } catch (err) {
+                            alert('Network error while updating refund policy');
+                          }
+                        }}
+                        className="btn-primary !py-2 !px-6 !text-xs self-end sm:self-auto mt-2 sm:mt-5"
+                      >
+                        SAVE REFUND POLICY
                       </button>
                     </div>
                   </div>

@@ -31,17 +31,57 @@ export interface CancellationEligibility {
 
 export type RefundLifecycleStatus = 'PENDING_REVIEW' | 'APPROVED' | 'PROCESSING' | 'REFUNDED' | 'REJECTED';
 
+export type RefundFeeMode = 'PERCENTAGE' | 'FIXED';
+
+export interface RefundPolicyConfig {
+  mode: RefundFeeMode;
+  value: number; // percentage (e.g. 5) or fixed flat amount (e.g. 300)
+}
+
+export const DEFAULT_REFUND_POLICY_CONFIG: RefundPolicyConfig = {
+  mode: 'FIXED',
+  value: 300,
+};
+
 /**
- * Calculates the refundable amount after the 5% service fee deduction.
+ * Calculates the refundable amount after applying the configured fee policy (FIXED flat fee or PERCENTAGE).
+ * Guarantees refund amount never drops below 0 (safely caps deduction to gross amount).
  */
-export function calculateRefundAmount(grossAmount: number): {
+export function calculateRefundAmount(
+  grossAmount: number,
+  config: Partial<RefundPolicyConfig> = DEFAULT_REFUND_POLICY_CONFIG
+): {
   grossAmount: number;
   serviceFee: number;
   refundAmount: number;
+  feeMode: RefundFeeMode;
+  feeValue: number;
 } {
-  const serviceFee = parseFloat(((grossAmount * REFUND_SERVICE_FEE_PCT) / 100).toFixed(2));
-  const refundAmount = parseFloat((grossAmount - serviceFee).toFixed(2));
-  return { grossAmount, serviceFee, refundAmount };
+  const mode: RefundFeeMode = config.mode === 'PERCENTAGE' ? 'PERCENTAGE' : 'FIXED';
+  const rawValue =
+    typeof config.value === 'number' && !isNaN(config.value) && config.value >= 0
+      ? config.value
+      : (mode === 'PERCENTAGE' ? 5 : 300);
+
+  let serviceFee: number;
+
+  if (mode === 'PERCENTAGE') {
+    serviceFee = parseFloat(((grossAmount * rawValue) / 100).toFixed(2));
+  } else {
+    // FIXED mode: flat monetary deduction (e.g. ₹300)
+    // Capped at grossAmount to ensure refund is never negative
+    serviceFee = parseFloat(Math.min(rawValue, grossAmount).toFixed(2));
+  }
+
+  const refundAmount = parseFloat(Math.max(0, grossAmount - serviceFee).toFixed(2));
+
+  return {
+    grossAmount: parseFloat(grossAmount.toFixed(2)),
+    serviceFee,
+    refundAmount,
+    feeMode: mode,
+    feeValue: rawValue,
+  };
 }
 
 /**

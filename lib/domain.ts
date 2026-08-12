@@ -365,6 +365,53 @@ export async function createBookingBatch(params: {
       }
     }
 
+    // If we have an authenticated user (effectiveUserId), update their profile
+    // only for non-empty values provided in the booking payload. Do NOT overwrite
+    // existing values with empty/nulls. Preserve uniqueness of email.
+    if (effectiveUserId) {
+      const [userRows] = await connection.execute(
+        `SELECT id, name, email, customer_mobile FROM users WHERE id = ? LIMIT 1`,
+        [effectiveUserId]
+      );
+      const currentUser = (userRows as any[])[0] || null;
+      if (currentUser) {
+        const updates: string[] = [];
+        const paramsForUpdate: any[] = [];
+
+        // Name: update if provided and non-empty and different
+        if (params.customerName && params.customerName.trim() !== '' && params.customerName !== currentUser.name) {
+          updates.push('name = ?');
+          paramsForUpdate.push(params.customerName);
+        }
+
+        // Mobile: update if provided and non-empty and different
+        if (params.customerMobile && params.customerMobile.trim() !== '' && params.customerMobile !== currentUser.customer_mobile) {
+          updates.push('customer_mobile = ?');
+          paramsForUpdate.push(params.customerMobile);
+        }
+
+        // Email: update if provided and non-empty and different and not used by another user
+        if (params.customerEmail && params.customerEmail.trim() !== '' && params.customerEmail !== currentUser.email) {
+          const [existingEmailRows] = await connection.execute(
+            `SELECT id FROM users WHERE LOWER(email) = ? AND id != ? LIMIT 1`,
+            [String(params.customerEmail).toLowerCase(), effectiveUserId]
+          );
+          if (((existingEmailRows as any[]) || []).length === 0) {
+            updates.push('email = ?');
+            paramsForUpdate.push(params.customerEmail);
+          }
+        }
+
+        if (updates.length > 0) {
+          paramsForUpdate.push(effectiveUserId);
+          await connection.execute(
+            `UPDATE users SET ${updates.join(', ')}, updated_at = NOW() WHERE id = ?`,
+            paramsForUpdate
+          );
+        }
+      }
+    }
+
     for (const slot of params.slots) {
       const slotPrice = params.freeBooking ? 0 : (priceBySlot.get(slot) ?? 500);
 
@@ -666,4 +713,22 @@ export function computeBookingLifecycleState(booking: {
   }
 
   return { state: 'UPCOMING', badgeText: 'UPCOMING', badgeClass: 'border-primary/20 text-primary' };
+}
+
+export async function getRefundPolicyConfig(): Promise<{ mode: 'PERCENTAGE' | 'FIXED'; value: number }> {
+  try {
+    const settings = await dbQuery<{ key: string; value: string }>(
+      `SELECT key, value FROM settings WHERE key IN ('refund_fee_mode', 'refund_fee_value')`
+    );
+    const modeSetting = settings.find((s) => s.key === 'refund_fee_mode')?.value;
+    const valueSetting = settings.find((s) => s.key === 'refund_fee_value')?.value;
+
+    const mode: 'PERCENTAGE' | 'FIXED' = modeSetting?.toUpperCase() === 'PERCENTAGE' ? 'PERCENTAGE' : 'FIXED';
+    const parsedVal = valueSetting ? parseFloat(valueSetting) : (mode === 'PERCENTAGE' ? 5 : 300);
+    const value = !isNaN(parsedVal) && parsedVal >= 0 ? parsedVal : (mode === 'PERCENTAGE' ? 5 : 300);
+
+    return { mode, value };
+  } catch (err) {
+    return { mode: 'FIXED', value: 300 };
+  }
 }

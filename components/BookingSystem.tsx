@@ -9,7 +9,21 @@ type Slot = {
   status: 'available' | 'booked' | 'locked' | 'selected';
 };
 
-export default function BookingSystem({ arenaId, initialDate, csrfToken }: { arenaId: number; initialDate: string; csrfToken: string }) {
+export default function BookingSystem({ 
+  arenaId, 
+  initialDate, 
+  csrfToken,
+  initialCustomerName = '',
+  initialCustomerMobile = '',
+  initialCustomerEmail = ''
+}: { 
+  arenaId: number; 
+  initialDate: string; 
+  csrfToken: string;
+  initialCustomerName?: string;
+  initialCustomerMobile?: string;
+  initialCustomerEmail?: string;
+}) {
   // 1. All State declarations at the top
   const [date, setDate] = useState(initialDate || new Date().toISOString().split('T')[0]);
   const [slots, setSlots] = useState<Slot[]>([]);
@@ -20,9 +34,9 @@ export default function BookingSystem({ arenaId, initialDate, csrfToken }: { are
   const [error, setError] = useState<string | null>(null);
 
   // Customer details state for quick inline mobile checkout
-  const [customerName, setCustomerName] = useState('');
-  const [customerMobile, setCustomerMobile] = useState('');
-  const [customerEmail, setCustomerEmail] = useState('');
+  const [customerName, setCustomerName] = useState(initialCustomerName);
+  const [customerMobile, setCustomerMobile] = useState(initialCustomerMobile);
+  const [customerEmail, setCustomerEmail] = useState(initialCustomerEmail);
 
   const customerDetailsRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
