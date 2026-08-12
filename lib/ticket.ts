@@ -3,6 +3,7 @@ import { mergeSlots, getDurationText } from '@/lib/slot-merge';
 import { sendEmail, generateBookingConfirmationEmail } from '@/lib/email';
 import { getSmsProvider } from '@/lib/sms';
 import { buildTicketVerificationUrl, generateQrDataUrl } from '@/lib/qr';
+import { generateTicketDownloadToken } from '@/lib/ticket-token';
 
 export type TicketPackage = {
   bookingRef: string;
@@ -21,7 +22,8 @@ export async function buildTicketHtml(ticket: TicketPackage): Promise<string> {
   const mergedSlots = mergeSlots(ticket.slots);
   const qrUrl = await getTicketQrUrl(ticket.ticketNumbers[0] ?? ticket.bookingRef);
   const ticketNumbers = (ticket.ticketNumbers || []).join(', ');
-  const downloadHref = `/api/bookings/download?ref=${encodeURIComponent(ticket.bookingRef)}`;
+  const downloadToken = generateTicketDownloadToken(ticket.bookingRef);
+  const downloadHref = `/api/bookings/download?ref=${encodeURIComponent(ticket.bookingRef)}&token=${downloadToken}`;
 
   return `
       <div class="card">

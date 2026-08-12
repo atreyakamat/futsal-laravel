@@ -46,6 +46,20 @@ model Arena {
   @@map("arenas")
 }
 
+/// IMPORTANT — double-booking safeguard lives OUTSIDE this declarative schema:
+/// a partial unique index `bookings_active_slot_idx` on
+/// (arena_id, booking_date, time_slot) WHERE payment_status IN ('pending', 'confirmed')
+/// is created directly via raw SQL in
+/// prisma/migrations/20260523000000_init/migration.sql. Prisma's schema DSL
+/// does not support partial/filtered indexes, so it CANNOT be declared here
+/// as a `@@unique` — doing so naively (without the WHERE clause) would be a
+/// real regression: it would also block cancelled/failed/refunded bookings
+/// from ever reusing that slot, which the partial index deliberately allows.
+/// If you ever run `prisma migrate dev` and it proposes dropping
+/// `bookings_active_slot_idx`, decline it — that index is the only thing
+/// preventing two concurrent requests from double-booking the same slot.
+/// A regression test asserting its existence lives in
+/// tests/unit/booking-active-slot-index.test.ts.
 model Booking {
   id                     Int       @id @default(autoincrement())
   ticket_number          String    @unique

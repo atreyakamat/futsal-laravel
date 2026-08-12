@@ -1,4 +1,5 @@
 import { getBookingByTicket, getArenaById } from '@/lib/domain';
+import { generateTicketDownloadToken } from '@/lib/ticket-token';
 import Link from 'next/link';
 
 type Props = {
@@ -118,7 +119,7 @@ export default async function VerifyTicketPage({ searchParams }: Props) {
         {/* Actions */}
         <div className="pt-4 border-t border-white/5 space-y-4">
           <a
-            href={`/api/bookings/download?ticket=${booking.ticket_number}`}
+            href={`/api/bookings/download?ticket=${booking.ticket_number}&token=${generateTicketDownloadToken(booking.ticket_number)}`}
             className="btn-primary w-full text-center py-4 flex items-center justify-center gap-2"
           >
             <span className="material-symbols-outlined text-sm font-black">download</span>

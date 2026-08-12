@@ -31,4 +31,20 @@ temp_pg_data/
 github_actions_key
 github_actions_key.pub
 deploy_keys/*.pem
+deploy_key.pem
+temp_ssh_key
+*.pem
 ssh_keys.txt
+
+# scratch/debug output — never belongs in version control
+err.txt
+out.txt
+test.txt
+logs.txt
+logs2.txt
+consolidated_docs.txt
+project_tree*.txt
+backdate_commits.ps1
+create_commits.ps1
+old_sms.ts
+console.error(e))

@@ -2,6 +2,7 @@ import crypto from 'crypto';
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { generateTicketDownloadToken } from '@/lib/ticket-token';
 
 const SMS_LOG_PATH = process.env.SMS_LOG_PATH || '/tmp/sms-log.txt';
 function logToPublic(msg: string) {
@@ -236,8 +237,8 @@ export class AiSensyProvider implements SmsProvider {
       }
 
       const appUrl = options?.appUrl || process.env.NEXT_PUBLIC_APP_URL || 'https://agnelarenagoa.com';
-      const pdfUrl = ticketNumber 
-        ? `${appUrl}/api/ticket/${ticketNumber}.pdf`
+      const pdfUrl = ticketNumber
+        ? `${appUrl}/api/ticket/${ticketNumber}.pdf?token=${generateTicketDownloadToken(ticketNumber)}`
         : "https://d3jt6ku4g6z5l8.cloudfront.net/FILE/6353da2e153a147b991dd812/4079142_dummy.pdf";
 
       const payload: any = {

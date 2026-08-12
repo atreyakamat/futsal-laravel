@@ -9,12 +9,16 @@ const REQUIRED_ENV_VARS = [
   'DATABASE_URL',
   'SESSION_SECRET',
   'COOKIE_SECRET',
+  // PayU credentials are hard-required: lib/payment.ts no longer has a
+  // fallback value for these, and a payment gateway silently missing its
+  // merchant key/salt is a launch-blocking misconfiguration, not a
+  // gracefully-degradable one.
+  'PAYU_MERCHANT_KEY',
+  'PAYU_MERCHANT_SALT',
 ];
 
 // Soft required — warn but allow startup (features degrade gracefully)
 const SOFT_REQUIRED_ENV_VARS = [
-  'PAYU_MERCHANT_KEY',
-  'PAYU_MERCHANT_SALT',
   'RESEND_API_KEY',
   'SMS_PROVIDER',
   'SENTRY_DSN',

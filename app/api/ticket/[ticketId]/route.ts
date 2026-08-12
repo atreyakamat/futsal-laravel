@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBookingByTicket, getArenaById } from '@/lib/domain';
 import { generateTicketPdfBuffer } from '@/lib/pdf';
+import { verifyTicketDownloadToken } from '@/lib/ticket-token';
 
 export async function GET(
   request: NextRequest,
@@ -15,6 +16,14 @@ export async function GET(
       return NextResponse.json(
         { success: false, message: 'Ticket parameter is required.' },
         { status: 400 }
+      );
+    }
+
+    const token = request.nextUrl.searchParams.get('token');
+    if (!verifyTicketDownloadToken(ticketNumber, token)) {
+      return NextResponse.json(
+        { success: false, message: 'Invalid or expired download link.' },
+        { status: 403 }
       );
     }
 

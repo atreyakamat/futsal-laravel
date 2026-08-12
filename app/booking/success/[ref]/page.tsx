@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getTicketQrUrl } from '@/lib/ticket';
 import { generateQrDataUrl, buildUpiPaymentUri } from '@/lib/qr';
+import { generateTicketDownloadToken } from '@/lib/ticket-token';
 
 type Props = {
   params: Promise<{ ref: string }>;
@@ -140,7 +141,7 @@ export default async function BookingSuccessPage({ params }: Props) {
             <h2 className="text-4xl font-black tracking-tighter text-white uppercase italic">{firstBooking.ticket_number}</h2>
             <div className="pt-6 flex justify-center">
               <a
-                href={`/booking/ticket/${bookingRef}?download=1`}
+                href={`/booking/ticket/${bookingRef}?download=1&token=${generateTicketDownloadToken(bookingRef)}`}
                 className="btn-secondary !py-3 !px-6 !rounded-full !text-[10px] flex items-center gap-3 border-primary/30 text-primary"
               >
                 <span className="material-symbols-outlined text-lg">download</span> DOWNLOAD TICKET

@@ -1,17 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBookingByTicket, getBookingsByRef, getArenaById } from '@/lib/domain';
 import { generateTicketPdfBuffer } from '@/lib/pdf';
+import { verifyTicketDownloadToken } from '@/lib/ticket-token';
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const ticketNumber = searchParams.get('ticket');
     const bookingRef = searchParams.get('ref');
+    const token = searchParams.get('token');
 
     if (!ticketNumber && !bookingRef) {
       return NextResponse.json(
         { success: false, message: 'Either ticket or ref query parameter is required.' },
         { status: 400 }
+      );
+    }
+
+    const identifier = ticketNumber || bookingRef!;
+    if (!verifyTicketDownloadToken(identifier, token)) {
+      return NextResponse.json(
+        { success: false, message: 'Invalid or expired download link.' },
+        { status: 403 }
       );
     }
 

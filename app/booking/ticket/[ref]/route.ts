@@ -1,8 +1,15 @@
 import { getBookingsByRef, getArenaById } from '@/lib/domain';
 import { generateTicketPdfBuffer } from '@/lib/pdf';
+import { verifyTicketDownloadToken } from '@/lib/ticket-token';
 
 export async function GET(request: Request, context: { params: Promise<{ ref: string }> }) {
   const { ref } = await context.params;
+  const token = new URL(request.url).searchParams.get('token');
+
+  if (!verifyTicketDownloadToken(ref, token)) {
+    return new Response('Invalid or expired download link.', { status: 403, headers: { 'Content-Type': 'text/plain' } });
+  }
+
   const bookings = await getBookingsByRef(ref);
 
   if (!bookings || bookings.length === 0) {
