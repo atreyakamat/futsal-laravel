@@ -2,17 +2,13 @@ import crypto from 'crypto';
 
 /**
  * Allowed payment methods enforced via PayU API.
- * Per Basil Sir (23-Jul-2026):
- *   ✅ UPI (no UPI credit)
- *   ✅ Debit card (DC)
- *   ✅ Wallets (CASH)
- *   ✅ Net Banking (NB)
- *   ❌ Credit card (CC - excluded)
- *   ❌ EMI / BNPL (excluded)
+ * Per Basil Sir (12-Aug-2026): UPI only.
+ *   ✅ UPI
+ *   ❌ Debit card, Wallets, Net Banking, Credit card, EMI/BNPL — all excluded
  *
- * PayU codes: UPI = UPI, DC = Debit Card, CASH = Wallets, NB = Net Banking
+ * PayU code: UPI = UPI
  */
-export const DEFAULT_ENFORCE_PAYMETHOD = 'UPI|DC|CASH|NB';
+export const DEFAULT_ENFORCE_PAYMETHOD = 'UPI';
 
 /**
  * Returns the enforce_paymethod string to pass to PayU's payment form.
