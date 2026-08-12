@@ -18,9 +18,9 @@ export async function GET(request: Request) {
     const stats = await queryOne<any>(`
       SELECT 
         (SELECT COUNT(*) FROM arenas) as total_arenas,
-        (SELECT COUNT(*) FROM bookings WHERE payment_status = 'success') as total_bookings,
-        (SELECT COALESCE(SUM(amount), 0) FROM bookings WHERE payment_status = 'success') as total_revenue,
-        (SELECT COUNT(DISTINCT customer_mobile) FROM bookings WHERE payment_status = 'success') as total_customers,
+         (SELECT COUNT(*) FROM bookings WHERE payment_status = 'confirmed') as total_bookings,
+         (SELECT COALESCE(SUM(amount), 0) FROM bookings WHERE payment_status = 'confirmed') as total_revenue,
+         (SELECT COUNT(DISTINCT customer_mobile) FROM bookings WHERE payment_status = 'confirmed') as total_customers,
         (SELECT COUNT(*) FROM users WHERE role = 'arena_admin') as total_arena_admins,
         (SELECT COUNT(*) FROM users WHERE role = 'security') as total_security_staff
     `);

@@ -70,7 +70,7 @@ export default async function RootLayout({
     role = await readAuthRole();
     arenaId = await readArenaId();
     
-    if (userId) {
+    if (userId && role !== 'super_admin') {
       const { findUserById } = await import('@/lib/domain');
       const user = await findUserById(userId);
       if (user) {

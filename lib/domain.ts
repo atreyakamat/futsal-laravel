@@ -733,3 +733,10 @@ export async function getRefundPolicyConfig(): Promise<{ mode: 'PERCENTAGE' | 'F
     return { mode: 'FIXED', value: 300 };
   }
 }
+
+export function formatRefundPolicyText(policy: { mode: 'PERCENTAGE' | 'FIXED'; value: number }): string {
+  if (policy.mode === 'PERCENTAGE') {
+    return `${policy.value}% cancellation charge`;
+  }
+  return `₹${policy.value} booking charge`;
+}

@@ -1,4 +1,4 @@
-import { getBookingsByRef, getArenaById } from '@/lib/domain';
+import { getBookingsByRef, getArenaById, getRefundPolicyConfig, formatRefundPolicyText } from '@/lib/domain';
 import { mergeSlots, getDurationText } from '@/lib/slot-merge';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
@@ -20,6 +20,7 @@ export default async function BookingSuccessPage({ params }: Props) {
 
   const firstBooking = bookings[0];
   const arena = await getArenaById(firstBooking.arena_id);
+  const refundPolicy = await getRefundPolicyConfig();
   if (!arena) redirect('/');
 
   // Guard: only show ticket for confirmed bookings (including free bookings)
@@ -29,8 +30,6 @@ export default async function BookingSuccessPage({ params }: Props) {
   if (!isConfirmed) {
     redirect(`/booking/payment-failed/${bookingRef}`);
   }
-
-
 
   const totalAmount = bookings.reduce((sum, b) => sum + Number(b.amount), 0);
   const slots = bookings.map((b) => b.time_slot);
@@ -149,7 +148,19 @@ export default async function BookingSuccessPage({ params }: Props) {
                 <div>
                   <p className="font-black text-sm mb-2 text-white uppercase tracking-tight">Game Time</p>
                   <p className="text-xs text-white/40 leading-relaxed font-medium">
-                    Arrive 10 minutes early to gear up and make the most of your session at {arena.name}.
+                    Arrive 15 minutes early. Cleats without metal studs are recommended.
+                  </p>
+                </div>
+              </li>
+              <li className="flex gap-8">
+                <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-black shrink-0 shadow-inner italic">
+                  04
+                </div>
+                <div>
+                  <p className="font-black text-sm mb-2 text-white uppercase tracking-tight">Cancellation Policy</p>
+                  <p className="text-xs text-white/40 leading-relaxed font-medium">
+                    Cancellations are allowed up to 24 hours before your booking.<br/>
+                    Eligible refunds are processed after deducting a {formatRefundPolicyText(refundPolicy)}.
                   </p>
                 </div>
               </li>

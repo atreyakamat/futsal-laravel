@@ -1,4 +1,4 @@
-import { getArenaById, getArenaPricing, queryOne } from '@/lib/domain';
+import { getArenaById, getArenaPricing, queryOne, getRefundPolicyConfig, formatRefundPolicyText } from '@/lib/domain';
 import { readGuestIdentifier, readAuthUserId } from '@/lib/session';
 import { mergeSlots, getDurationText } from '@/lib/slot-merge';
 import { getPayuConfig } from '@/lib/payment';
@@ -74,6 +74,7 @@ export default async function CheckoutPage({ searchParams }: Props) {
   const csrfToken = await getOrCreateCsrfToken();
 
   const effectiveMobile = paramMobile || guestIdentifier || '';
+  const refundPolicy = await getRefundPolicyConfig();
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-20">
@@ -246,12 +247,29 @@ export default async function CheckoutPage({ searchParams }: Props) {
             </div>
           </div>
 
-          <div className="flex items-start gap-4 p-4 sm:p-6 glass rounded-2xl sm:rounded-[2rem] border-primary/20 bg-primary/5">
-            <span className="material-symbols-outlined text-primary text-xl sm:text-2xl animate-pulse flex-shrink-0">timer</span>
-            <p className="text-[10px] font-black text-primary/80 uppercase tracking-[0.15em] sm:tracking-[0.2em] leading-relaxed">
-              These slots are temporarily locked. Complete the booking within{' '}
-              <span className="text-white underline decoration-primary/50 underline-offset-4">10 minutes</span> to secure your pitch.
-            </p>
+          <div className="flex flex-col gap-4">
+            <div className="flex items-start gap-4 p-4 sm:p-6 glass rounded-2xl sm:rounded-[2rem] border-primary/20 bg-primary/5">
+              <span className="material-symbols-outlined text-primary text-xl sm:text-2xl animate-pulse flex-shrink-0">timer</span>
+              <p className="text-[10px] font-black text-primary/80 uppercase tracking-[0.15em] sm:tracking-[0.2em] leading-relaxed">
+                These slots are temporarily locked. Complete the booking within{' '}
+                <span className="text-white underline decoration-primary/50 underline-offset-4">10 minutes</span> to secure your pitch.
+              </p>
+            </div>
+            
+            <div className="flex items-start gap-4 p-4 sm:p-6 glass rounded-2xl sm:rounded-[2rem] border-red-500/20 bg-red-500/5">
+              <span className="material-symbols-outlined text-red-500 text-xl sm:text-2xl flex-shrink-0">event_busy</span>
+              <div className="space-y-2">
+                <p className="text-[10px] font-black text-red-500 uppercase tracking-[0.15em] sm:tracking-[0.2em] leading-relaxed">
+                  CANCELLATION & REFUND POLICY
+                </p>
+                <p className="text-xs font-medium text-white/60 leading-relaxed">
+                  Cancel up to 24 hours before your scheduled session to be eligible for a refund.
+                </p>
+                <p className="text-xs font-medium text-white/60 leading-relaxed">
+                  Refund: {formatRefundPolicyText(refundPolicy)} deducted from the refundable amount.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -42,8 +42,8 @@ export async function POST(request: Request) {
       },
     });
 
-    // Set auth cookie with unified user ID for super admin
-    const effectiveUserId = superAdmin.user_id || superAdmin.id;
+    // Set auth cookie with super_admins.id (NOT users.id) to prevent identity contamination
+    const effectiveUserId = superAdmin.id;
     const cookieOpts = getCookieOptions(60 * 60 * 24 * 7);
     response.cookies.set('fg_auth_user', await signValue(`${effectiveUserId}`), cookieOpts);
 

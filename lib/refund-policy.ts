@@ -39,8 +39,8 @@ export interface RefundPolicyConfig {
 }
 
 export const DEFAULT_REFUND_POLICY_CONFIG: RefundPolicyConfig = {
-  mode: 'FIXED',
-  value: 300,
+  mode: 'PERCENTAGE',
+  value: 5,
 };
 
 /**

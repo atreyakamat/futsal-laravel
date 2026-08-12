@@ -34,6 +34,8 @@ export async function POST(req: NextRequest) {
 
     const payload = schema.parse(await req.json());
 
+    await ensureSchemaColumns();
+
     const bookings = await query<any>(
       `SELECT * FROM bookings WHERE booking_ref = ? LIMIT 10`,
       [payload.ref]
