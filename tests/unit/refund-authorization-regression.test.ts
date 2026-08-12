@@ -17,6 +17,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 // ── Mock all route-handler dependencies before import ────────────
 vi.mock('@/lib/domain', () => ({
   query: vi.fn(),
+  getRefundPolicyConfig: vi.fn(),
+  ensureSchemaColumns: vi.fn(),
 }));
 
 vi.mock('@/lib/payment', () => ({
@@ -33,12 +35,14 @@ vi.mock('@/lib/super-admin', () => ({
 
 // Import route handler (its dependencies are now mocked)
 import { POST } from '@/app/api/fg-admin/super-admin/refund/route';
-import { query as domainQuery } from '@/lib/domain';
+import { query as domainQuery, getRefundPolicyConfig, ensureSchemaColumns } from '@/lib/domain';
 import { initiatePayuRefund } from '@/lib/payment';
 import { readSuperAdminId } from '@/lib/session';
 import { logAuditAction } from '@/lib/super-admin';
 
 const mockQuery = vi.mocked(domainQuery);
+const mockGetRefundPolicyConfig = vi.mocked(getRefundPolicyConfig);
+const mockEnsureSchemaColumns = vi.mocked(ensureSchemaColumns);
 const mockInitiatePayuRefund = vi.mocked(initiatePayuRefund);
 const mockReadSuperAdminId = vi.mocked(readSuperAdminId);
 const mockLogAuditAction = vi.mocked(logAuditAction);
@@ -115,6 +119,8 @@ describe('REFUND-AUTHORIZATION-REGRESSION: Super Admin Refund Endpoint', () => {
       environmentLimitation: true, // explicitly sandbox
     });
     mockLogAuditAction.mockResolvedValue(undefined);
+    mockGetRefundPolicyConfig.mockResolvedValue({ mode: 'PERCENTAGE', value: 5 });
+    mockEnsureSchemaColumns.mockResolvedValue(undefined);
     setupQueryMock();
   });
 

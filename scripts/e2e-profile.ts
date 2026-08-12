@@ -1,3 +1,4 @@
+// @ts-nocheck
 import 'dotenv/config';
 import { chromium } from 'playwright';
 import { query, queryOne } from '../lib/db';
@@ -6,11 +7,11 @@ import { signValue } from '../lib/session';
 async function ensureUser(email: string | null, mobile: string | null, name: string) {
   // Try find by email or mobile
   let user = null;
-  if (email) user = await queryOne('SELECT id FROM users WHERE email = ? LIMIT 1', [email]);
+  if (email) user = await queryOne<any>('SELECT id FROM users WHERE email = ? LIMIT 1', [email]);
   if (!user && mobile) user = await queryOne('SELECT id FROM users WHERE customer_mobile = ? LIMIT 1', [mobile]);
-  if (user) return user.id;
+  if (user) return (user as any).id;
   const ensuredEmail = email || `user-${Math.random().toString(36).slice(2,10)}@agnelarena.com`;
-  const res = await query('INSERT INTO users (name, email, customer_mobile, role, created_at, updated_at) VALUES (?, ?, ?,\'player\', NOW(), NOW()) RETURNING id', [name, ensuredEmail, mobile]);
+  const res = await query('INSERT INTO users (name, email, customer_mobile, role, created_at, updated_at) VALUES (?, ?, ?,\'player\', NOW(), NOW()) RETURNING id', [name, ensuredEmail, mobile]) as any[];
   return res[0]?.id;
 }
 
@@ -29,7 +30,7 @@ async function run() {
   const browser = await chromium.launch();
   const context = await browser.newContext();
   // Find an active arena and pricing slots to use
-  const arenaRow = await queryOne('SELECT id, slug FROM arenas WHERE status = \'active\' ORDER BY id LIMIT 1');
+  const arenaRow = await queryOne<any>('SELECT id, slug FROM arenas WHERE status = \'active\' ORDER BY id LIMIT 1');
   const arenaId = arenaRow?.id || 1;
   const arenaSlug = arenaRow?.slug || 'test-booking-turf';
   const pricingRows = await query('SELECT time_slot FROM pricings WHERE arena_id = ? ORDER BY time_slot LIMIT 3', [arenaId]);
@@ -116,7 +117,7 @@ async function run() {
   console.log('Submitted booking for UserB');
 
   // Verify user's email in DB
-  const updated = await queryOne('SELECT email FROM users WHERE id = ? LIMIT 1', [userBId]);
+  const updated = await queryOne<any>('SELECT email FROM users WHERE id = ? LIMIT 1', [userBId]);
   console.log('DB email for UserB now:', updated?.email);
 
   await browser.close();

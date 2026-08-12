@@ -14,7 +14,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { readSuperAdminId } from '@/lib/session';
-import { query } from '@/lib/domain';
+import { query, ensureSchemaColumns, getRefundPolicyConfig } from '@/lib/domain';
 import { logAuditAction } from '@/lib/super-admin';
 import { calculateRefundAmount } from '@/lib/refund-policy';
 import { initiatePayuRefund } from '@/lib/payment';
@@ -53,8 +53,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Calculate refund using active policy configuration for combined BookingGroup amount
-    const { getRefundPolicyConfig } = await import('@/lib/domain');
     const refundPolicyConfig = await getRefundPolicyConfig();
+    await ensureSchemaColumns();
     const grossAmount = bookings.reduce((sum: number, b: any) => sum + Number(b.amount), 0);
     const { serviceFee, refundAmount, feeMode, feeValue } = calculateRefundAmount(grossAmount, refundPolicyConfig);
 
@@ -107,6 +107,19 @@ export async function POST(req: NextRequest) {
       req.headers.get('x-forwarded-for') || 'unknown',
       req.headers.get('user-agent') || 'unknown'
     );
+
+    // Persist PayU refund request id and set non-final refund status for the BookingGroup rows
+    try {
+      const targetStatus = payuResult.success ? 'PROCESSING' : 'PENDING_REVIEW';
+      await query(`UPDATE bookings SET payu_refund_request_id = ?, refund_status = ?, refund_reviewed_at = NOW(), refund_reviewed_by = ? WHERE booking_ref = ?`, [
+        payuResult.refundRequestId || null,
+        targetStatus,
+        superAdminId,
+        payload.ref,
+      ]);
+    } catch (err) {
+      console.error('Failed to persist payu_refund_request_id for booking_ref', payload.ref, err);
+    }
 
     return NextResponse.json({
       success: true,
