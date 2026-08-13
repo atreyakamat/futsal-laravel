@@ -1,13 +1,14 @@
 /**
  * POST /api/fg-admin/super-admin/refund
  *
- * Super Admin ONLY — bypasses all time rules and issues a refund
- * with the standard 5% handling fee deducted.
+ * Super Admin ONLY — bypasses all time rules and issues a refund with the
+ * configured handling fee deducted (see lib/refund-policy.ts — either a
+ * percentage or a flat fixed amount, per the refund_fee_mode/value settings).
  *
  * Requirement Checklist:
  *  1. Super Admin can override the 3-hour rule.
  *  2. Super Admin can issue refunds even after the cutoff.
- *  3. Even overridden refunds deduct 5% handling fees (Refund Amount = Original - 5%).
+ *  3. Even overridden refunds deduct the configured handling fee.
  *  4. Every override MUST:
  *      - Require a reason.
  *      - Be stored in audit logs.
@@ -201,9 +202,10 @@ export async function POST(req: NextRequest) {
     // the refund itself).
     await issueCreditNote(payload.ref, refundAmount, `Super Admin Override: ${payload.reason}`);
 
+    const feeDescription = feeMode === 'PERCENTAGE' ? `${feeValue}% fee` : `₹${feeValue} flat booking charge`;
     return NextResponse.json({
       success: true,
-      message: `Refund of ₹${refundAmount} processed (₹${serviceFee} 5% fee deducted from ₹${grossAmount}). Reason: "${payload.reason}".`,
+      message: `Refund of ₹${refundAmount} processed (₹${serviceFee} ${feeDescription} deducted from ₹${grossAmount}). Reason: "${payload.reason}".`,
       grossAmount,
       serviceFee,
       refundAmount,

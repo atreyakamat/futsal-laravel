@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 
 interface SlotItem {
@@ -17,10 +17,16 @@ interface SuperAdminRefundBtnProps {
   refundStatus?: string | null;
 }
 
-const FEE_PCT = 5;
+type FeeMode = 'PERCENTAGE' | 'FIXED';
 
-function calcFee(amount: number) {
-  return parseFloat(((amount * FEE_PCT) / 100).toFixed(2));
+// Matches calculateRefundAmount() in lib/refund-policy.ts — the flat FIXED
+// fee is deducted once from the combined total, not per slot, since it's a
+// single booking-charge, not a per-slot service fee.
+function computeFee(totalGross: number, mode: FeeMode, value: number) {
+  if (mode === 'PERCENTAGE') {
+    return parseFloat(((totalGross * value) / 100).toFixed(2));
+  }
+  return parseFloat(Math.min(value, totalGross).toFixed(2));
 }
 
 export default function SuperAdminRefundBtn({
@@ -34,6 +40,20 @@ export default function SuperAdminRefundBtn({
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [feeMode, setFeeMode] = useState<FeeMode>('PERCENTAGE');
+  const [feeValue, setFeeValue] = useState(5);
+
+  useEffect(() => {
+    fetch('/api/fg-admin/super-admin/settings')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.data) {
+          setFeeMode(data.data.refund_fee_mode === 'FIXED' ? 'FIXED' : 'PERCENTAGE');
+          setFeeValue(Number(data.data.refund_fee_value) || 5);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Cancelling now frees the slot immediately (payment_status flips to
   // 'cancelled' right away), so payment_status alone can't tell us whether a
@@ -42,8 +62,9 @@ export default function SuperAdminRefundBtn({
   if (paymentStatus === 'pending' || (refundStatus && TERMINAL_REFUND_STATES.includes(refundStatus))) return null;
 
   const totalGross = parseFloat(slots.reduce((s, sl) => s + sl.amount, 0).toFixed(2));
-  const totalFee   = parseFloat(slots.reduce((s, sl) => s + calcFee(sl.amount), 0).toFixed(2));
+  const totalFee = computeFee(totalGross, feeMode, feeValue);
   const totalRefund = parseFloat((totalGross - totalFee).toFixed(2));
+  const feeLabel = feeMode === 'PERCENTAGE' ? `Handling Fee (${feeValue}%)` : `Booking Charge (₹${feeValue} flat)`;
 
   const handleRefund = async () => {
     if (!reason || reason.trim().length < 3) {
@@ -110,39 +131,32 @@ export default function SuperAdminRefundBtn({
               </button>
             </div>
 
-            {/* Per-slot breakdown — only shown when multi-slot */}
+            {/* Per-slot breakdown — only shown when multi-slot. The fee is
+                deducted once from the combined total below (see feeLabel),
+                not per slot — a flat FIXED booking charge in particular
+                doesn't split meaningfully across slots. */}
             {isMultiSlot && (
               <div className="space-y-2">
                 <p className="text-[10px] font-black text-white/30 uppercase tracking-widest mb-3">
                   Slot Breakdown
                 </p>
-                {slots.map((sl, idx) => {
-                  const fee = calcFee(sl.amount);
-                  const slotRefund = parseFloat((sl.amount - fee).toFixed(2));
-                  return (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between px-4 py-3 rounded-xl border border-white/5 bg-white/[0.02] gap-4"
-                    >
-                      {/* Slot label */}
-                      <div className="flex items-center gap-3 flex-1">
-                        <div className="w-7 h-7 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-[10px] font-black shrink-0">
-                          {idx + 1}
-                        </div>
-                        <span className="text-xs font-black text-white uppercase italic">
-                          {sl.timeSlot}
-                        </span>
+                {slots.map((sl, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between px-4 py-3 rounded-xl border border-white/5 bg-white/[0.02] gap-4"
+                  >
+                    {/* Slot label */}
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="w-7 h-7 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-[10px] font-black shrink-0">
+                        {idx + 1}
                       </div>
-                      {/* Per-slot financials */}
-                      <div className="text-right shrink-0 space-y-0.5">
-                        <p className="text-[10px] text-white/30 font-bold">
-                          ₹{sl.amount} <span className="text-red-400">− ₹{fee}</span>
-                        </p>
-                        <p className="text-xs font-black text-primary">= ₹{slotRefund}</p>
-                      </div>
+                      <span className="text-xs font-black text-white uppercase italic">
+                        {sl.timeSlot}
+                      </span>
                     </div>
-                  );
-                })}
+                    <span className="text-xs font-black text-white shrink-0">₹{sl.amount}</span>
+                  </div>
+                ))}
               </div>
             )}
 
@@ -162,7 +176,7 @@ export default function SuperAdminRefundBtn({
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-white/40 font-bold uppercase tracking-widest text-[10px]">
-                  Handling Fee ({FEE_PCT}%)
+                  {feeLabel}
                 </span>
                 <span className="font-black text-red-400">− ₹{totalFee}</span>
               </div>
