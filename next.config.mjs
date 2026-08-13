@@ -46,14 +46,21 @@ const nextConfig = {
   }
 };
 
-// withSentryConfig is a no-op passthrough when SENTRY_DSN/SENTRY_AUTH_TOKEN
-// aren't set — safe to leave wrapped even before Sentry is actually enabled.
+// withSentryConfig is a no-op passthrough for error reporting when
+// SENTRY_DSN isn't set. Source map upload is disabled outright — it's the
+// part that talks to Sentry's release API at build time, and if the org/
+// project/token don't line up exactly it hard-fails the entire production
+// build (this took the site's build down once already). Error capture
+// (Sentry.captureException in the error boundaries / route catch blocks)
+// works completely independently of this and needs none of it.
 export default withSentryConfig(nextConfig, {
   silent: true,
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
-  // Source map upload requires SENTRY_AUTH_TOKEN — skipped entirely if unset.
   disableLogger: true,
   widenClientFileUpload: false,
   automaticVercelMonitors: false,
+  sourcemaps: {
+    disable: true,
+  },
 });
