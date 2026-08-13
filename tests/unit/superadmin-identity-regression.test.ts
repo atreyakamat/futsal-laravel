@@ -456,7 +456,7 @@ describe('SUPER-ADMIN-BOOKINGS-REGRESSION', () => {
     const { logAuditAction } = await import('@/lib/super-admin');
     mockLogAuditAction.mockResolvedValue(undefined);
 
-    await logAuditAction(superAdminId, 'TEST_ACTION', 'booking', 1, {}, '127.0.0.1', 'test');
+    await logAuditAction(superAdminId!, 'TEST_ACTION', 'booking', 1, {}, '127.0.0.1', 'test');
 
     expect(mockLogAuditAction).toHaveBeenCalledWith(2, 'TEST_ACTION', 'booking', 1, {}, '127.0.0.1', 'test');
     expect(mockLogAuditAction).not.toHaveBeenCalledWith(37, 'TEST_ACTION', 'booking', 1, {}, '127.0.0.1', 'test');

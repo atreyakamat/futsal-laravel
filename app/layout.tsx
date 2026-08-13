@@ -70,11 +70,19 @@ export default async function RootLayout({
     role = await readAuthRole();
     arenaId = await readArenaId();
     
-    if (userId && role !== 'super_admin') {
-      const { findUserById } = await import('@/lib/domain');
-      const user = await findUserById(userId);
-      if (user) {
-        userName = user.name;
+    if (userId) {
+      if (role === 'super_admin' || role === 'arena_admin' || role === 'security') {
+        const { getAdminContext } = await import('@/lib/admin');
+        const admin = await getAdminContext(userId);
+        if (admin) {
+          userName = admin.name;
+        }
+      } else {
+        const { findUserById } = await import('@/lib/domain');
+        const user = await findUserById(userId);
+        if (user) {
+          userName = user.name;
+        }
       }
     }
   } catch (e) {

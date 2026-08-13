@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -14,6 +14,11 @@ export default function UnifiedLogin() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+
+  useEffect(() => {
+    // Clear any existing session to ensure a clean admin authentication flow
+    fetch('/api/auth/logout', { method: 'POST' }).catch(console.error);
+  }, []);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
