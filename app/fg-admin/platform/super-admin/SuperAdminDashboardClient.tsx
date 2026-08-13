@@ -609,7 +609,17 @@ export default function SuperAdminDashboardClient() {
               <span className="material-symbols-outlined text-lg">book_online</span>
               All Bookings
             </a>
-            
+
+            <a href="/fg-admin/platform/gst-documents" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-colors text-gray-400 hover:text-white hover:bg-white/5">
+              <span className="material-symbols-outlined text-lg">receipt_long</span>
+              GST Documents
+            </a>
+
+            <a href="/fg-admin/platform/accountants" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-colors text-gray-400 hover:text-white hover:bg-white/5">
+              <span className="material-symbols-outlined text-lg">account_balance</span>
+              Accountants
+            </a>
+
             <a href="/fg-admin/platform/audit-logs" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-colors text-gray-400 hover:text-white hover:bg-white/5">
               <span className="material-symbols-outlined text-lg">history</span>
               Audit Logs
