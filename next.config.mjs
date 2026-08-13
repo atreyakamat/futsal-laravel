@@ -63,4 +63,13 @@ export default withSentryConfig(nextConfig, {
   sourcemaps: {
     disable: true,
   },
+  // sourcemaps.disable only stops the upload — release *creation* is a
+  // separate CLI call (`sentry-cli releases new`) that still ran and still
+  // hard-failed the build. Disable it outright too; nothing here is needed
+  // for runtime error capture to work.
+  release: {
+    create: false,
+    finalize: false,
+    inject: false,
+  },
 });
