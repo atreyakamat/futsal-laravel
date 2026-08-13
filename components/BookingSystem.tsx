@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { getBusinessDate, getUpcomingBusinessDates } from '@/lib/date';
 
 type Slot = {
   time_slot: string;
@@ -25,7 +26,7 @@ export default function BookingSystem({
   initialCustomerEmail?: string;
 }) {
   // 1. All State declarations at the top
-  const [date, setDate] = useState(initialDate || new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(initialDate || getBusinessDate());
   const [slots, setSlots] = useState<Slot[]>([]);
   const [selectedSlots, setSelectedSlots] = useState<Slot[]>([]);
   const [loading, setLoading] = useState(true);
@@ -182,11 +183,7 @@ export default function BookingSystem({
     return sum + (isNaN(price) ? 0 : price);
   }, 0);
 
-  const dates = Array.from({ length: 14 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() + i);
-    return d.toISOString().split('T')[0];
-  });
+  const dates = getUpcomingBusinessDates(14);
 
   return (
     <section className="py-6 sm:py-12 lg:py-20 max-w-7xl mx-auto px-4 sm:px-6">

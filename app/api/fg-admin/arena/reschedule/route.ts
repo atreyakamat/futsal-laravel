@@ -17,6 +17,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { readAuthUserId, readAuthRole } from '@/lib/session';
 import { getAdminContext } from '@/lib/admin';
 import { query } from '@/lib/domain';
+import { getBusinessDate } from '@/lib/date';
 import { getSmsProvider } from '@/lib/sms';
 import { z } from 'zod';
 
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest) {
     const payload = schema.parse(await req.json());
 
     // 1. Prevent past date selection
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getBusinessDate();
     if (payload.newDate < todayStr) {
       return NextResponse.json(
         { success: false, message: 'Reschedule rejected: Cannot reschedule to a past date.' },

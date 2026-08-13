@@ -1,6 +1,7 @@
 import { getBookingsForUser, getArenaById, query, getRefundPolicyConfig } from '@/lib/domain';
 import { readAuthUserId } from '@/lib/session';
 import { mergeSlots, getDurationText } from '@/lib/slot-merge';
+import { getBusinessDate } from '@/lib/date';
 import Link from 'next/link';
 import CancelBookingBtn from '@/components/CancelBookingBtn';
 
@@ -54,7 +55,7 @@ export default async function DashboardPage() {
   }
 
   const bookingRefs = Object.keys(groups);
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getBusinessDate();
   
   // Sort refs by booking date
   const upcomingRefs = bookingRefs

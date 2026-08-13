@@ -2,6 +2,7 @@ import { getArenaBySlug, getArenaPricing, queryOne } from '@/lib/domain';
 import BookingSystem from '@/components/BookingSystem';
 import { getOrCreateCsrfToken } from '@/lib/csrf';
 import { readAuthUserId } from '@/lib/session';
+import { getBusinessDate } from '@/lib/date';
 import Link from 'next/link';
 
 type Props = {
@@ -28,7 +29,7 @@ export default async function ArenaPage({ params, searchParams }: Props) {
   const pricing = await getArenaPricing(arena.id);
   const safePricing = pricing || [];
   const minPrice = safePricing?.length > 0 ? Math.min(...safePricing.map(p => Number(p.price))) : 500;
-  const selectedDate = typeof resolvedSearchParams.date === 'string' ? resolvedSearchParams.date : new Date().toISOString().split('T')[0];
+  const selectedDate = typeof resolvedSearchParams.date === 'string' ? resolvedSearchParams.date : getBusinessDate();
   const csrfToken = await getOrCreateCsrfToken();
   
   const userId = await readAuthUserId();
