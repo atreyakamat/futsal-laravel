@@ -3,6 +3,17 @@ import { withSentryConfig } from '@sentry/nextjs';
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
+  // pdfkit reads its font data files (Helvetica.afm etc.) from disk at
+  // runtime, which Next's standalone-build file tracer can't see on its own
+  // (it's a dynamic fs read inside a dependency, not a static import) — so
+  // every route that generates a PDF ticket needs this explicitly, or the
+  // standalone build silently omits the font files and PDF generation
+  // throws ENOENT in production.
+  outputFileTracingIncludes: {
+    '/api/bookings/download': ['./node_modules/pdfkit/js/data/**/*'],
+    '/api/ticket/[ticketId]': ['./node_modules/pdfkit/js/data/**/*'],
+    '/booking/ticket/[ref]': ['./node_modules/pdfkit/js/data/**/*'],
+  },
   images: {
     remotePatterns: [
       {
