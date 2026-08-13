@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { query } from '@/lib/db';
 import { logAuditAction } from '@/lib/super-admin';
 import { readSuperAdminId } from '@/lib/session';
+import { setArenaPaymentMode, setArenaUpiVpa, setArenaPlaceOfSupply } from '@/lib/admin';
 
 const bodySchema = z.object({
   name: z.string().min(1).max(255),
@@ -13,6 +14,9 @@ const bodySchema = z.object({
   contact_phone: z.string().optional(),
   cover_image: z.string().url().optional().or(z.literal('')),
   logo_url: z.string().url().optional().or(z.literal('')),
+  payment_mode: z.enum(['online', 'offline']).optional(),
+  upi_vpa: z.string().max(100).optional().or(z.literal('')),
+  gst_place_of_supply: z.string().max(100).optional().or(z.literal('')),
 });
 
 export async function POST(request: Request) {
@@ -37,6 +41,16 @@ export async function POST(request: Request) {
     );
 
     const arenaId = (result as any)?.[0]?.id;
+
+    if (payload.payment_mode) {
+      await setArenaPaymentMode(arenaId, payload.payment_mode);
+    }
+    if (payload.upi_vpa) {
+      await setArenaUpiVpa(arenaId, payload.upi_vpa);
+    }
+    if (payload.gst_place_of_supply) {
+      await setArenaPlaceOfSupply(arenaId, payload.gst_place_of_supply);
+    }
 
     // Log audit action
     await logAuditAction(

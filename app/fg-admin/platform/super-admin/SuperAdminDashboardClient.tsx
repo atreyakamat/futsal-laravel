@@ -75,6 +75,9 @@ export default function SuperAdminDashboardClient() {
   const [arenaAddress, setArenaAddress] = useState('');
   const [arenaCoverImage, setArenaCoverImage] = useState('');
   const [arenaLogoUrl, setArenaLogoUrl] = useState('');
+  const [arenaPaymentMode, setArenaPaymentMode] = useState<'online' | 'offline'>('online');
+  const [arenaUpiVpa, setArenaUpiVpa] = useState('');
+  const [arenaGstPlaceOfSupply, setArenaGstPlaceOfSupply] = useState('');
   
   const [showAdminForm, setShowAdminForm] = useState(false);
   const [editingAdminId, setEditingAdminId] = useState<number | null>(null);
@@ -255,7 +258,10 @@ export default function SuperAdminDashboardClient() {
           slug: arenaSlug,
           address: arenaAddress,
           cover_image: arenaCoverImage,
-          logo_url: arenaLogoUrl
+          logo_url: arenaLogoUrl,
+          payment_mode: arenaPaymentMode,
+          upi_vpa: arenaUpiVpa,
+          gst_place_of_supply: arenaGstPlaceOfSupply
         })
       });
       
@@ -278,7 +284,7 @@ export default function SuperAdminDashboardClient() {
     }
   };
 
-  const openArenaForm = (arena?: Arena) => {
+  const openArenaForm = async (arena?: Arena) => {
     if (arena) {
       setEditingArenaId(arena.id);
       setArenaName(arena.name);
@@ -286,6 +292,23 @@ export default function SuperAdminDashboardClient() {
       setArenaAddress(arena.address || '');
       setArenaCoverImage((arena as any).cover_image || '');
       setArenaLogoUrl((arena as any).logo_url || '');
+      // The arenas list doesn't carry payment_mode/upi_vpa/gst_place_of_supply
+      // (they live in the per-arena settings table, not a plain column) —
+      // fetch the single-arena detail endpoint, which already returns them.
+      setArenaPaymentMode('online');
+      setArenaUpiVpa('');
+      setArenaGstPlaceOfSupply('');
+      try {
+        const res = await fetch(`/api/fg-admin/super-admin/arenas/${arena.id}`);
+        const data = await res.json();
+        if (data.success && data.data) {
+          setArenaPaymentMode(data.data.payment_mode === 'offline' ? 'offline' : 'online');
+          setArenaUpiVpa(data.data.upi_vpa || '');
+          setArenaGstPlaceOfSupply(data.data.gst_place_of_supply || '');
+        }
+      } catch (err) {
+        console.error('Failed to fetch arena payment/GST settings:', err);
+      }
     } else {
       setEditingArenaId(null);
       setArenaName('');
@@ -293,6 +316,9 @@ export default function SuperAdminDashboardClient() {
       setArenaAddress('');
       setArenaCoverImage('');
       setArenaLogoUrl('');
+      setArenaPaymentMode('online');
+      setArenaUpiVpa('');
+      setArenaGstPlaceOfSupply('');
     }
     setShowArenaForm(true);
   };
@@ -922,6 +948,40 @@ export default function SuperAdminDashboardClient() {
                             </label>
                           )}
                         </div>
+                      </div>
+                      <div>
+                        <label className="label-classic">Payment Mode</label>
+                        <select
+                          className="input-field"
+                          value={arenaPaymentMode}
+                          onChange={e => setArenaPaymentMode(e.target.value as 'online' | 'offline')}
+                        >
+                          <option value="online">Online (PayU at checkout)</option>
+                          <option value="offline">Offline (pay at venue via UPI)</option>
+                        </select>
+                      </div>
+                      {arenaPaymentMode === 'offline' && (
+                        <div>
+                          <label className="label-classic">Venue UPI ID (VPA)</label>
+                          <input
+                            className="input-field"
+                            value={arenaUpiVpa}
+                            onChange={e => setArenaUpiVpa(e.target.value)}
+                            placeholder="arenaname@upi"
+                          />
+                        </div>
+                      )}
+                      <div>
+                        <label className="label-classic">GST Place of Supply (State)</label>
+                        <input
+                          className="input-field"
+                          value={arenaGstPlaceOfSupply}
+                          onChange={e => setArenaGstPlaceOfSupply(e.target.value)}
+                          placeholder="e.g. Goa"
+                        />
+                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-2">
+                          Required before any Tax Invoice can be issued for this turf.
+                        </p>
                       </div>
                       <div className="flex gap-4 pt-4">
                         <button type="submit" className="btn-primary flex-1">{editingArenaId ? 'UPDATE' : 'CREATE'}</button>
