@@ -13,6 +13,7 @@ const nextConfig = {
     '/api/bookings/download': ['./node_modules/pdfkit/js/data/**/*'],
     '/api/ticket/[ticketId]': ['./node_modules/pdfkit/js/data/**/*'],
     '/booking/ticket/[ref]': ['./node_modules/pdfkit/js/data/**/*'],
+    '/api/fg-admin/super-admin/gst-documents/download': ['./node_modules/pdfkit/js/data/**/*'],
   },
   images: {
     remotePatterns: [
