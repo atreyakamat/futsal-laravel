@@ -13,6 +13,8 @@ const profileSchema = z.object({
 export async function GET() {
   const userId = await readAuthUserId();
   const role = await readAuthRole();
+  const { ensureSchemaColumns } = await import('@/lib/domain');
+  await ensureSchemaColumns();
 
   if (!userId) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
@@ -61,6 +63,9 @@ export async function GET() {
 export async function PUT(request: Request) {
   const userId = await readAuthUserId();
   const role = await readAuthRole();
+  const { ensureSchemaColumns } = await import('@/lib/domain');
+  await ensureSchemaColumns();
+
 
   if (!userId) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });

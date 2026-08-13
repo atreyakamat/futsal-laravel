@@ -28,6 +28,9 @@ export async function createSuperAdmin(email: string, password: string, permissi
  * Verify super admin credentials
  */
 export async function verifySuperAdminCredentials(email: string, password: string) {
+  const { ensureSchemaColumns } = await import('@/lib/domain');
+  await ensureSchemaColumns();
+
   const superAdmin = await queryOne<{ id: number; user_id: number | null; email: string; password_hash: string; is_active: boolean }>(
     'SELECT id, user_id, email, password_hash, is_active FROM super_admins WHERE email = ?',
     [email]

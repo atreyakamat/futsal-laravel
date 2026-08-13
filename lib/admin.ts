@@ -38,6 +38,8 @@ export async function getAdminContext(userId: number | null, sessionId?: string 
   if (!userId) return null;
 
   const roleCookie = await readAuthRole();
+  const { ensureSchemaColumns } = await import('@/lib/domain');
+  await ensureSchemaColumns();
 
   // Check if session has been revoked
   if (sessionId) {

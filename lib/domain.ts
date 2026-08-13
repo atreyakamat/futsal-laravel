@@ -17,6 +17,9 @@ export async function ensureSchemaColumns() {
     await dbQuery(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS refund_processed_at TIMESTAMP NULL`);
     await dbQuery(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payu_refund_request_id TEXT NULL`);
     await dbQuery(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS verification_method VARCHAR(50) DEFAULT 'qr'`);
+    await dbQuery(`ALTER TABLE super_admins ADD COLUMN IF NOT EXISTS user_id INTEGER NULL`);
+    await dbQuery(`ALTER TABLE super_admins ADD COLUMN IF NOT EXISTS first_name VARCHAR(100) NULL`);
+    await dbQuery(`ALTER TABLE super_admins ADD COLUMN IF NOT EXISTS last_name VARCHAR(100) NULL`);
   } catch {
     // Columns already exist or handled
   }
