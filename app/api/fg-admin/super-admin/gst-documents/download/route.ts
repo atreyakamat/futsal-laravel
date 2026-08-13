@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
-import { readSuperAdminId } from '@/lib/session';
+import { readAuthUserId } from '@/lib/session';
+import { getAdminContext } from '@/lib/admin';
 import { queryOne } from '@/lib/domain';
 import { generateTaxInvoicePdfBuffer, generateCreditNotePdfBuffer } from '@/lib/gst-pdf';
 
 export async function GET(request: Request) {
-  const superAdminId = await readSuperAdminId();
-  if (!superAdminId) {
+  const userId = await readAuthUserId();
+  const context = await getAdminContext(userId);
+  if (!context || !['super_admin', 'accountant'].includes(context.role)) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
   }
 

@@ -9,6 +9,7 @@ import { getSmsProvider } from '@/lib/sms';
 import { sendEmail, generateOtpEmail } from '@/lib/email';
 
 import { normalizePhoneNumber } from '@/lib/phone';
+import { isTestPhoneNumber, TEST_OTP } from '@/lib/otp-test-bypass';
 
 const bodySchema = z.object({
   identifier: z.string().min(3).max(100),
@@ -49,14 +50,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, message: msg }, { status: 429 });
   }
 
-  const otp = crypto.randomInt(100000, 999999).toString();
+  const isTestNumber = isTestPhoneNumber(cleanIdentifier);
+  const otp = isTestNumber ? TEST_OTP : crypto.randomInt(100000, 999999).toString();
 
   await storeOtp(cleanIdentifier, otp);
   // SECURITY: never log OTP value in production. Log send attempt only.
   console.info(`[OTP] Sending to ${cleanIdentifier.slice(0, 4)}****`);
 
-  // Trigger SMS/WhatsApp Provider if identifier is a mobile number
-  if (isMobileNum) {
+  // Trigger SMS/WhatsApp Provider if identifier is a mobile number — skipped
+  // entirely for the test bypass number so QA doesn't need a real WhatsApp send.
+  if (isMobileNum && !isTestNumber) {
     const provider = getSmsProvider();
     try {
       const sent = await provider.sendSms(

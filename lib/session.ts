@@ -5,6 +5,11 @@ export const SESSION_COOKIE = 'fg_session_id';
 export const AUTH_COOKIE = 'fg_auth_user';
 export const GUEST_COOKIE = 'fg_guest_identifier';
 
+// Players shouldn't have to re-verify OTP on every visit/booking — getCookieOptions()
+// only sets maxAge when explicitly passed, so every AUTH_COOKIE write must pass this
+// (or an equivalent) to avoid silently becoming a session-only cookie.
+export const PLAYER_AUTH_MAX_AGE = 90 * 24 * 60 * 60; // 90 days, in seconds
+
 const COOKIE_SECRET = process.env.COOKIE_SECRET || '';
 
 export function signValue(value: string): string {

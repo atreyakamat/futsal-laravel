@@ -11,6 +11,7 @@ import { readAuthUserId } from '@/lib/session';
 import { getAdminContext, createAdminAuditLog } from '@/lib/admin';
 import { query } from '@/lib/domain';
 import { issueTaxInvoice } from '@/lib/gst-documents';
+import { reportServerError } from '@/lib/error-log';
 
 const schema = z.object({
   ref: z.string().min(1),
@@ -87,7 +88,7 @@ export async function POST(request: Request) {
     if (err instanceof z.ZodError) {
       return NextResponse.json({ success: false, message: 'Invalid input', errors: err.errors }, { status: 400 });
     }
-    console.error('[Confirm Venue Payment Error]', err);
+    reportServerError(err, { route: 'arena/confirm-venue-payment' });
     return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 });
   }
 }

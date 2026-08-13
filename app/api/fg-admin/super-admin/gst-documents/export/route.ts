@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { readSuperAdminId } from '@/lib/session';
+import { readAuthUserId } from '@/lib/session';
+import { getAdminContext } from '@/lib/admin';
 import { query } from '@/lib/domain';
 
 function csvEscape(value: string | number) {
@@ -8,8 +9,9 @@ function csvEscape(value: string | number) {
 }
 
 export async function GET(request: Request) {
-  const superAdminId = await readSuperAdminId();
-  if (!superAdminId) {
+  const userId = await readAuthUserId();
+  const context = await getAdminContext(userId);
+  if (!context || !['super_admin', 'accountant'].includes(context.role)) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
   }
 

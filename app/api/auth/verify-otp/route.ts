@@ -1,14 +1,17 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { removeOtp, findOrCreateUserByIdentifier, verifyOtp as verifyOtpHash } from '@/lib/domain';
-import { AUTH_COOKIE, GUEST_COOKIE, signValue, getCookieOptions } from '@/lib/session';
+import { AUTH_COOKIE, GUEST_COOKIE, signValue, getCookieOptions, PLAYER_AUTH_MAX_AGE } from '@/lib/session';
 import { getBaseUrl } from '@/lib/session';
 import { isLockedOut, recordFailedAttempt, resetAttempts } from '@/lib/rate-limit';
 import { normalizePhoneNumber } from '@/lib/phone';
 
 const bodySchema = z.object({
   identifier: z.string().min(3).max(100),
-  otp: z.string().length(6),
+  // Normally 6 digits; loosened to allow the 4-digit test bypass OTP
+  // (see lib/otp-test-bypass.ts) — a wrong-length real OTP still fails the
+  // underlying hash comparison, so this doesn't weaken real verification.
+  otp: z.string().min(4).max(6),
 });
 
 export async function POST(request: Request) {
@@ -60,7 +63,9 @@ export async function POST(request: Request) {
 
   const response = NextResponse.json({ success: true, userExists: Boolean(user), redirect: redirectUrl });
   let redirectResponse = NextResponse.redirect(new URL(redirectUrl, baseUrl), 303);
-  const cookieOpts = getCookieOptions();
+  // Persistent, not session-only — otherwise every closed browser/app forces
+  // a fresh OTP re-login, which is exactly what was reported as broken.
+  const cookieOpts = getCookieOptions(PLAYER_AUTH_MAX_AGE);
 
   if (user) {
     const signedUserId = await signValue(String(user.id));

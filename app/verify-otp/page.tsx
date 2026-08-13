@@ -82,7 +82,7 @@ export default function VerifyOtpPage({ searchParams }: Props) {
                 placeholder="••••••"
                 maxLength={6}
                 inputMode="numeric"
-                pattern="[0-9]{6}"
+                pattern="[0-9]{4,6}"
                 required
               />
             </div>
@@ -90,7 +90,7 @@ export default function VerifyOtpPage({ searchParams }: Props) {
 
           <button
             type="submit"
-            disabled={loading || otp?.length !== 6}
+            disabled={loading || !otp || otp.length < 4 || otp.length > 6}
             className="btn-primary w-full flex items-center justify-center gap-3"
           >
             {loading ? (

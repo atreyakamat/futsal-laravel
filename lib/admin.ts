@@ -6,7 +6,7 @@ import { sendTicketEmail } from '@/lib/ticket';
 import { readAuthRole, getCookieValueFromRequest, unsignValue } from '@/lib/session';
 import { sendEmail, generateApprovalNotificationEmail } from '@/lib/email';
 
-export type AdminRole = 'super_admin' | 'admin' | 'arena_admin' | 'security' | 'customer';
+export type AdminRole = 'super_admin' | 'admin' | 'arena_admin' | 'security' | 'accountant' | 'customer';
 export type EntryMode = 'open' | 'blocked' | 'free';
 export type PaymentMode = 'online' | 'offline';
 export type ApprovalRequestType = 'slot_template_update' | 'entry_mode_update' | 'admin_free_booking' | 'timing_update' | 'image_update';
@@ -32,7 +32,7 @@ export type AdminContext = {
 };
 
 export function isAdminRole(role: string | null | undefined): role is AdminRole {
-  return ['super_admin', 'arena_admin', 'security'].includes(String(role));
+  return ['super_admin', 'arena_admin', 'security', 'accountant'].includes(String(role));
 }
 
 export async function getAdminContext(userId: number | null, sessionId?: string | null): Promise<AdminContext | null> {
@@ -126,6 +126,32 @@ export async function getAdminContext(userId: number | null, sessionId?: string 
         customer_mobile: securityStaff.phone,
         arenaId: securityStaff.arena_id,
         arenaRole: 'security',
+      };
+    }
+  }
+
+  // Accountant: global read-only financial role, not arena-scoped.
+  if (roleCookie === 'accountant') {
+    const accountant = await queryOne<{
+      id: number;
+      email: string;
+      first_name: string | null;
+      last_name: string | null;
+      is_active: boolean;
+    }>(
+      'SELECT id, email, first_name, last_name, is_active FROM accountants WHERE id = ? LIMIT 1',
+      [userId]
+    );
+
+    if (accountant && accountant.is_active) {
+      return {
+        id: accountant.id,
+        name: [accountant.first_name, accountant.last_name].filter(Boolean).join(' ') || accountant.email,
+        email: accountant.email,
+        role: 'accountant',
+        customer_mobile: null,
+        arenaId: null,
+        arenaRole: null,
       };
     }
   }

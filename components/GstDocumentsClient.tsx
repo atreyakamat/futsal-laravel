@@ -34,7 +34,7 @@ interface NeedsAttention {
   created_at: string;
 }
 
-export default function GstDocumentsClient() {
+export default function GstDocumentsClient({ readOnly = false }: { readOnly?: boolean } = {}) {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
   const [needsAttention, setNeedsAttention] = useState<NeedsAttention[]>([]);
@@ -90,7 +90,7 @@ export default function GstDocumentsClient() {
             Needs Attention — {needsAttention.length} paid booking{needsAttention.length !== 1 ? 's' : ''} missing an invoice
           </h2>
           <p className="text-xs text-white/40 mb-4">
-            These bookings are paid/confirmed but a Tax Invoice failed to generate (likely a missing GST/place-of-supply setting). Fix the setting, then retry.
+            These bookings are paid/confirmed but a Tax Invoice failed to generate (likely a missing GST/place-of-supply setting).{readOnly ? ' Flag this to a super admin to fix.' : ' Fix the setting, then retry.'}
           </p>
           <div className="space-y-2">
             {needsAttention.map((b) => (
@@ -99,13 +99,15 @@ export default function GstDocumentsClient() {
                   <span className="text-xs font-black text-white uppercase italic">{b.booking_ref}</span>
                   <span className="text-[10px] text-white/30 font-bold uppercase tracking-widest ml-3">{b.customer_name} · {b.payment_method} · ₹{b.total_amount}</span>
                 </div>
-                <button
-                  onClick={() => retryInvoice(b.booking_ref)}
-                  disabled={retrying === b.booking_ref}
-                  className="btn-secondary !py-2 !px-4 !rounded-lg text-[10px] border-amber-500/30 text-amber-400"
-                >
-                  {retrying === b.booking_ref ? 'RETRYING...' : 'RETRY'}
-                </button>
+                {!readOnly && (
+                  <button
+                    onClick={() => retryInvoice(b.booking_ref)}
+                    disabled={retrying === b.booking_ref}
+                    className="btn-secondary !py-2 !px-4 !rounded-lg text-[10px] border-amber-500/30 text-amber-400"
+                  >
+                    {retrying === b.booking_ref ? 'RETRYING...' : 'RETRY'}
+                  </button>
+                )}
               </div>
             ))}
           </div>

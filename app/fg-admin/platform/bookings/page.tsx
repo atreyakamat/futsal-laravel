@@ -23,6 +23,8 @@ interface BookingRow {
   created_at: string;
   payment_method: string | null;
   venue_payment_status: string | null;
+  cancellation_requested: boolean;
+  refund_status: string | null;
 }
 
 /** A booking_ref group — all slots that share the same booking reference. */
@@ -39,9 +41,15 @@ interface BookingGroup {
   totalAmount: number;
   payment_method: string | null;
   venue_payment_status: string | null;
+  cancellation_requested: boolean;
+  refund_status: string | null;
 }
 
-export default async function AdminBookingsPage() {
+export default async function AdminBookingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ arena_id?: string }>;
+}) {
   const userId = await readAuthUserId();
   const context = await getAdminContext(userId);
 
@@ -49,18 +57,30 @@ export default async function AdminBookingsPage() {
     redirect('/fg-admin/login');
   }
 
+  const resolvedSearchParams = await searchParams;
+  const selectedArenaId = context.role === 'super_admin' ? resolvedSearchParams.arena_id : undefined;
+
   const scopedClauses: string[] = [];
   const scopedParams: Array<string | number> = [];
   if (context.role !== 'super_admin' && context.arenaId) {
     scopedClauses.push('b.arena_id = ?');
     scopedParams.push(context.arenaId);
+  } else if (selectedArenaId) {
+    scopedClauses.push('b.arena_id = ?');
+    scopedParams.push(Number(selectedArenaId));
   }
+
+  // Turf filter dropdown — only super admins need to pick across arenas.
+  const arenaOptions = context.role === 'super_admin'
+    ? await query<{ id: number; name: string }>('SELECT id, name FROM arenas ORDER BY name ASC')
+    : [];
 
   // Fetch all individual slot rows (one row per slot)
   const rows = await query<BookingRow>(`
     SELECT b.id, b.arena_id, a.name AS arena_name, b.ticket_number, b.booking_ref,
            b.customer_name, b.customer_mobile, b.booking_date, b.time_slot,
-           b.payment_status, b.amount, b.created_at, b.payment_method, b.venue_payment_status
+           b.payment_status, b.amount, b.created_at, b.payment_method, b.venue_payment_status,
+           b.cancellation_requested, b.refund_status
       FROM bookings b
       JOIN arenas a ON a.id = b.arena_id
       ${scopedClauses.length > 0 ? `WHERE ${scopedClauses.join(' AND ')}` : ''}
@@ -83,6 +103,8 @@ export default async function AdminBookingsPage() {
         created_at: row.created_at,
         payment_method: row.payment_method,
         venue_payment_status: row.venue_payment_status,
+        cancellation_requested: !!row.cancellation_requested,
+        refund_status: row.refund_status,
         slots: [],
         totalAmount: 0,
       });
@@ -95,11 +117,14 @@ export default async function AdminBookingsPage() {
   // Take the first 50 unique booking groups
   const groups = Array.from(groupMap.values()).slice(0, 50);
 
-  const statusClass = (status: string) => {
-    if (status === 'confirmed') return 'border-primary/20 text-primary';
-    if (status === 'pending')   return 'border-yellow-500/20 text-yellow-500';
-    if (status === 'cancelled') return 'border-red-500/20 text-red-400';
-    return 'border-white/20 text-white/40';
+  const statusInfo = (g: BookingGroup): { text: string; cls: string } => {
+    if (g.payment_status === 'cancelled' && g.cancellation_requested) {
+      return { text: 'CANCELLED · REFUND PENDING', cls: 'border-amber-500/20 text-amber-400' };
+    }
+    if (g.payment_status === 'confirmed') return { text: 'CONFIRMED', cls: 'border-primary/20 text-primary' };
+    if (g.payment_status === 'pending') return { text: 'PENDING', cls: 'border-yellow-500/20 text-yellow-500' };
+    if (g.payment_status === 'cancelled') return { text: 'CANCELLED', cls: 'border-red-500/20 text-red-400' };
+    return { text: g.payment_status.toUpperCase(), cls: 'border-white/20 text-white/40' };
   };
 
   return (
@@ -111,8 +136,24 @@ export default async function AdminBookingsPage() {
         <p className="label-classic !ml-0">
           Recent 50 bookings{context.role !== 'super_admin' ? ' in your arena' : ''} — multi-slot bookings are grouped
         </p>
-        <div className="mt-6">
+        <div className="mt-6 flex flex-wrap items-center gap-4">
           <Link href="/fg-admin/platform/bookings/create" className="btn-primary">CREATE BOOKING</Link>
+          {context.role === 'super_admin' && arenaOptions.length > 0 && (
+            <form method="get" className="flex items-center gap-2">
+              <label className="text-[10px] text-white/40 font-bold uppercase tracking-widest">Turf</label>
+              <select
+                name="arena_id"
+                defaultValue={selectedArenaId || ''}
+                className="bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-sm text-white font-bold outline-none focus:border-primary/50"
+              >
+                <option value="">All Turfs</option>
+                {arenaOptions.map((a) => (
+                  <option key={a.id} value={a.id}>{a.name}</option>
+                ))}
+              </select>
+              <button type="submit" className="btn-secondary !py-2 !px-4 !rounded-lg text-[10px]">FILTER</button>
+            </form>
+          )}
         </div>
       </div>
 
@@ -160,8 +201,8 @@ export default async function AdminBookingsPage() {
                         <div>
                           <span className="label-classic !ml-0 mb-1">Date</span>
                           <span className="text-sm font-black text-white uppercase italic block">{g.booking_date}</span>
-                          <span className={`pill-status text-[9px] mt-1 ${statusClass(g.payment_status)}`}>
-                            {g.payment_status}
+                          <span className={`pill-status text-[9px] mt-1 ${statusInfo(g).cls}`}>
+                            {statusInfo(g).text}
                           </span>
                         </div>
                       </div>
@@ -223,6 +264,7 @@ export default async function AdminBookingsPage() {
                           bookingRef={g.booking_ref}
                           slots={g.slots}
                           paymentStatus={g.payment_status}
+                          refundStatus={g.refund_status}
                         />
                       )}
                       <Link

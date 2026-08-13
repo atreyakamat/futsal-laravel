@@ -68,14 +68,21 @@ function setupQueryMock() {
       return [...dbBookings];
     }
     if (sql.startsWith('UPDATE')) {
-      const confirmed = dbBookings.filter((b) => b.payment_status === 'confirmed');
-      if (confirmed.length > 0) {
+      // Mirrors the route's real guard: payment_status IN ('confirmed','cancelled')
+      // AND refund_status not already terminal (PROCESSING/REFUNDED/INITIATED/NOT_APPLICABLE) —
+      // 'cancelled' alone no longer means "already refunded" now that cancelling
+      // frees the slot immediately, before any refund is actually processed.
+      const TERMINAL = ['PROCESSING', 'REFUNDED', 'INITIATED', 'NOT_APPLICABLE'];
+      const eligible = dbBookings.filter(
+        (b) => ['confirmed', 'cancelled'].includes(b.payment_status) && !TERMINAL.includes(b.refund_status)
+      );
+      if (eligible.length > 0) {
         dbBookings = dbBookings.map((b) =>
-          b.payment_status === 'confirmed'
+          ['confirmed', 'cancelled'].includes(b.payment_status) && !TERMINAL.includes(b.refund_status)
             ? { ...b, payment_status: 'cancelled', refund_status: 'INITIATED' }
             : b
         );
-        return confirmed.map((b) => ({ id: b.id }));
+        return eligible.map((b) => ({ id: b.id }));
       }
       return [];
     }
@@ -173,10 +180,25 @@ describe('REFUND-AUTHORIZATION-REGRESSION: Super Admin Refund Endpoint', () => {
       assertPayuSafety();
     });
 
-    it('4. cancelled → BLOCKED (400, idempotent, PayU NOT called)', async () => {
+    it('4a. cancelled, not yet refunded (player cancel-request frees the slot immediately) → ALLOWED', async () => {
+      // A player's own cancellation now flips payment_status to 'cancelled'
+      // right away (freeing the slot) without waiting for admin approval —
+      // refund_status stays unset/PENDING_REVIEW until a super admin actually
+      // processes it, so this must remain refundable, not blocked.
       dbBookings = [{ id: 1, booking_ref: 'CANC-REF-1', payment_status: 'cancelled', amount: 1000, payu_mihpayid: 'PAYU-MIH-1' }];
 
-      const res = await POST(makeRequest({ ref: 'CANC-REF-1', reason: 'duplicate attempt' }));
+      const res = await POST(makeRequest({ ref: 'CANC-REF-1', reason: 'Process pending cancellation' }));
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.success).toBe(true);
+      expect(mockInitiatePayuRefund).toHaveBeenCalledTimes(1);
+    });
+
+    it('4b. cancelled AND already refunded → BLOCKED (400, idempotent, PayU NOT called)', async () => {
+      dbBookings = [{ id: 1, booking_ref: 'CANC-REF-2', payment_status: 'cancelled', refund_status: 'REFUNDED', amount: 1000, payu_mihpayid: 'PAYU-MIH-1' }];
+
+      const res = await POST(makeRequest({ ref: 'CANC-REF-2', reason: 'duplicate attempt' }));
       const body = await res.json();
 
       expect(res.status).toBe(400);

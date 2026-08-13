@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-type Role = 'super_admin' | 'arena_admin' | 'security';
+type Role = 'super_admin' | 'arena_admin' | 'security' | 'accountant';
 
 export default function UnifiedLogin() {
   const [activeTab, setActiveTab] = useState<Role>('super_admin');
@@ -32,6 +32,9 @@ export default function UnifiedLogin() {
     } else if (activeTab === 'security') {
       endpoint = '/api/auth/security/login';
       redirectPath = '/fg-admin/security/scan';
+    } else if (activeTab === 'accountant') {
+      endpoint = '/api/auth/accountant/login';
+      redirectPath = '/fg-admin/accountant/dashboard';
     }
 
     try {
@@ -100,6 +103,14 @@ export default function UnifiedLogin() {
               }`}
             >
               Security
+            </button>
+            <button
+              onClick={() => { setActiveTab('accountant'); setError(''); }}
+              className={`pb-4 px-2 text-[10px] font-black tracking-widest uppercase transition-colors ${
+                activeTab === 'accountant' ? 'text-primary border-b-2 border-primary' : 'text-white/40 hover:text-white/80'
+              }`}
+            >
+              Accountant
             </button>
           </div>
 

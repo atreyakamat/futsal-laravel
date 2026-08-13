@@ -29,7 +29,7 @@ export default async function DashboardPage() {
   let cutoffHours = 3;
   if (settingRes && settingRes.length > 0 && settingRes[0].value) {
     const parsed = parseInt(settingRes[0].value, 10);
-    if (!isNaN(parsed) && parsed >= 3 && parsed <= 12) {
+    if (!isNaN(parsed) && parsed >= 3 && parsed <= 72) {
       cutoffHours = parsed;
     }
   }

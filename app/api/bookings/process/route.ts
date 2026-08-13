@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createBookingBatch, releaseLocks } from '@/lib/domain';
-import { getCookieValueFromRequest, getWritableSessionId, persistSessionCookie, AUTH_COOKIE, signValue, readAuthUserId, getCookieOptions, readAuthRole } from '@/lib/session';
+import { getCookieValueFromRequest, getWritableSessionId, persistSessionCookie, AUTH_COOKIE, signValue, readAuthUserId, getCookieOptions, readAuthRole, PLAYER_AUTH_MAX_AGE } from '@/lib/session';
 import { getArenaEntryMode, getArenaPaymentMode } from '@/lib/admin';
 import { sendTicketEmail } from '@/lib/ticket';
 import { verifyCsrfMiddleware } from '@/lib/csrf-middleware';
@@ -122,7 +122,10 @@ export async function POST(request: Request) {
       })
     : NextResponse.redirect(new URL(redirectTarget, baseUrl), 303);
 
-  const cookieOpts = getCookieOptions();
+  // Persistent, not session-only — a guest who just completed their first
+  // booking should stay recognized on their next visit instead of being
+  // asked to OTP-login again.
+  const cookieOpts = getCookieOptions(PLAYER_AUTH_MAX_AGE);
   if (result.userId && authRole !== 'super_admin' && authRole !== 'arena_admin' && authRole !== 'security') {
     response.cookies.set(AUTH_COOKIE, await signValue(String(result.userId)), cookieOpts);
     response.cookies.delete('fg_guest_identifier');

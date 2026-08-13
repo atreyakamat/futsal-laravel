@@ -4,6 +4,7 @@ import { confirmPayment, markPaymentFailed, getBookingsByRef, query } from '@/li
 import { verifyPayuResponseHash, verifyPaymentWithPayu } from '@/lib/payment';
 import { sendTicketEmail } from '@/lib/ticket';
 import { issueTaxInvoice } from '@/lib/gst-documents';
+import { reportServerError } from '@/lib/error-log';
 
 export async function POST(request: Request) {
   try {
@@ -99,7 +100,7 @@ export async function POST(request: Request) {
     await markPaymentFailed(bookingRef);
     return NextResponse.redirect(new URL(`/booking/payment-failed/${bookingRef}`, baseUrl), 303);
   } catch (error) {
-    console.error('Payment callback handler error:', error);
+    reportServerError(error, { route: 'payment/callback' });
     return NextResponse.json({ success: false, message: 'Internal server error' }, { status: 500 });
   }
 }

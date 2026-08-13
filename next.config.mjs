@@ -1,3 +1,5 @@
+import { withSentryConfig } from '@sentry/nextjs';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
@@ -44,4 +46,14 @@ const nextConfig = {
   }
 };
 
-export default nextConfig;
+// withSentryConfig is a no-op passthrough when SENTRY_DSN/SENTRY_AUTH_TOKEN
+// aren't set — safe to leave wrapped even before Sentry is actually enabled.
+export default withSentryConfig(nextConfig, {
+  silent: true,
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  // Source map upload requires SENTRY_AUTH_TOKEN — skipped entirely if unset.
+  disableLogger: true,
+  widenClientFileUpload: false,
+  automaticVercelMonitors: false,
+});

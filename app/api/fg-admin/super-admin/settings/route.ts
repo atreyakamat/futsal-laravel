@@ -169,8 +169,8 @@ export async function POST(request: Request) {
 
     if (payload.action === 'UPDATE_CUTOFF') {
       const cutoff = parseInt(payload.cutoff, 10);
-      if (isNaN(cutoff) || cutoff < 3 || cutoff > 12) {
-        return NextResponse.json({ success: false, message: 'Cutoff must be an integer between 3 and 12' }, { status: 400 });
+      if (isNaN(cutoff) || cutoff < 3 || cutoff > 72) {
+        return NextResponse.json({ success: false, message: 'Cutoff must be an integer between 3 and 72 hours' }, { status: 400 });
       }
 
       // Get previous value for audit log

@@ -19,6 +19,7 @@ import { logAuditAction } from '@/lib/super-admin';
 import { calculateRefundAmount } from '@/lib/refund-policy';
 import { initiatePayuRefund } from '@/lib/payment';
 import { issueCreditNote } from '@/lib/gst-documents';
+import { reportServerError } from '@/lib/error-log';
 import { z } from 'zod';
 
 const schema = z.object({
@@ -47,12 +48,18 @@ export async function POST(req: NextRequest) {
     }
 
     const firstBooking = bookings[0];
-    console.log('[REFUND API PAYMENT_STATUS CHECK]', firstBooking.booking_ref, '-> payment_status:', firstBooking.payment_status);
-    if (firstBooking.payment_status === 'cancelled') {
-      return NextResponse.json({ success: false, message: 'Refund already processed for this booking (idempotent block)' }, { status: 400 });
+    console.log('[REFUND API PAYMENT_STATUS CHECK]', firstBooking.booking_ref, '-> payment_status:', firstBooking.payment_status, 'refund_status:', firstBooking.refund_status);
+
+    // Cancellation now frees the slot immediately (payment_status flips to
+    // 'cancelled' as soon as a player requests it), so payment_status alone
+    // can no longer tell us whether a refund has actually been processed —
+    // refund_status is the authoritative signal for that.
+    const TERMINAL_REFUND_STATES = ['PROCESSING', 'REFUNDED', 'INITIATED', 'NOT_APPLICABLE'];
+    if (TERMINAL_REFUND_STATES.includes(firstBooking.refund_status)) {
+      return NextResponse.json({ success: false, message: 'Refund already processed or in progress for this booking (idempotent block)' }, { status: 400 });
     }
-    if (firstBooking.payment_status !== 'confirmed') {
-      return NextResponse.json({ success: false, message: 'Only confirmed bookings can be refunded' }, { status: 400 });
+    if (!['confirmed', 'cancelled'].includes(firstBooking.payment_status)) {
+      return NextResponse.json({ success: false, message: 'Only confirmed or cancelled bookings can be refunded' }, { status: 400 });
     }
 
     // Offline (pay-at-venue) bookings never go through PayU — there's no
@@ -69,7 +76,9 @@ export async function POST(req: NextRequest) {
                 cancellation_requested = FALSE,
                 cancellation_reason = ?,
                 updated_at = NOW()
-          WHERE booking_ref = ? AND payment_status = 'confirmed'
+          WHERE booking_ref = ?
+            AND payment_status IN ('confirmed', 'cancelled')
+            AND (refund_status IS NULL OR refund_status NOT IN ('PROCESSING', 'REFUNDED', 'INITIATED', 'NOT_APPLICABLE'))
           RETURNING id`,
         [`Super Admin Override: ${payload.reason}`, payload.ref]
       );
@@ -108,7 +117,11 @@ export async function POST(req: NextRequest) {
     const grossAmount = bookings.reduce((sum: number, b: any) => sum + Number(b.amount), 0);
     const { serviceFee, refundAmount, feeMode, feeValue } = calculateRefundAmount(grossAmount, refundPolicyConfig);
 
-    // Atomically transition payment_status from 'confirmed' to 'cancelled'
+    // Atomically transition to refund-initiated. payment_status may already be
+    // 'cancelled' (slot freed by the player's own cancellation request) or
+    // still 'confirmed' (a direct force-refund with no prior request) — both
+    // are valid entry points now; refund_status is what guards against
+    // double-processing.
     const updatedRows = await query<any>(
       `UPDATE bookings
           SET payment_status = 'cancelled',
@@ -117,7 +130,9 @@ export async function POST(req: NextRequest) {
               cancellation_requested = FALSE,
               cancellation_reason = ?,
               updated_at = NOW()
-        WHERE booking_ref = ? AND payment_status = 'confirmed'
+        WHERE booking_ref = ?
+          AND payment_status IN ('confirmed', 'cancelled')
+          AND (refund_status IS NULL OR refund_status NOT IN ('PROCESSING', 'REFUNDED', 'INITIATED', 'NOT_APPLICABLE'))
         RETURNING id`,
       [
         refundAmount,
@@ -177,7 +192,7 @@ export async function POST(req: NextRequest) {
         payload.ref,
       ]);
     } catch (err) {
-      console.error('Failed to persist payu_refund_request_id for booking_ref', payload.ref, err);
+      reportServerError(err, { route: 'super-admin/refund', step: 'persist_payu_refund_request_id', ref: payload.ref });
     }
 
     // Invoice-at-payment means a Tax Invoice normally already exists for
@@ -205,7 +220,7 @@ export async function POST(req: NextRequest) {
     if (err instanceof z.ZodError) {
       return NextResponse.json({ success: false, message: 'Invalid input', errors: err.errors }, { status: 400 });
     }
-    console.error('[Super Admin Refund Error]', err);
+    reportServerError(err, { route: 'super-admin/refund' });
     return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 });
   }
 }

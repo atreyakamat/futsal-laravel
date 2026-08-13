@@ -201,6 +201,23 @@ model ArenaAdmin {
   @@map("arena_admins")
 }
 
+model Accountant {
+  id            Int       @id @default(autoincrement())
+  email         String    @unique
+  password_hash String
+  first_name    String?
+  last_name     String?
+  is_active     Boolean   @default(true)
+  created_by    Int
+  last_login    DateTime?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  @@index([email])
+  @@index([is_active])
+  @@map("accountants")
+}
+
 model SecurityStaff {
   id            Int       @id @default(autoincrement())
   arena_id      Int

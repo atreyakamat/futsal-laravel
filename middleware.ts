@@ -10,29 +10,33 @@ const ROLE_MATRIX: Record<string, string[]> = {
   '/fg-admin/platform': ['super_admin'],
   '/fg-admin/arena': ['arena_admin'],
   '/fg-admin/security': ['security'],
+  '/fg-admin/accountant': ['accountant', 'super_admin'],
   '/api/fg-admin/platform/slots': ['super_admin', 'arena_admin'],
   '/api/fg-admin/platform': ['super_admin'],
   '/api/fg-admin/super-admin': ['super_admin'],
   '/api/fg-admin/security': ['security'],
   '/api/fg-admin/arena': ['arena_admin'],
+  '/api/fg-admin/accountant': ['accountant', 'super_admin'],
   '/api/security/verify': ['security', 'super_admin'],
   '/api/security/checkin': ['security', 'super_admin'],
 };
 
 const PROTECTED_PREFIXES = [
-  '/api/fg-admin/platform/slots', 
-  '/fg-admin/platform', 
-  '/fg-admin/arena', 
-  '/fg-admin/security', 
-  '/arena-admin', 
-  '/api/fg-admin/platform', 
-  '/api/fg-admin/super-admin', 
-  '/api/fg-admin/security', 
-  '/api/fg-admin/arena', 
+  '/api/fg-admin/platform/slots',
+  '/fg-admin/platform',
+  '/fg-admin/arena',
+  '/fg-admin/security',
+  '/fg-admin/accountant',
+  '/arena-admin',
+  '/api/fg-admin/platform',
+  '/api/fg-admin/super-admin',
+  '/api/fg-admin/security',
+  '/api/fg-admin/arena',
+  '/api/fg-admin/accountant',
   '/api/arena-admin'
 ];
 
-const AUTH_ROUTES = ['/api/auth/send-otp', '/api/auth/verify-otp', '/api/auth/super-admin/login', '/api/auth/arena-admin/login', '/api/auth/security/login'];
+const AUTH_ROUTES = ['/api/auth/send-otp', '/api/auth/verify-otp', '/api/auth/super-admin/login', '/api/auth/arena-admin/login', '/api/auth/security/login', '/api/auth/accountant/login'];
 
 function jsonError(message: string, status: number) {
   return new NextResponse(JSON.stringify({ success: false, message }), {

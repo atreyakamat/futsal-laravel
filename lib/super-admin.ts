@@ -204,6 +204,82 @@ export async function createSecurityStaff(
 }
 
 /**
+ * Create a new (global, not arena-scoped) accountant — read-only financial
+ * view across all turfs.
+ */
+export async function createAccountant(name: string, email: string, createdById?: number) {
+  const existingUser = await queryOne<{ id: number }>(
+    'SELECT id FROM users WHERE email = ?',
+    [email]
+  );
+
+  if (existingUser) {
+    throw new Error('User with this email already exists');
+  }
+
+  const tempPassword = Math.random().toString(36).slice(-8) + 'A1!';
+  const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
+  const userResult = await query(
+    'INSERT INTO users (name, email, password, role, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW()) RETURNING id',
+    [name, email, hashedPassword, 'accountant']
+  );
+
+  const userId = (userResult && (userResult as any)?.length > 0) ? (userResult as any)[0].id : null;
+  if (!userId) throw new Error('Failed to create user record');
+
+  await query(
+    'INSERT INTO accountants (id, email, password_hash, first_name, last_name, is_active, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, true, ?, NOW(), NOW())',
+    [userId, email, hashedPassword, name.split(' ')[0], name.split(' ')[1] || '', createdById || 1]
+  );
+
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  await query(
+    'INSERT INTO admin_credentials (admin_id, admin_type, credential_token, is_used, expires_at, created_at) VALUES (?, ?, ?, false, ?, NOW())',
+    [userId, 'accountant', tempPassword, expiresAt]
+  );
+
+  return {
+    accountant: { id: userId, email, name },
+    credential: {
+      email,
+      tempPassword,
+      message: 'Share these credentials with the accountant. They must change password on first login.',
+    },
+  };
+}
+
+export async function verifyAccountantCredentials(email: string, password: string) {
+  const accountant = await queryOne<{ id: number; email: string; password_hash: string; is_active: boolean }>(
+    'SELECT id, email, password_hash, is_active FROM accountants WHERE email = ?',
+    [email]
+  );
+
+  if (!accountant || !accountant.is_active) {
+    return null;
+  }
+
+  const isValidPassword = await bcrypt.compare(password, accountant.password_hash);
+  if (!isValidPassword) {
+    return null;
+  }
+
+  await query('UPDATE accountants SET last_login = NOW() WHERE id = ?', [accountant.id]);
+
+  return accountant;
+}
+
+export async function getAccountants() {
+  return query<{ id: number; email: string; first_name: string | null; last_name: string | null; is_active: boolean; created_at: string; last_login: string | null }>(
+    'SELECT id, email, first_name, last_name, is_active, created_at, last_login FROM accountants ORDER BY created_at DESC'
+  );
+}
+
+export async function removeAccountant(accountantId: number) {
+  await query('UPDATE accountants SET is_active = false WHERE id = ?', [accountantId]);
+}
+
+/**
  * Get all arena admins for an arena
  */
 export async function getArenaAdmins(arenaId: number) {

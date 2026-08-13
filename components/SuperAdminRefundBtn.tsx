@@ -7,10 +7,13 @@ interface SlotItem {
   amount: number;
 }
 
+const TERMINAL_REFUND_STATES = ['PROCESSING', 'REFUNDED', 'INITIATED', 'NOT_APPLICABLE'];
+
 interface SuperAdminRefundBtnProps {
   bookingRef: string;
   slots: SlotItem[];          // one entry per DB row (one per slot)
   paymentStatus: string;
+  refundStatus?: string | null;
 }
 
 const FEE_PCT = 5;
@@ -23,6 +26,7 @@ export default function SuperAdminRefundBtn({
   bookingRef,
   slots,
   paymentStatus,
+  refundStatus,
 }: SuperAdminRefundBtnProps) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState('');
@@ -30,7 +34,11 @@ export default function SuperAdminRefundBtn({
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
-  if (paymentStatus === 'cancelled') return null;
+  // Cancelling now frees the slot immediately (payment_status flips to
+  // 'cancelled' right away), so payment_status alone can't tell us whether a
+  // refund is still actionable — refund_status is authoritative. A 'pending'
+  // booking has no money to refund yet either way.
+  if (paymentStatus === 'pending' || (refundStatus && TERMINAL_REFUND_STATES.includes(refundStatus))) return null;
 
   const totalGross = parseFloat(slots.reduce((s, sl) => s + sl.amount, 0).toFixed(2));
   const totalFee   = parseFloat(slots.reduce((s, sl) => s + calcFee(sl.amount), 0).toFixed(2));

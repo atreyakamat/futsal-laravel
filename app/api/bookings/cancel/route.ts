@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { readAuthUserId } from '@/lib/session';
 import { query } from '@/lib/domain';
 import { evaluateCancellationEligibility, calculateRefundAmount } from '@/lib/refund-policy';
+import { reportServerError } from '@/lib/error-log';
 
 export async function POST(req: NextRequest) {
   try {
@@ -60,7 +61,7 @@ export async function POST(req: NextRequest) {
     let cutoffHours = 3;
     if (settingRes && settingRes.length > 0 && settingRes[0].value) {
       const parsed = parseInt(settingRes[0].value, 10);
-      if (!isNaN(parsed) && parsed >= 3 && parsed <= 12) {
+      if (!isNaN(parsed) && parsed >= 3 && parsed <= 72) {
         cutoffHours = parsed;
       }
     }
@@ -87,28 +88,46 @@ export async function POST(req: NextRequest) {
     const grossAmount = bookings.reduce((sum: number, b: any) => sum + Number(b.amount), 0);
     const { serviceFee, refundAmount } = calculateRefundAmount(grossAmount, refundPolicyConfig);
 
-    // Atomically mark parent BookingGroup as cancellation requested with PENDING_REVIEW status
-    await query(
+    // Cancelling frees the slot immediately (payment_status -> 'cancelled', so
+    // it drops out of the active-slot query) — the actual refund still
+    // requires a super admin to process it via /api/fg-admin/super-admin/refund,
+    // tracked separately via refund_status/cancellation_requested. Guarded
+    // atomically on payment_status = 'confirmed' to avoid a double-cancel race.
+    const updatedRows = await query<{ id: number }>(
       `UPDATE bookings
-          SET cancellation_requested = TRUE,
+          SET payment_status = 'cancelled',
+              cancellation_requested = TRUE,
               cancellation_reason = 'User Requested',
               refund_amount = ?,
               refund_status = 'PENDING_REVIEW',
               updated_at = NOW()
-        WHERE booking_ref = ? AND user_id = ?`,
+        WHERE booking_ref = ? AND user_id = ? AND payment_status = 'confirmed'
+        RETURNING id`,
       [refundAmount, ref, userId]
     );
 
+    if (!updatedRows || updatedRows.length === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          code: 'CANCELLATION_ALREADY_REQUESTED',
+          message: 'This booking was already cancelled or is no longer confirmed.',
+          refundEligible: false,
+        },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
-      message: 'Cancellation request submitted. Our team will process your refund shortly.',
+      message: 'Booking cancelled and the slot has been released. Your refund will be processed by our team shortly.',
       refundEligible: true,
       grossAmount,
       serviceFee,
       refundAmount,
     });
   } catch (err: any) {
-    console.error('[API Cancel Booking Error]', err);
+    reportServerError(err, { route: 'bookings/cancel' });
     return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 });
   }
 }

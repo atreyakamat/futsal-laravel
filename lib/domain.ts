@@ -720,6 +720,14 @@ export function computeBookingLifecycleState(booking: {
   const isPast = current >= bookingEnd.getTime();
 
   if (booking.payment_status === 'cancelled' || booking.payment_status === 'refunded') {
+    // The slot frees up the instant a cancellation is requested (payment_status
+    // flips to 'cancelled' immediately), but the refund itself isn't processed
+    // until an admin acts on it — cancellation_requested stays true until then,
+    // so check it first rather than assuming a non-zero refund_amount means the
+    // money has actually moved.
+    if (booking.cancellation_requested) {
+      return { state: 'CANCELLATION_REQUESTED', badgeText: 'CANCELLATION REQUESTED', badgeClass: 'border-amber-500/20 text-amber-300' };
+    }
     if (booking.refund_amount && Number(booking.refund_amount) > 0) {
       return { state: 'REFUNDED', badgeText: 'REFUNDED', badgeClass: 'border-emerald-500/20 text-emerald-400' };
     }
