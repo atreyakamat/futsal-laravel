@@ -20,6 +20,10 @@
 /public/storage
 /storage/*.key
 /storage/pail
+# Turf photo uploads — stored outside .next so a rebuild/redeploy never wipes
+# them (see lib/arena-image-upload.ts). Must exist as a real host directory,
+# not regenerated content, so it's excluded from git rather than deleted.
+/storage/uploads
 /vendor
 Homestead.json
 Homestead.yaml

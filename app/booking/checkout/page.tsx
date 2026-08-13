@@ -1,9 +1,10 @@
-import { getArenaById, getArenaPricing, queryOne, getRefundPolicyConfig, formatRefundPolicyText } from '@/lib/domain';
+import { getArenaById, getArenaPricing, queryOne, query, getRefundPolicyConfig, formatRefundPolicyText } from '@/lib/domain';
 import { readGuestIdentifier, readAuthUserId } from '@/lib/session';
 import { mergeSlots, getDurationText } from '@/lib/slot-merge';
 import { getPayuConfig } from '@/lib/payment';
 import { getArenaEntryMode } from '@/lib/admin';
 import { getOrCreateCsrfToken } from '@/lib/csrf';
+import { evaluateCancellationEligibility, DEFAULT_CANCEL_CUTOFF_HOURS } from '@/lib/refund-policy';
 import Link from 'next/link';
 
 type Props = {
@@ -75,6 +76,17 @@ export default async function CheckoutPage({ searchParams }: Props) {
 
   const effectiveMobile = paramMobile || guestIdentifier || '';
   const refundPolicy = await getRefundPolicyConfig();
+
+  const cutoffSetting = await query<{ value: string }>(
+    `SELECT value FROM settings WHERE key = 'cancellation_cutoff_hours'`
+  );
+  let cutoffHours = DEFAULT_CANCEL_CUTOFF_HOURS;
+  if (cutoffSetting?.[0]?.value) {
+    const parsed = parseInt(cutoffSetting[0].value, 10);
+    if (!isNaN(parsed) && parsed >= 3 && parsed <= 72) cutoffHours = parsed;
+  }
+  const cancellationEligibility = evaluateCancellationEligibility(date, slots, Date.now(), cutoffHours);
+  const isWithinNoRefundWindow = cancellationEligibility.code === 'LATE_CANCELLATION';
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-20">
@@ -263,13 +275,22 @@ export default async function CheckoutPage({ searchParams }: Props) {
                   CANCELLATION & REFUND POLICY
                 </p>
                 <p className="text-xs font-medium text-white/60 leading-relaxed">
-                  Cancel up to 24 hours before your scheduled session to be eligible for a refund.
+                  Cancel up to {cutoffHours} hours before your scheduled session to be eligible for a refund.
                 </p>
                 <p className="text-xs font-medium text-white/60 leading-relaxed">
                   Refund: {formatRefundPolicyText(refundPolicy)} deducted from the refundable amount.
                 </p>
               </div>
             </div>
+
+            {isWithinNoRefundWindow && checkoutTotal > 0 && (
+              <div className="flex items-start gap-4 p-4 sm:p-6 glass rounded-2xl sm:rounded-[2rem] border-red-500/40 bg-red-500/10">
+                <span className="material-symbols-outlined text-red-500 text-xl sm:text-2xl flex-shrink-0 animate-pulse">warning</span>
+                <p className="text-xs font-black text-red-400 uppercase tracking-widest leading-relaxed">
+                  This booking starts within {cutoffHours} hours. If you cancel or don't show up, you will NOT be eligible for any refund.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>

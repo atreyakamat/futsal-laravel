@@ -3,8 +3,7 @@ import { z } from 'zod';
 import { readSuperAdminId } from '@/lib/session';
 import { query } from '@/lib/db';
 import { logAuditAction } from '@/lib/super-admin';
-import path from 'path';
-import { promises as fs } from 'fs';
+import { saveArenaImageFile, ArenaImageUploadError } from '@/lib/arena-image-upload';
 
 // Expect multipart/form-data with fields:
 // - type: "cover" | "logo"
@@ -44,16 +43,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       return NextResponse.json({ success: false, message: 'File missing' }, { status: 400 });
     }
 
-    // Generate a safe filename
-    const ext = path.extname((file as any).name || '.png');
-    const filename = `arena_${arenaId}_${payload.type}_${Date.now()}${ext}`;
-    const uploadDir = path.resolve(process.cwd(), 'public', 'uploads', 'arenas');
-    await fs.mkdir(uploadDir, { recursive: true });
-    const filePath = path.join(uploadDir, filename);
-    const arrayBuffer = await (file as Blob).arrayBuffer();
-    await fs.writeFile(filePath, Buffer.from(arrayBuffer));
-
-    const publicUrl = `/uploads/arenas/${filename}`;
+    const publicUrl = await saveArenaImageFile(arenaId, payload.type, file as Blob);
 
     // Update arena record
     const column = payload.type === 'cover' ? 'cover_image' : 'logo_url';
@@ -75,6 +65,9 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     console.error('Arena image upload error:', error);
     if (error instanceof z.ZodError) {
       return NextResponse.json({ success: false, message: 'Invalid input', errors: error.errors }, { status: 400 });
+    }
+    if (error instanceof ArenaImageUploadError) {
+      return NextResponse.json({ success: false, message: error.message }, { status: 400 });
     }
     return NextResponse.json({ success: false, message: 'Internal server error' }, { status: 500 });
   }

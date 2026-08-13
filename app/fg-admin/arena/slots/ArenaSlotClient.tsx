@@ -471,6 +471,25 @@ export default function ArenaAdminSlotsClient({
               </div>
             )}
           </div>
+
+          <div className="glass-card">
+            <h2 className="text-xl font-black uppercase italic mb-4">Operating Hours</h2>
+            {timings.length === 0 ? (
+              <p className="text-white/20 text-xs font-bold uppercase tracking-widest">No timings configured.</p>
+            ) : (
+              <div className="space-y-2">
+                {timings.map((t) => (
+                  <div key={t.id} className="p-3 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between">
+                    <div>
+                      <div className="font-black text-white italic text-sm">{t.time_slot}</div>
+                      <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{getDayName(t.day_of_week)}</div>
+                    </div>
+                    <div className="text-primary font-black text-sm">{t.start_time}–{t.end_time}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

@@ -46,6 +46,33 @@ model Arena {
   @@map("arenas")
 }
 
+model ArenaImage {
+  id         Int      @id @default(autoincrement())
+  arena_id   Int
+  url        String
+  sort_order Int      @default(0)
+  created_at DateTime @default(now())
+
+  @@index([arena_id])
+  @@map("arena_images")
+}
+
+model Amenity {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+  icon String @default("check_circle")
+
+  @@map("amenities")
+}
+
+model ArenaAmenity {
+  arena_id   Int
+  amenity_id Int
+
+  @@id([arena_id, amenity_id])
+  @@map("arena_amenities")
+}
+
 /// IMPORTANT — double-booking safeguard lives OUTSIDE this declarative schema:
 /// a partial unique index `bookings_active_slot_idx` on
 /// (arena_id, booking_date, time_slot) WHERE payment_status IN ('pending', 'confirmed')

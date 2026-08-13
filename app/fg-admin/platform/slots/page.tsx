@@ -1,8 +1,12 @@
 import { readAuthUserId } from '@/lib/session';
 import { getAdminContext, getArenaEntryMode, listArenas } from '@/lib/admin';
-import { getArenaPricing, getArenaById } from '@/lib/domain';
+import { getArenaPricing, getArenaById, query } from '@/lib/domain';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+
+const DAY_NAMES: Record<number, string> = {
+  0: 'Sunday', 1: 'Monday', 2: 'Tuesday', 3: 'Wednesday', 4: 'Thursday', 5: 'Friday', 6: 'Saturday',
+};
 
 export const dynamic = 'force-dynamic';
 
@@ -28,6 +32,15 @@ export default async function AdminSlotsPage({ searchParams }: Props) {
   const arena = arenaId ? await getArenaById(arenaId) : null;
   const slots = arenaId ? await getArenaPricing(arenaId) : [];
   const entryMode = arenaId ? await getArenaEntryMode(arenaId) : 'open';
+  const timings = arenaId
+    ? await query<{ id: number; time_slot: string; start_time: string; end_time: string; day_of_week: number | null }>(
+        `SELECT id, time_slot, start_time, end_time, day_of_week
+           FROM slot_timings
+          WHERE arena_id = ?
+          ORDER BY start_time ASC`,
+        [arenaId]
+      )
+    : [];
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-20 space-y-12">
@@ -135,9 +148,23 @@ export default async function AdminSlotsPage({ searchParams }: Props) {
 
           <div className="glass-card">
             <h2 className="text-2xl font-black uppercase italic mb-6">Current Timings</h2>
-            <div className="space-y-4">
-              <p className="text-white/30 text-xs uppercase font-bold tracking-widest">Timings configured for {arena?.name || 'this arena'} will appear here.</p>
-            </div>
+            {timings.length === 0 ? (
+              <p className="text-white/30 text-xs uppercase font-bold tracking-widest">No timings configured for {arena?.name || 'this arena'} yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {timings.map((t) => (
+                  <div key={t.id} className="p-3 rounded-xl bg-white/[0.03] border border-white/5 flex items-center justify-between">
+                    <div>
+                      <div className="font-black text-white italic text-sm">{t.time_slot}</div>
+                      <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
+                        {t.day_of_week === null ? 'All Days' : DAY_NAMES[t.day_of_week] ?? 'Unknown'}
+                      </div>
+                    </div>
+                    <div className="text-primary font-black text-sm">{t.start_time}–{t.end_time}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

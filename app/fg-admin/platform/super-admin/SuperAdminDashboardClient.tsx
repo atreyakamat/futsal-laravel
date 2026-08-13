@@ -78,7 +78,13 @@ export default function SuperAdminDashboardClient() {
   const [arenaPaymentMode, setArenaPaymentMode] = useState<'online' | 'offline'>('online');
   const [arenaUpiVpa, setArenaUpiVpa] = useState('');
   const [arenaGstPlaceOfSupply, setArenaGstPlaceOfSupply] = useState('');
-  
+  const [arenaGalleryImages, setArenaGalleryImages] = useState<{ id: number; url: string }[]>([]);
+  const [galleryUploading, setGalleryUploading] = useState(false);
+  const [allAmenities, setAllAmenities] = useState<{ id: number; name: string; icon: string }[]>([]);
+  const [selectedAmenityIds, setSelectedAmenityIds] = useState<number[]>([]);
+  const [customAmenityInput, setCustomAmenityInput] = useState('');
+  const [amenitiesSaving, setAmenitiesSaving] = useState(false);
+
   const [showAdminForm, setShowAdminForm] = useState(false);
   const [editingAdminId, setEditingAdminId] = useState<number | null>(null);
   const [selectedArenaId, setSelectedArenaId] = useState<number | null>(null);
@@ -309,6 +315,21 @@ export default function SuperAdminDashboardClient() {
       } catch (err) {
         console.error('Failed to fetch arena payment/GST settings:', err);
       }
+      try {
+        const [imagesRes, amenitiesRes] = await Promise.all([
+          fetch(`/api/fg-admin/super-admin/arenas/${arena.id}/images`),
+          fetch(`/api/fg-admin/super-admin/arenas/${arena.id}/amenities`),
+        ]);
+        const imagesData = await imagesRes.json();
+        if (imagesData.success) setArenaGalleryImages(imagesData.data || []);
+        const amenitiesData = await amenitiesRes.json();
+        if (amenitiesData.success) {
+          setAllAmenities(amenitiesData.data.allAmenities || []);
+          setSelectedAmenityIds(amenitiesData.data.selectedIds || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch arena gallery/amenities:', err);
+      }
     } else {
       setEditingArenaId(null);
       setArenaName('');
@@ -319,6 +340,9 @@ export default function SuperAdminDashboardClient() {
       setArenaPaymentMode('online');
       setArenaUpiVpa('');
       setArenaGstPlaceOfSupply('');
+      setArenaGalleryImages([]);
+      setSelectedAmenityIds([]);
+      setCustomAmenityInput('');
     }
     setShowArenaForm(true);
   };
@@ -983,6 +1007,135 @@ export default function SuperAdminDashboardClient() {
                           Required before any Tax Invoice can be issued for this turf.
                         </p>
                       </div>
+
+                      {editingArenaId && (
+                        <div>
+                          <label className="label-classic">Photo Gallery ({arenaGalleryImages.length}/5)</label>
+                          <div className="grid grid-cols-3 gap-2 mb-2">
+                            {arenaGalleryImages.map((img) => (
+                              <div key={img.id} className="relative group">
+                                <img src={img.url} alt="" className="w-full h-20 object-cover rounded-lg border border-white/10" />
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (!confirm('Delete this photo?')) return;
+                                    const res = await fetch(`/api/fg-admin/super-admin/arenas/${editingArenaId}/images/${img.id}`, { method: 'DELETE' });
+                                    const data = await res.json();
+                                    if (data.success) {
+                                      setArenaGalleryImages((prev) => prev.filter((i) => i.id !== img.id));
+                                    } else {
+                                      alert(data.message || 'Failed to delete image');
+                                    }
+                                  }}
+                                  className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/70 text-red-400 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <span className="material-symbols-outlined text-sm">close</span>
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                          {arenaGalleryImages.length < 5 && (
+                            <label className={`btn-secondary !py-2 !px-4 inline-flex items-center gap-2 cursor-pointer ${galleryUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                              <span className="material-symbols-outlined text-base">add_photo_alternate</span>
+                              {galleryUploading ? 'UPLOADING...' : 'ADD PHOTO'}
+                              <input
+                                type="file"
+                                className="hidden"
+                                accept="image/jpeg,image/png,image/webp"
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  setGalleryUploading(true);
+                                  const formData = new FormData();
+                                  formData.append('file', file);
+                                  try {
+                                    const res = await fetch(`/api/fg-admin/super-admin/arenas/${editingArenaId}/images`, {
+                                      method: 'POST',
+                                      body: formData,
+                                    });
+                                    const data = await res.json();
+                                    if (data.success) {
+                                      setArenaGalleryImages((prev) => [...prev, { id: data.id, url: data.url }]);
+                                    } else {
+                                      alert(data.message || 'Upload failed');
+                                    }
+                                  } catch (err) {
+                                    alert('Failed to upload image');
+                                  } finally {
+                                    setGalleryUploading(false);
+                                    e.target.value = '';
+                                  }
+                                }}
+                              />
+                            </label>
+                          )}
+                        </div>
+                      )}
+
+                      {editingArenaId && (
+                        <div>
+                          <label className="label-classic">Amenities</label>
+                          <div className="grid grid-cols-2 gap-2 mb-3">
+                            {allAmenities.map((a) => (
+                              <label key={a.id} className="flex items-center gap-2 text-xs font-bold text-gray-300 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedAmenityIds.includes(a.id)}
+                                  onChange={(e) => {
+                                    setSelectedAmenityIds((prev) =>
+                                      e.target.checked ? [...prev, a.id] : prev.filter((id) => id !== a.id)
+                                    );
+                                  }}
+                                />
+                                {a.name}
+                              </label>
+                            ))}
+                          </div>
+                          <div className="flex gap-2 mb-3">
+                            <input
+                              className="input-field flex-1"
+                              placeholder="Add custom amenity"
+                              value={customAmenityInput}
+                              onChange={(e) => setCustomAmenityInput(e.target.value)}
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            disabled={amenitiesSaving}
+                            onClick={async () => {
+                              setAmenitiesSaving(true);
+                              try {
+                                const customNames = customAmenityInput.trim() ? [customAmenityInput.trim()] : [];
+                                const res = await fetch(`/api/fg-admin/super-admin/arenas/${editingArenaId}/amenities`, {
+                                  method: 'PUT',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ amenityIds: selectedAmenityIds, customNames }),
+                                });
+                                const data = await res.json();
+                                if (data.success) {
+                                  setCustomAmenityInput('');
+                                  const refreshed = await fetch(`/api/fg-admin/super-admin/arenas/${editingArenaId}/amenities`);
+                                  const refreshedData = await refreshed.json();
+                                  if (refreshedData.success) {
+                                    setAllAmenities(refreshedData.data.allAmenities || []);
+                                    setSelectedAmenityIds(refreshedData.data.selectedIds || []);
+                                  }
+                                } else {
+                                  alert(data.message || 'Failed to save amenities');
+                                }
+                              } catch (err) {
+                                alert('Failed to save amenities');
+                              } finally {
+                                setAmenitiesSaving(false);
+                              }
+                            }}
+                            className="btn-secondary !py-2 !px-4 text-[10px]"
+                          >
+                            {amenitiesSaving ? 'SAVING...' : 'SAVE AMENITIES'}
+                          </button>
+                        </div>
+                      )}
+
                       <div className="flex gap-4 pt-4">
                         <button type="submit" className="btn-primary flex-1">{editingArenaId ? 'UPDATE' : 'CREATE'}</button>
                         <button type="button" onClick={() => setShowArenaForm(false)} className="btn-secondary flex-1">CANCEL</button>

@@ -1,4 +1,4 @@
-import { getArenaBySlug, getArenaPricing, queryOne } from '@/lib/domain';
+import { getArenaBySlug, getArenaPricing, queryOne, query } from '@/lib/domain';
 import BookingSystem from '@/components/BookingSystem';
 import { getOrCreateCsrfToken } from '@/lib/csrf';
 import { readAuthUserId } from '@/lib/session';
@@ -36,6 +36,17 @@ export default async function ArenaPage({ params, searchParams }: Props) {
   if (userId) {
     currentUser = await queryOne<{ name?: string; email?: string; customer_mobile?: string }>('SELECT name, email, customer_mobile FROM users WHERE id = ?', [userId]);
   }
+
+  const [galleryImages, amenities] = await Promise.all([
+    query<{ id: number; url: string }>('SELECT id, url FROM arena_images WHERE arena_id = ? ORDER BY sort_order ASC, id ASC', [arena.id]),
+    query<{ id: number; name: string; icon: string }>(
+      `SELECT am.id, am.name, am.icon FROM amenities am
+        JOIN arena_amenities aa ON aa.amenity_id = am.id
+       WHERE aa.arena_id = ?
+       ORDER BY am.name ASC`,
+      [arena.id]
+    ),
+  ]);
 
   return (
     <div className="min-h-screen">
@@ -87,8 +98,38 @@ export default async function ArenaPage({ params, searchParams }: Props) {
         </div>
       </section>
 
+      {(galleryImages.length > 0 || amenities.length > 0) && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-8">
+          {galleryImages.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+              {galleryImages.map((img) => (
+                <img
+                  key={img.id}
+                  src={img.url}
+                  alt={arena.name}
+                  className="w-full h-28 sm:h-32 object-cover rounded-xl sm:rounded-2xl border border-white/10"
+                />
+              ))}
+            </div>
+          )}
+          {amenities.length > 0 && (
+            <div className="flex flex-wrap gap-3">
+              {amenities.map((a) => (
+                <span
+                  key={a.id}
+                  className="pill-status !py-2 !px-4 flex items-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-base">{a.icon}</span>
+                  {a.name}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="relative z-10 -mt-4 sm:-mt-8">
-        <BookingSystem 
+        <BookingSystem
           arenaId={arena.id} 
           initialDate={selectedDate} 
           csrfToken={csrfToken} 

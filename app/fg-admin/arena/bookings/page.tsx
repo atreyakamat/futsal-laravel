@@ -21,6 +21,7 @@ interface SlotRow {
   cancellation_requested: boolean;
   payment_method: string | null;
   venue_payment_status: string | null;
+  refund_status: string | null;
 }
 
 interface BookingGroup {
@@ -35,6 +36,7 @@ interface BookingGroup {
   cancellation_requested: boolean;
   payment_method: string | null;
   venue_payment_status: string | null;
+  refund_status: string | null;
 }
 
 export default async function ArenaAdminBookingsPage() {
@@ -52,7 +54,7 @@ export default async function ArenaAdminBookingsPage() {
   const rows = await query<SlotRow>(
     `SELECT id, ticket_number, booking_ref, customer_name, customer_mobile,
             booking_date, time_slot, payment_status, amount, cancellation_requested,
-            payment_method, venue_payment_status
+            payment_method, venue_payment_status, refund_status
        FROM bookings
       WHERE arena_id = ?
       ORDER BY created_at DESC
@@ -74,6 +76,7 @@ export default async function ArenaAdminBookingsPage() {
         cancellation_requested: !!(row as any).cancellation_requested,
         payment_method: row.payment_method,
         venue_payment_status: row.venue_payment_status,
+        refund_status: row.refund_status,
         slots: [],
         totalAmount: 0,
       });
@@ -89,6 +92,24 @@ export default async function ArenaAdminBookingsPage() {
     s === 'confirmed' ? 'border-primary/20 text-primary' :
     s === 'cancelled' ? 'border-red-500/20 text-red-400' :
     'border-yellow-500/20 text-yellow-500';
+
+  const refundBadge = (g: BookingGroup): { text: string; cls: string } | null => {
+    if (g.payment_status !== 'cancelled' && !g.cancellation_requested) return null;
+    switch (g.refund_status) {
+      case 'REFUNDED':
+        return { text: 'REFUNDED', cls: 'border-primary/20 text-primary' };
+      case 'PROCESSING':
+        return { text: 'REFUND PROCESSING', cls: 'border-blue-500/20 text-blue-400' };
+      case 'INITIATED':
+        return { text: 'REFUND INITIATED', cls: 'border-amber-500/20 text-amber-400' };
+      case 'PENDING_REVIEW':
+        return { text: 'REFUND NEEDS REVIEW', cls: 'border-orange-500/20 text-orange-400' };
+      case 'NOT_APPLICABLE':
+        return { text: 'NO REFUND DUE', cls: 'border-white/20 text-white/40' };
+      default:
+        return { text: 'REFUND PENDING', cls: 'border-amber-500/20 text-amber-400' };
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-20 space-y-12">
@@ -154,6 +175,11 @@ export default async function ArenaAdminBookingsPage() {
                           {g.cancellation_requested && (
                             <span className="text-[9px] font-black text-orange-400 uppercase tracking-widest block mt-1">
                               ⚠ Cancel Requested
+                            </span>
+                          )}
+                          {refundBadge(g) && (
+                            <span className={`pill-status text-[9px] mt-1 ${refundBadge(g)!.cls}`}>
+                              {refundBadge(g)!.text}
                             </span>
                           )}
                           {g.payment_method === 'offline' && (

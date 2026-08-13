@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 
 interface SlotItem {
   timeSlot: string;
@@ -89,8 +90,8 @@ export default function SuperAdminRefundBtn({
         FORCE REFUND
       </button>
 
-      {open && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      {open && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[100] p-4 overflow-y-auto">
           <div className="glass-card !p-10 max-w-lg w-full space-y-6 my-8">
             {/* Header */}
             <div className="flex items-center justify-between">
@@ -226,7 +227,8 @@ export default function SuperAdminRefundBtn({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

@@ -34,6 +34,10 @@ export default async function AdminReportsPage({ searchParams }: Props) {
     startDate.setDate(now.getDate() - 1);
   } else if (period === 'weekly') {
     startDate.setDate(now.getDate() - 7);
+  } else if (period === 'quarterly') {
+    startDate.setDate(now.getDate() - 90);
+  } else if (period === 'all') {
+    startDate.setFullYear(2000);
   } else {
     startDate.setDate(now.getDate() - 30);
   }
@@ -105,13 +109,18 @@ export default async function AdminReportsPage({ searchParams }: Props) {
           Revenue <span className="text-primary text-stroke">Reports</span>
         </h1>
         <p className="label-classic !ml-0">Daily, weekly and monthly metrics for bookings, attendance and slots</p>
-        <form method="GET" className="mt-6 flex gap-3">
+        <form method="GET" className="mt-6 flex gap-3 items-center">
           <select name="period" className="input-field !min-h-0 !py-3" defaultValue={period}>
             <option value="daily">Last 24 hours</option>
             <option value="weekly">Last 7 days</option>
             <option value="monthly">Last 30 days</option>
+            <option value="quarterly">Last 90 days</option>
+            <option value="all">All time</option>
           </select>
           <button type="submit" className="btn-primary">Apply</button>
+          <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">
+            Showing {fromDate} to {toDate} · only confirmed bookings count
+          </span>
         </form>
       </div>
 
@@ -167,7 +176,8 @@ export default async function AdminReportsPage({ searchParams }: Props) {
 
         {(!reports || reports?.length === 0) && (
           <div className="glass-card text-center py-20">
-            <p className="text-white/20 font-black uppercase italic">No data available for reporting.</p>
+            <p className="text-white/20 font-black uppercase italic">No confirmed bookings between {fromDate} and {toDate}.</p>
+            <p className="text-white/10 text-xs font-bold uppercase tracking-widest mt-2">Try a wider range, e.g. "All time".</p>
           </div>
         )}
       </div>
