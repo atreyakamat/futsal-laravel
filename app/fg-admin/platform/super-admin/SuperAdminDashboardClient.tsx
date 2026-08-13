@@ -533,15 +533,6 @@ export default function SuperAdminDashboardClient() {
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await fetch('/api/auth/logout', { method: 'POST' });
-      router.push('/fg-admin/login');
-    } catch (err) {
-      console.error('Logout error:', err);
-    }
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-950 flex flex-col">
@@ -601,29 +592,10 @@ export default function SuperAdminDashboardClient() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-950">
-      {/* Header */}
-      <header className="border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-              <span className="material-symbols-outlined text-primary">
-                admin_panel_settings
-              </span>
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-white">Super Admin Panel</h1>
-              <p className="text-xs text-gray-500">{settings.email}</p>
-            </div>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="px-4 py-2 rounded-lg text-sm font-bold text-gray-400 hover:text-white hover:bg-white/5 transition-colors flex items-center gap-2"
-          >
-            <span className="material-symbols-outlined text-base">logout</span>
-            Logout
-          </button>
-        </div>
-      </header>
+      {/* No page-local header here — the global admin top nav (components/Header.tsx)
+          already covers branding/logout for every /fg-admin/platform page. A second,
+          page-local header here used to render underneath it, which is exactly the
+          "nav on top AND on the left, at the same time" confusion reported by users. */}
 
       {/* Sidebar + Main */}
       <div className="flex">
@@ -636,7 +608,6 @@ export default function SuperAdminDashboardClient() {
               { id: 'timings', label: 'Timings', icon: 'schedule' },
               { id: 'blocks', label: 'Block Slots', icon: 'block' },
               { id: 'approvals', label: 'Approvals', icon: 'check_circle' },
-              { id: 'reports', label: 'Reports', icon: 'assessment' },
               { id: 'settings', label: 'Settings', icon: 'settings' },
             ].map((item) => (
               <button
@@ -658,6 +629,16 @@ export default function SuperAdminDashboardClient() {
             <a href="/fg-admin/platform/bookings" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-colors text-gray-400 hover:text-white hover:bg-white/5">
               <span className="material-symbols-outlined text-lg">book_online</span>
               All Bookings
+            </a>
+
+            <a href="/fg-admin/platform/slots" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-colors text-gray-400 hover:text-white hover:bg-white/5">
+              <span className="material-symbols-outlined text-lg">payments</span>
+              Slot Pricing
+            </a>
+
+            <a href="/fg-admin/platform/reports" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-colors text-gray-400 hover:text-white hover:bg-white/5">
+              <span className="material-symbols-outlined text-lg">assessment</span>
+              Reports
             </a>
 
             <a href="/fg-admin/platform/gst-documents" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-colors text-gray-400 hover:text-white hover:bg-white/5">
@@ -1573,14 +1554,6 @@ export default function SuperAdminDashboardClient() {
                   ))}
                 </div>
               )}
-            </div>
-          )}
-
-          {activeTab === 'reports' && (
-            <div className="space-y-6 text-center py-20">
-              <span className="material-symbols-outlined text-6xl text-white/10 mb-6">analytics</span>
-              <h2 className="text-3xl font-black italic tracking-tighter uppercase mb-4">Global <span className="text-primary">Reports</span></h2>
-              <p className="text-gray-500 font-bold uppercase tracking-widest text-xs max-w-sm mx-auto">Cross-arena performance metrics and revenue analytics under development.</p>
             </div>
           )}
 
