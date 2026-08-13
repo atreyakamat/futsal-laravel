@@ -36,6 +36,11 @@ temp_ssh_key
 *.pem
 ssh_keys.txt
 
+# TypeScript incremental build cache — rewritten on every build, so keeping
+# it tracked means every deploy leaves the working tree "dirty" and blocks
+# the next git pull (exactly what caused repeated deploy conflicts).
+tsconfig.tsbuildinfo
+
 # scratch/debug output — never belongs in version control
 err.txt
 out.txt
