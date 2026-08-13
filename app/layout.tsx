@@ -90,9 +90,12 @@ export default async function RootLayout({
         />
       </head>
       <body className={spaceGrotesk.className}>
-        <Header userId={userId} role={role} arenaId={arenaId} userName={userName} />
-        {children}
-        <Footer />
+        {/* overflow-x-hidden lives here, not on body — see comment in globals.css */}
+        <div className="overflow-x-hidden">
+          <Header userId={userId} role={role} arenaId={arenaId} userName={userName} />
+          {children}
+          <Footer />
+        </div>
       </body>
     </html>
   );
