@@ -102,6 +102,41 @@ export default async function AdminReportsPage({ searchParams }: Props) {
 
   const totals = summary[0] ?? { total_revenue: 0, total_bookings: 0, checked_in_count: 0, unique_customers: 0 };
 
+  // bookings rows are per-slot, and the refund route writes the same
+  // refund_amount/refund_status to every row sharing a booking_ref — so
+  // dedupe by booking_ref first (MAX picks up the shared value), otherwise
+  // a multi-slot cancelled booking would get double/triple counted below.
+  const refundStats = await query<{
+    refund_status: string | null;
+    booking_count: number;
+    total_amount: number;
+  }>(
+    `SELECT refund_status, COUNT(*) as booking_count, COALESCE(SUM(refund_amount), 0) as total_amount
+       FROM (
+         SELECT booking_ref,
+                MAX(refund_status) as refund_status,
+                MAX(refund_amount) as refund_amount,
+                MIN(booking_date) as booking_date,
+                MIN(arena_id) as arena_id
+           FROM bookings
+          WHERE payment_status = 'cancelled' OR cancellation_requested = TRUE
+          GROUP BY booking_ref
+       ) g
+      WHERE booking_date >= ? AND booking_date <= ?
+        ${arenaId ? 'AND arena_id = ?' : ''}
+      GROUP BY refund_status
+      ORDER BY total_amount DESC`,
+    arenaId ? [fromDate, toDate, arenaId] : [fromDate, toDate]
+  );
+
+  const refundTotals = {
+    cancelledBookings: refundStats.reduce((sum, r) => sum + Number(r.booking_count), 0),
+    refunded: refundStats.find((r) => r.refund_status === 'REFUNDED'),
+    pendingAmount: refundStats
+      .filter((r) => r.refund_status !== 'REFUNDED' && r.refund_status !== 'NOT_APPLICABLE')
+      .reduce((sum, r) => sum + Number(r.total_amount), 0),
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-6 py-20">
       <div className="mb-12">
@@ -141,6 +176,39 @@ export default async function AdminReportsPage({ searchParams }: Props) {
           <span className="label-classic !ml-0">Unique Players</span>
           <div className="text-3xl font-black">{Number(totals.unique_customers ?? 0)}</div>
         </div>
+      </div>
+
+      <div className="glass-card mb-8">
+        <h2 className="text-2xl font-black uppercase italic mb-6">Refund Overview</h2>
+        <div className="grid md:grid-cols-3 gap-6 mb-6">
+          <div>
+            <span className="label-classic !ml-0">Cancelled Bookings</span>
+            <div className="text-3xl font-black">{refundTotals.cancelledBookings}</div>
+          </div>
+          <div>
+            <span className="label-classic !ml-0">Total Refunded</span>
+            <div className="text-3xl font-black text-primary">
+              ₹{new Intl.NumberFormat().format(Number(refundTotals.refunded?.total_amount ?? 0))}
+              <span className="text-xs text-white/30 font-bold ml-2">({Number(refundTotals.refunded?.booking_count ?? 0)})</span>
+            </div>
+          </div>
+          <div>
+            <span className="label-classic !ml-0">Pending / In Progress</span>
+            <div className="text-3xl font-black text-amber-400">₹{new Intl.NumberFormat().format(refundTotals.pendingAmount)}</div>
+          </div>
+        </div>
+        {refundStats.length === 0 ? (
+          <p className="text-white/20 text-xs font-bold uppercase tracking-widest">No cancelled bookings in this period.</p>
+        ) : (
+          <div className="grid md:grid-cols-2 gap-3">
+            {refundStats.map((r) => (
+              <div key={r.refund_status ?? 'unset'} className="p-3 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between">
+                <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{r.refund_status ?? 'AWAITING ACTION'}</span>
+                <span className="text-xs font-black text-white">{r.booking_count} · ₹{new Intl.NumberFormat().format(Number(r.total_amount))}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="grid gap-6">
