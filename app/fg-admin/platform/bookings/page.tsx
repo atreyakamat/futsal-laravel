@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import SuperAdminRefundBtn from '@/components/SuperAdminRefundBtn';
 import MarkVenuePaidBtn from '@/components/MarkVenuePaidBtn';
+import CheckRefundStatusBtn from '@/components/CheckRefundStatusBtn';
 
 export const dynamic = 'force-dynamic';
 
@@ -266,6 +267,9 @@ export default async function AdminBookingsPage({
                           paymentStatus={g.payment_status}
                           refundStatus={g.refund_status}
                         />
+                      )}
+                      {context.role === 'super_admin' && (
+                        <CheckRefundStatusBtn bookingRef={g.booking_ref} refundStatus={g.refund_status} />
                       )}
                       <Link
                         href={`/booking/success/${g.booking_ref}`}
