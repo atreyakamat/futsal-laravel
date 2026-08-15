@@ -49,7 +49,7 @@ interface BookingGroup {
 export default async function AdminBookingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ arena_id?: string }>;
+  searchParams: Promise<{ arena_id?: string; date?: string }>;
 }) {
   const userId = await readAuthUserId();
   const context = await getAdminContext(userId);
@@ -61,6 +61,10 @@ export default async function AdminBookingsPage({
   const resolvedSearchParams = await searchParams;
   const selectedArenaId = context.role === 'super_admin' ? resolvedSearchParams.arena_id : undefined;
 
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const showAllDates = resolvedSearchParams.date === 'all';
+  const selectedDate = !showAllDates && resolvedSearchParams.date ? resolvedSearchParams.date : todayStr;
+
   const scopedClauses: string[] = [];
   const scopedParams: Array<string | number> = [];
   if (context.role !== 'super_admin' && context.arenaId) {
@@ -69,6 +73,10 @@ export default async function AdminBookingsPage({
   } else if (selectedArenaId) {
     scopedClauses.push('b.arena_id = ?');
     scopedParams.push(Number(selectedArenaId));
+  }
+  if (!showAllDates) {
+    scopedClauses.push('b.booking_date = ?');
+    scopedParams.push(selectedDate);
   }
 
   // Turf filter dropdown — only super admins need to pick across arenas.
@@ -135,26 +143,41 @@ export default async function AdminBookingsPage({
           Manage <span className="text-primary text-stroke">Bookings</span>
         </h1>
         <p className="label-classic !ml-0">
-          Recent 50 bookings{context.role !== 'super_admin' ? ' in your arena' : ''} — multi-slot bookings are grouped
+          {showAllDates ? 'All dates' : `Showing ${selectedDate}`}{context.role !== 'super_admin' ? ' in your arena' : ''} — multi-slot bookings are grouped
         </p>
         <div className="mt-6 flex flex-wrap items-center gap-4">
           <Link href="/fg-admin/platform/bookings/create" className="btn-primary">CREATE BOOKING</Link>
-          {context.role === 'super_admin' && arenaOptions.length > 0 && (
-            <form method="get" className="flex items-center gap-2">
-              <label className="text-[10px] text-white/40 font-bold uppercase tracking-widest">Turf</label>
-              <select
-                name="arena_id"
-                defaultValue={selectedArenaId || ''}
-                className="bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-sm text-white font-bold outline-none focus:border-primary/50"
-              >
-                <option value="">All Turfs</option>
-                {arenaOptions.map((a) => (
-                  <option key={a.id} value={a.id}>{a.name}</option>
-                ))}
-              </select>
-              <button type="submit" className="btn-secondary !py-2 !px-4 !rounded-lg text-[10px]">FILTER</button>
-            </form>
-          )}
+          <form method="get" className="flex flex-wrap items-center gap-2">
+            {context.role === 'super_admin' && arenaOptions.length > 0 && (
+              <>
+                <label className="text-[10px] text-white/40 font-bold uppercase tracking-widest">Turf</label>
+                <select
+                  name="arena_id"
+                  defaultValue={selectedArenaId || ''}
+                  className="bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-sm text-white font-bold outline-none focus:border-primary/50"
+                >
+                  <option value="">All Turfs</option>
+                  {arenaOptions.map((a) => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+              </>
+            )}
+            <label className="text-[10px] text-white/40 font-bold uppercase tracking-widest">Date</label>
+            <input
+              type="date"
+              name="date"
+              defaultValue={showAllDates ? '' : selectedDate}
+              className="bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-sm text-white font-bold outline-none focus:border-primary/50"
+            />
+            <button type="submit" className="btn-secondary !py-2 !px-4 !rounded-lg text-[10px]">FILTER</button>
+            <Link
+              href={`?${selectedArenaId ? `arena_id=${selectedArenaId}&` : ''}date=all`}
+              className="btn-secondary !py-2 !px-4 !rounded-lg text-[10px]"
+            >
+              SHOW ALL DATES
+            </Link>
+          </form>
         </div>
       </div>
 
@@ -163,8 +186,12 @@ export default async function AdminBookingsPage({
           <div className="w-20 h-20 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-6">
             <span className="material-symbols-outlined text-5xl text-white/10">book_online</span>
           </div>
-          <h2 className="text-2xl font-black uppercase mb-4 italic">No Bookings Yet</h2>
-          <p className="text-white/40 max-w-sm mx-auto">Bookings will appear here once customers start reserving slots.</p>
+          <h2 className="text-2xl font-black uppercase mb-4 italic">No Bookings {showAllDates ? 'Yet' : `on ${selectedDate}`}</h2>
+          <p className="text-white/40 max-w-sm mx-auto">
+            {showAllDates
+              ? 'Bookings will appear here once customers start reserving slots.'
+              : 'Try "Show All Dates" or pick a different date above.'}
+          </p>
         </div>
       ) : (
         <div className="grid gap-6">

@@ -39,7 +39,11 @@ interface BookingGroup {
   refund_status: string | null;
 }
 
-export default async function ArenaAdminBookingsPage() {
+export default async function ArenaAdminBookingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ date?: string }>;
+}) {
   const userId = await readAuthUserId();
   const role = await readAuthRole();
   const context = await getAdminContext(userId);
@@ -51,15 +55,21 @@ export default async function ArenaAdminBookingsPage() {
   const arenaId = context.arenaId;
   const arena = await getArenaById(arenaId);
 
+  const resolvedSearchParams = await searchParams;
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const showAllDates = resolvedSearchParams.date === 'all';
+  const selectedDate = !showAllDates && resolvedSearchParams.date ? resolvedSearchParams.date : todayStr;
+
   const rows = await query<SlotRow>(
     `SELECT id, ticket_number, booking_ref, customer_name, customer_mobile,
             booking_date, time_slot, payment_status, amount, cancellation_requested,
             payment_method, venue_payment_status, refund_status
        FROM bookings
       WHERE arena_id = ?
+        ${showAllDates ? '' : 'AND booking_date = ?'}
       ORDER BY created_at DESC
       LIMIT 200`,
-    [arenaId]
+    showAllDates ? [arenaId] : [arenaId, selectedDate]
   );
 
   // Group by booking_ref
@@ -118,12 +128,23 @@ export default async function ArenaAdminBookingsPage() {
           Arena <span className="text-primary">Bookings</span>
         </h1>
         <p className="label-classic !ml-0">
-          Recent 50 bookings for {arena?.name || 'My Arena'} — multi-slot bookings are grouped
+          {showAllDates ? 'All dates' : `Showing ${selectedDate}`} for {arena?.name || 'My Arena'} — multi-slot bookings are grouped
         </p>
-        <div className="mt-6">
+        <div className="mt-6 flex flex-wrap items-center gap-4">
           <Link href="/fg-admin/arena/dashboard" className="btn-secondary !py-2 !px-4 !rounded-xl text-[10px]">
             ← BACK TO DASHBOARD
           </Link>
+          <form method="get" className="flex flex-wrap items-center gap-2">
+            <label className="text-[10px] text-white/40 font-bold uppercase tracking-widest">Date</label>
+            <input
+              type="date"
+              name="date"
+              defaultValue={showAllDates ? '' : selectedDate}
+              className="bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-sm text-white font-bold outline-none focus:border-primary/50"
+            />
+            <button type="submit" className="btn-secondary !py-2 !px-4 !rounded-lg text-[10px]">FILTER</button>
+            <Link href="?date=all" className="btn-secondary !py-2 !px-4 !rounded-lg text-[10px]">SHOW ALL DATES</Link>
+          </form>
         </div>
       </div>
 
@@ -132,8 +153,10 @@ export default async function ArenaAdminBookingsPage() {
           <div className="w-20 h-20 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-6">
             <span className="material-symbols-outlined text-5xl text-white/10">book_online</span>
           </div>
-          <h2 className="text-2xl font-black uppercase mb-4 italic">No Bookings</h2>
-          <p className="text-white/40 max-w-sm mx-auto">No reservations have been made for your turf yet.</p>
+          <h2 className="text-2xl font-black uppercase mb-4 italic">No Bookings {showAllDates ? '' : `on ${selectedDate}`}</h2>
+          <p className="text-white/40 max-w-sm mx-auto">
+            {showAllDates ? 'No reservations have been made for your turf yet.' : 'Try "Show All Dates" or pick a different date above.'}
+          </p>
         </div>
       ) : (
         <div className="grid gap-6">
