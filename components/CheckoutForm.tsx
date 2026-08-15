@@ -38,8 +38,18 @@ export default function CheckoutForm({
   const [showPolicyModal, setShowPolicyModal] = useState(false);
   const [agreed, setAgreed] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  // The visible button is a plain trigger (type="button"), not a submit
+  // button — the form has no onSubmit interception, so the ONLY way it
+  // actually posts is via requestSubmit() below, after the modal is
+  // confirmed. (An earlier version made the button type="submit" and
+  // intercepted onSubmit to open the modal, then called requestSubmit()
+  // from the confirm button — but that just re-fired the same
+  // interceptor, which called preventDefault() again and reopened the
+  // already-open modal, so "Proceed to Pay" never actually submitted.)
+  const openPolicyModal = () => {
+    if (formRef.current && !formRef.current.reportValidity()) {
+      return; // native validation UI (e.g. missing required fields) takes over
+    }
     setShowPolicyModal(true);
   };
 
@@ -50,7 +60,7 @@ export default function CheckoutForm({
 
   return (
     <>
-      <form ref={formRef} action={formAction} method="POST" onSubmit={handleSubmit} className="space-y-6 sm:space-y-10">
+      <form ref={formRef} action={formAction} method="POST" className="space-y-6 sm:space-y-10">
         <input type="hidden" name="arena_id" value={arenaId} />
         <input type="hidden" name="date" value={date} />
         <input type="hidden" name="slots" value={slotsJson} />
@@ -114,8 +124,9 @@ export default function CheckoutForm({
 
         <div className="pt-6 sm:pt-10 space-y-6 sm:space-y-8">
           <button
-            type="submit"
+            type="button"
             id="checkout-confirm-btn"
+            onClick={openPolicyModal}
             className="btn-primary w-full py-5 sm:py-6 text-sm flex items-center justify-center gap-4 hover:scale-[1.02] active:scale-95 transition-all shadow-xl"
           >
             <span className="font-black italic text-base">{checkoutTotal === 0 ? 'CONFIRM BOOKING' : `CONFIRM & PAY ₹${checkoutTotal}`}</span>
