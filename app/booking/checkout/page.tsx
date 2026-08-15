@@ -16,6 +16,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function CheckoutPage({ searchParams }: Props) {
   const resolvedSearchParams = await searchParams;
+  const bookingError = typeof resolvedSearchParams.error === 'string' ? resolvedSearchParams.error : null;
   const arenaId = Number(resolvedSearchParams.arena_id);
   const date = typeof resolvedSearchParams.date === 'string' ? resolvedSearchParams.date : '';
   const slotsJson = typeof resolvedSearchParams.slots === 'string' ? resolvedSearchParams.slots : '[]';
@@ -104,6 +105,13 @@ export default async function CheckoutPage({ searchParams }: Props) {
           </p>
         </div>
       </div>
+
+      {bookingError && (
+        <div className="mb-8 p-4 sm:p-6 rounded-2xl border border-red-500/30 bg-red-500/10 text-red-400 text-sm font-bold flex items-start gap-3">
+          <span className="material-symbols-outlined text-xl shrink-0">error</span>
+          <span>{bookingError} Please go back and pick a different slot.</span>
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-12 gap-8 lg:gap-16">
         {/* Checkout Form — Order 1 on mobile, Order 2 on desktop */}
