@@ -12,6 +12,7 @@ const updateSchema = z.object({
   description: z.string().optional(),
   contact_email: z.string().email().optional().or(z.literal('')),
   contact_phone: z.string().optional(),
+  whatsapp_number: z.string().optional(),
   cover_image: z.string().url().optional().or(z.literal('')),
   logo_url: z.string().url().optional().or(z.literal('')),
   status: z.enum(['active', 'inactive']).optional(),
@@ -132,6 +133,10 @@ export async function PUT(
     if (payload.contact_phone) {
       updates.push('contact_phone = ?');
       values.push(payload.contact_phone);
+    }
+    if (payload.whatsapp_number !== undefined) {
+      updates.push('whatsapp_number = ?');
+      values.push(payload.whatsapp_number || null);
     }
     if (payload.status) {
       updates.push('status = ?');

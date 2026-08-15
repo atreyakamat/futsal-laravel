@@ -27,20 +27,21 @@ model User {
 }
 
 model Arena {
-  id            Int      @id @default(autoincrement())
-  name          String
-  slug          String   @unique
-  address       String?
-  description   String?
-  cover_image   String?
-  logo_url      String?
-  contact_email String?
-  contact_phone String?
-  status        String   @default("active")
-  bot_enabled   Boolean  @default(false)
-  gmaps_link    String?
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  id              Int      @id @default(autoincrement())
+  name            String
+  slug            String   @unique
+  address         String?
+  description     String?
+  cover_image     String?
+  logo_url        String?
+  contact_email   String?
+  contact_phone   String?
+  whatsapp_number String?
+  status          String   @default("active")
+  bot_enabled     Boolean  @default(false)
+  gmaps_link      String?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
 
   @@index([status])
   @@map("arenas")

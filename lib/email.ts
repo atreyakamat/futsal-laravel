@@ -207,6 +207,78 @@ export function generateRefundCompletedEmail(
   return { subject, html, text };
 }
 
+export interface DigestBookingRow {
+  arena_name: string;
+  time_slot: string;
+  customer_name: string;
+  customer_mobile: string;
+  amount: number;
+}
+
+export interface DigestArenaSummary {
+  arena_name: string;
+  count: number;
+  revenue: number;
+}
+
+export function generateDailyDigestEmail(params: {
+  scopeLabel: string; // e.g. "All Turfs" or a specific arena name
+  todayDate: string;
+  tomorrowDate: string;
+  todaySummary: DigestArenaSummary[];
+  tomorrowSummary: DigestArenaSummary[];
+  todayBookings: DigestBookingRow[];
+  tomorrowBookings: DigestBookingRow[];
+}): { subject: string; html: string; text: string } {
+  const { scopeLabel, todayDate, tomorrowDate, todaySummary, tomorrowSummary, todayBookings, tomorrowBookings } = params;
+  const subject = `Daily Booking Digest (${scopeLabel}) — ${todayDate}`;
+
+  const summaryRow = (s: DigestArenaSummary) =>
+    `<tr><td style="padding: 6px 0; color: #666; font-size: 13px;">${s.arena_name}</td><td style="padding: 6px 0; text-align: right; font-weight: 700;">${s.count} bookings</td><td style="padding: 6px 0; text-align: right; font-weight: 700; color: #0d9f1a;">₹${s.revenue.toFixed(2)}</td></tr>`;
+
+  const bookingRow = (b: DigestBookingRow) =>
+    `<tr><td style="padding: 5px 0; font-size: 12px;">${b.time_slot}</td><td style="padding: 5px 0; font-size: 12px;">${b.arena_name}</td><td style="padding: 5px 0; font-size: 12px;">${b.customer_name} (${b.customer_mobile})</td><td style="padding: 5px 0; font-size: 12px; text-align: right;">₹${b.amount.toFixed(2)}</td></tr>`;
+
+  const section = (label: string, date: string, summary: DigestArenaSummary[], bookings: DigestBookingRow[]) => {
+    const totalCount = summary.reduce((s, r) => s + r.count, 0);
+    const totalRevenue = summary.reduce((s, r) => s + r.revenue, 0);
+    if (totalCount === 0) {
+      return `<h3 style="color: #1a1a1a; margin: 24px 0 8px;">${label} — ${date}</h3><p style="color: #999; font-size: 13px;">No confirmed bookings.</p>`;
+    }
+    return `
+      <h3 style="color: #1a1a1a; margin: 24px 0 8px;">${label} — ${date} (${totalCount} bookings, ₹${totalRevenue.toFixed(2)})</h3>
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 12px;">${summary.map(summaryRow).join('')}</table>
+      <table style="width: 100%; border-collapse: collapse; border-top: 1px solid #e5e5e5; padding-top: 8px;">
+        <tr><th style="text-align:left; font-size: 11px; color: #999; padding: 6px 0;">SLOT</th><th style="text-align:left; font-size: 11px; color: #999;">TURF</th><th style="text-align:left; font-size: 11px; color: #999;">CUSTOMER</th><th style="text-align:right; font-size: 11px; color: #999;">AMOUNT</th></tr>
+        ${bookings.map(bookingRow).join('')}
+      </table>`;
+  };
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 700px; margin: 0 auto; padding: 20px;">
+      <div style="background: #0df220; padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+        <h1 style="color: #050505; margin: 0; font-size: 28px; font-weight: 900;">AGNEL<span style="color: #050505;">ARENA</span></h1>
+        <p style="color: #050505; margin: 10px 0 0; font-size: 14px;">Daily Booking Digest — ${scopeLabel}</p>
+      </div>
+      <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e5e5; border-top: none; border-radius: 0 0 12px 12px;">
+        ${section('Today', todayDate, todaySummary, todayBookings)}
+        ${section('Tomorrow', tomorrowDate, tomorrowSummary, tomorrowBookings)}
+        <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 24px 0 12px;">
+        <p style="color: #999; font-size: 12px; text-align: center;">AgnelArena — Automated Daily Digest, sent 8:00 PM IST</p>
+      </div>
+    </body>
+    </html>
+  `;
+  const text = `Daily Booking Digest (${scopeLabel}) — Today ${todayDate}: ${todaySummary.reduce((s, r) => s + r.count, 0)} bookings. Tomorrow ${tomorrowDate}: ${tomorrowSummary.reduce((s, r) => s + r.count, 0)} bookings.`;
+  return { subject, html, text };
+}
+
 export function generateApprovalNotificationEmail(
   requestType: string,
   arenaName: string,

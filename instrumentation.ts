@@ -6,6 +6,9 @@ export async function register() {
     // server runtime, never in edge or during a build-time pass.
     const { startRefundCron } = await import('./lib/refund-cron');
     startRefundCron();
+
+    const { startDailyDigestCron } = await import('./lib/daily-digest-cron');
+    startDailyDigestCron();
   }
 
   if (process.env.NEXT_RUNTIME === 'edge') {

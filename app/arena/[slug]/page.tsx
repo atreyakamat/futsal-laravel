@@ -130,6 +130,31 @@ export default async function ArenaPage({ params, searchParams }: Props) {
         </div>
       </section>
 
+      {(arena.contact_phone || arena.whatsapp_number) && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-8 sm:pt-12 flex flex-wrap gap-3">
+          {arena.contact_phone && (
+            <a
+              href={`tel:${arena.contact_phone.replace(/[^\d+]/g, '')}`}
+              className="btn-secondary !py-3 !px-5 !rounded-full inline-flex items-center gap-2"
+            >
+              <span className="material-symbols-outlined text-lg">call</span>
+              {arena.contact_phone}
+            </a>
+          )}
+          {arena.whatsapp_number && (
+            <a
+              href={`https://wa.me/${arena.whatsapp_number.replace(/\D/g, '')}?text=${encodeURIComponent(`Hi, I have a query about ${arena.name}.`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-secondary !py-3 !px-5 !rounded-full inline-flex items-center gap-2 border-green-500/30 text-green-400 hover:text-green-300"
+            >
+              <span className="material-symbols-outlined text-lg">chat</span>
+              Chat on WhatsApp
+            </a>
+          )}
+        </div>
+      )}
+
       {(galleryImages.length > 0 || amenities.length > 0) && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-8">
           {galleryImages.length > 0 && (

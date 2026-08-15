@@ -73,6 +73,8 @@ export default function SuperAdminDashboardClient() {
   const [arenaName, setArenaName] = useState('');
   const [arenaSlug, setArenaSlug] = useState('');
   const [arenaAddress, setArenaAddress] = useState('');
+  const [arenaContactPhone, setArenaContactPhone] = useState('');
+  const [arenaWhatsappNumber, setArenaWhatsappNumber] = useState('');
   const [arenaCoverImage, setArenaCoverImage] = useState('');
   const [arenaLogoUrl, setArenaLogoUrl] = useState('');
   const [arenaPaymentMode, setArenaPaymentMode] = useState<'online' | 'offline'>('online');
@@ -263,6 +265,8 @@ export default function SuperAdminDashboardClient() {
           name: arenaName,
           slug: arenaSlug,
           address: arenaAddress,
+          contact_phone: arenaContactPhone,
+          whatsapp_number: arenaWhatsappNumber,
           cover_image: arenaCoverImage,
           logo_url: arenaLogoUrl,
           payment_mode: arenaPaymentMode,
@@ -296,6 +300,8 @@ export default function SuperAdminDashboardClient() {
       setArenaName(arena.name);
       setArenaSlug(arena.slug);
       setArenaAddress(arena.address || '');
+      setArenaContactPhone((arena as any).contact_phone || '');
+      setArenaWhatsappNumber((arena as any).whatsapp_number || '');
       setArenaCoverImage((arena as any).cover_image || '');
       setArenaLogoUrl((arena as any).logo_url || '');
       // The arenas list doesn't carry payment_mode/upi_vpa/gst_place_of_supply
@@ -311,6 +317,8 @@ export default function SuperAdminDashboardClient() {
           setArenaPaymentMode(data.data.payment_mode === 'offline' ? 'offline' : 'online');
           setArenaUpiVpa(data.data.upi_vpa || '');
           setArenaGstPlaceOfSupply(data.data.gst_place_of_supply || '');
+          setArenaContactPhone(data.data.contact_phone || '');
+          setArenaWhatsappNumber(data.data.whatsapp_number || '');
         }
       } catch (err) {
         console.error('Failed to fetch arena payment/GST settings:', err);
@@ -335,6 +343,8 @@ export default function SuperAdminDashboardClient() {
       setArenaName('');
       setArenaSlug('');
       setArenaAddress('');
+      setArenaContactPhone('');
+      setArenaWhatsappNumber('');
       setArenaCoverImage('');
       setArenaLogoUrl('');
       setArenaPaymentMode('online');
@@ -869,12 +879,33 @@ export default function SuperAdminDashboardClient() {
                       </div>
                       <div>
                         <label className="label-classic">Address</label>
-                        <input 
-                          className="input-field" 
-                          value={arenaAddress} 
+                        <input
+                          className="input-field"
+                          value={arenaAddress}
                           onChange={e => setArenaAddress(e.target.value)}
                           placeholder="Full address"
                         />
+                      </div>
+                      <div>
+                        <label className="label-classic">Manager Contact Phone</label>
+                        <input
+                          className="input-field"
+                          value={arenaContactPhone}
+                          onChange={e => setArenaContactPhone(e.target.value)}
+                          placeholder="+91 98765 43210"
+                        />
+                      </div>
+                      <div>
+                        <label className="label-classic">WhatsApp Number</label>
+                        <input
+                          className="input-field"
+                          value={arenaWhatsappNumber}
+                          onChange={e => setArenaWhatsappNumber(e.target.value)}
+                          placeholder="+91 98765 43210"
+                        />
+                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-2">
+                          Shown as a "Chat on WhatsApp" button on this turf's public page. Leave blank to hide it.
+                        </p>
                       </div>
                        <div>
                         <label className="label-classic">Cover Image URL</label>

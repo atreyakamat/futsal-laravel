@@ -59,6 +59,7 @@ export async function getArenaBySlug(slug: string) {
     address: string | null;
     contact_email: string | null;
     contact_phone: string | null;
+    whatsapp_number: string | null;
     logo_url: string | null;
     cover_image: string | null;
     description: string | null;
