@@ -7,6 +7,7 @@ import { getArenaPaymentMode, setArenaPaymentMode, getArenaUpiVpa, setArenaUpiVp
 
 const updateSchema = z.object({
   name: z.string().min(1).max(255).optional(),
+  slug: z.string().min(1).max(255).regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'Slug must be lowercase letters, numbers, and hyphens only').optional(),
   address: z.string().optional(),
   description: z.string().optional(),
   contact_email: z.string().email().optional().or(z.literal('')),
@@ -101,6 +102,20 @@ export async function PUT(
     if (payload.name) {
       updates.push('name = ?');
       values.push(payload.name);
+    }
+    if (payload.slug) {
+      const slugConflict = await queryOne<{ id: number }>(
+        'SELECT id FROM arenas WHERE slug = ? AND id != ?',
+        [payload.slug, Number(params.id)]
+      );
+      if (slugConflict) {
+        return NextResponse.json(
+          { success: false, message: 'That slug is already used by another arena.' },
+          { status: 400 }
+        );
+      }
+      updates.push('slug = ?');
+      values.push(payload.slug);
     }
     if (payload.address !== undefined) {
       updates.push('address = ?');

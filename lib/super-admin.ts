@@ -83,7 +83,8 @@ export async function createArenaAdmin(
   name: string,
   email: string,
   phone?: string,
-  createdById?: number
+  createdById?: number,
+  password?: string
 ) {
   // First, check if user already exists in unified users table
   const existingUser = await queryOne<{ id: number }>(
@@ -95,16 +96,19 @@ export async function createArenaAdmin(
     throw new Error('User with this email already exists');
   }
 
-  // Generate a temporary password
-  const tempPassword = Math.random().toString(36).slice(-8) + 'A1!';
-  const hashedPassword = await bcrypt.hash(tempPassword, 10);
+  // If the super admin typed a password, use it directly as the real login
+  // password — no temp-password/forced-change dance. Otherwise fall back to
+  // the old generated-temp-password flow.
+  const usingTypedPassword = Boolean(password);
+  const tempPassword = usingTypedPassword ? null : Math.random().toString(36).slice(-8) + 'A1!';
+  const hashedPassword = await bcrypt.hash((usingTypedPassword ? password : tempPassword) as string, 10);
 
   // Insert into unified users table
   const userResult = await query(
     'INSERT INTO users (name, email, password, role, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW()) RETURNING id',
     [name, email, hashedPassword, 'arena_admin']
   );
-  
+
   const userId = (userResult && (userResult as any)?.length > 0) ? (userResult as any)[0].id : null;
   if (!userId) throw new Error('Failed to create user record');
 
@@ -120,21 +124,20 @@ export async function createArenaAdmin(
     [userId, arenaId, email, hashedPassword, name.split(' ')[0], name.split(' ')[1] || '', createdById || 1]
   );
 
-  // Create a credential for the admin
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-
-  await query(
-    'INSERT INTO admin_credentials (admin_id, admin_type, credential_token, is_used, expires_at, created_at) VALUES (?, ?, ?, false, ?, NOW())',
-    [userId, 'arena_admin', tempPassword, expiresAt]
-  );
+  if (!usingTypedPassword) {
+    // Create a credential record for the generated temp password
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    await query(
+      'INSERT INTO admin_credentials (admin_id, admin_type, credential_token, is_used, expires_at, created_at) VALUES (?, ?, ?, false, ?, NOW())',
+      [userId, 'arena_admin', tempPassword, expiresAt]
+    );
+  }
 
   return {
     admin: { id: userId, arena_id: arenaId, email, name },
-    credential: {
-      email,
-      tempPassword,
-      message: 'Share these credentials with the admin. They must change password on first login.',
-    },
+    credential: usingTypedPassword
+      ? { email, tempPassword: null, message: 'Admin can log in immediately with the password you set.' }
+      : { email, tempPassword, message: 'Share these credentials with the admin. They must change password on first login.' },
   };
 }
 
@@ -147,7 +150,8 @@ export async function createSecurityStaff(
   email: string,
   phone?: string,
   permissions: string[] = [],
-  createdById?: number
+  createdById?: number,
+  password?: string
 ) {
   // First, check if user already exists in unified users table
   const existingUser = await queryOne<{ id: number }>(
@@ -159,16 +163,16 @@ export async function createSecurityStaff(
     throw new Error('User with this email already exists');
   }
 
-  // Generate a temporary password
-  const tempPassword = Math.random().toString(36).slice(-8) + 'S1!';
-  const hashedPassword = await bcrypt.hash(tempPassword, 10);
+  const usingTypedPassword = Boolean(password);
+  const tempPassword = usingTypedPassword ? null : Math.random().toString(36).slice(-8) + 'S1!';
+  const hashedPassword = await bcrypt.hash((usingTypedPassword ? password : tempPassword) as string, 10);
 
   // Insert into unified users table
   const userResult = await query(
     'INSERT INTO users (name, email, password, customer_mobile, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW()) RETURNING id',
     [name, email, hashedPassword, phone || null, 'security']
   );
-  
+
   const userId = (userResult && (userResult as any)?.length > 0) ? (userResult as any)[0].id : null;
   if (!userId) throw new Error('Failed to create user record');
 
@@ -184,22 +188,19 @@ export async function createSecurityStaff(
     [userId, arenaId, email, hashedPassword, name.split(' ')[0], name.split(' ')[1] || '', phone || null, permissions, createdById || 1]
   );
 
-  // Create a credential for the security staff
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-
-  await query(
-    'INSERT INTO admin_credentials (admin_id, admin_type, credential_token, is_used, expires_at, created_at) VALUES (?, ?, ?, false, ?, NOW())',
-    [userId, 'security', tempPassword, expiresAt]
-  );
+  if (!usingTypedPassword) {
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    await query(
+      'INSERT INTO admin_credentials (admin_id, admin_type, credential_token, is_used, expires_at, created_at) VALUES (?, ?, ?, false, ?, NOW())',
+      [userId, 'security', tempPassword, expiresAt]
+    );
+  }
 
   return {
     staff: { id: userId, arena_id: arenaId, email, name, permissions },
-    credential: {
-      email,
-      tempPassword,
-      permissions,
-      message: 'Share these credentials with the security staff member. They must change password on first login.',
-    },
+    credential: usingTypedPassword
+      ? { email, tempPassword: null, permissions, message: 'Staff member can log in immediately with the password you set.' }
+      : { email, tempPassword, permissions, message: 'Share these credentials with the security staff member. They must change password on first login.' },
   };
 }
 
@@ -207,7 +208,7 @@ export async function createSecurityStaff(
  * Create a new (global, not arena-scoped) accountant — read-only financial
  * view across all turfs.
  */
-export async function createAccountant(name: string, email: string, createdById?: number) {
+export async function createAccountant(name: string, email: string, createdById?: number, password?: string) {
   const existingUser = await queryOne<{ id: number }>(
     'SELECT id FROM users WHERE email = ?',
     [email]
@@ -217,8 +218,9 @@ export async function createAccountant(name: string, email: string, createdById?
     throw new Error('User with this email already exists');
   }
 
-  const tempPassword = Math.random().toString(36).slice(-8) + 'A1!';
-  const hashedPassword = await bcrypt.hash(tempPassword, 10);
+  const usingTypedPassword = Boolean(password);
+  const tempPassword = usingTypedPassword ? null : Math.random().toString(36).slice(-8) + 'A1!';
+  const hashedPassword = await bcrypt.hash((usingTypedPassword ? password : tempPassword) as string, 10);
 
   const userResult = await query(
     'INSERT INTO users (name, email, password, role, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW()) RETURNING id',
@@ -233,19 +235,19 @@ export async function createAccountant(name: string, email: string, createdById?
     [userId, email, hashedPassword, name.split(' ')[0], name.split(' ')[1] || '', createdById || 1]
   );
 
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-  await query(
-    'INSERT INTO admin_credentials (admin_id, admin_type, credential_token, is_used, expires_at, created_at) VALUES (?, ?, ?, false, ?, NOW())',
-    [userId, 'accountant', tempPassword, expiresAt]
-  );
+  if (!usingTypedPassword) {
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    await query(
+      'INSERT INTO admin_credentials (admin_id, admin_type, credential_token, is_used, expires_at, created_at) VALUES (?, ?, ?, false, ?, NOW())',
+      [userId, 'accountant', tempPassword, expiresAt]
+    );
+  }
 
   return {
     accountant: { id: userId, email, name },
-    credential: {
-      email,
-      tempPassword,
-      message: 'Share these credentials with the accountant. They must change password on first login.',
-    },
+    credential: usingTypedPassword
+      ? { email, tempPassword: null, message: 'Accountant can log in immediately with the password you set.' }
+      : { email, tempPassword, message: 'Share these credentials with the accountant. They must change password on first login.' },
   };
 }
 

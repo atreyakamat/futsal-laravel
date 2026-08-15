@@ -16,9 +16,10 @@ export default function AccountantsClient({ initialAccountants }: { initialAccou
   const [accountants, setAccountants] = useState(initialAccountants);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [credentials, setCredentials] = useState<{ email: string; tempPassword: string } | null>(null);
+  const [credentials, setCredentials] = useState<{ email: string; tempPassword: string | null; message?: string } | null>(null);
 
   const refresh = async () => {
     const res = await fetch('/api/fg-admin/super-admin/accountants');
@@ -35,13 +36,14 @@ export default function AccountantsClient({ initialAccountants }: { initialAccou
       const res = await fetch('/api/fg-admin/super-admin/accountants', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email }),
+        body: JSON.stringify({ name, email, password: password || undefined }),
       });
       const data = await res.json();
       if (data.success) {
         setCredentials(data.data.credentials);
         setName('');
         setEmail('');
+        setPassword('');
         await refresh();
       } else {
         setError(data.message || 'Failed to create accountant');
@@ -84,12 +86,23 @@ export default function AccountantsClient({ initialAccountants }: { initialAccou
               className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-sm text-white font-bold outline-none focus:border-primary/50"
             />
           </div>
+          <div>
+            <label className="label-classic !ml-0 block mb-2">Password <span className="text-white/30 normal-case">(optional — leave blank to auto-generate a temp password)</span></label>
+            <input
+              type="text"
+              minLength={8}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Min 8 characters"
+              className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-sm text-white font-bold outline-none focus:border-primary/50"
+            />
+          </div>
           {error && <div className="px-4 py-3 rounded-xl border border-red-500/20 bg-red-500/5 text-red-400 text-xs font-bold">{error}</div>}
           {credentials && (
             <div className="px-4 py-3 rounded-xl border border-primary/20 bg-primary/5 text-primary text-xs font-bold space-y-1">
-              <p>Account created — share these credentials securely:</p>
+              <p>Account created — {credentials.message || 'share these credentials securely'}:</p>
               <p>Email: {credentials.email}</p>
-              <p>Temporary Password: {credentials.tempPassword}</p>
+              {credentials.tempPassword && <p>Temporary Password: {credentials.tempPassword}</p>}
             </div>
           )}
           <button type="submit" disabled={loading} className="btn-primary !py-3 !px-6 !text-xs">

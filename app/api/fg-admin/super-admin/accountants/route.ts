@@ -6,6 +6,7 @@ import { readSuperAdminId } from '@/lib/session';
 const createAccountantSchema = z.object({
   name: z.string().min(1).max(255),
   email: z.string().email(),
+  password: z.string().min(8).optional().or(z.literal('')),
 });
 
 export async function POST(request: Request) {
@@ -20,7 +21,7 @@ export async function POST(request: Request) {
       isJson ? await request.json() : Object.fromEntries((await request.formData()).entries())
     );
 
-    const result = await createAccountant(payload.name, payload.email, superAdminId);
+    const result = await createAccountant(payload.name, payload.email, superAdminId, payload.password || undefined);
 
     await logAuditAction(
       superAdminId,

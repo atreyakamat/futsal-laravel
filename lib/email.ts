@@ -164,6 +164,49 @@ export function generateBookingConfirmationEmail(
   return { subject, html, text };
 }
 
+export function generateRefundCompletedEmail(
+  bookingRef: string,
+  arenaName: string,
+  customerName: string,
+  refundAmount: number
+): { subject: string; html: string; text: string } {
+  const subject = `Refund Completed: ${bookingRef} - ${arenaName}`;
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: #0df220; padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+        <h1 style="color: #050505; margin: 0; font-size: 28px; font-weight: 900;">AGNEL<span style="color: #050505;">ARENA</span></h1>
+        <p style="color: #050505; margin: 10px 0 0; font-size: 14px;">Refund Completed</p>
+      </div>
+      <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e5e5; border-top: none; border-radius: 0 0 12px 12px;">
+        <h2 style="color: #1a1a1a; margin-top: 0;">Hi ${customerName},</h2>
+        <p>Your refund for the cancelled booking below has been completed by PayU and should reflect in your original payment method shortly.</p>
+
+        <div style="background: #f5f5f5; border-radius: 8px; padding: 20px; margin: 20px 0;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr><td style="padding: 8px 0; color: #666; font-size: 14px;">Booking Reference</td><td style="padding: 8px 0; font-weight: 700; text-align: right;">${bookingRef}</td></tr>
+            <tr><td style="padding: 8px 0; color: #666; font-size: 14px;">Arena</td><td style="padding: 8px 0; font-weight: 700; text-align: right;">${arenaName}</td></tr>
+            <tr><td style="padding: 8px 0; color: #666; font-size: 14px;">Refund Amount</td><td style="padding: 8px 0; font-weight: 700; text-align: right; color: #0df220;">₹${refundAmount.toFixed(2)}</td></tr>
+          </table>
+        </div>
+
+        <p style="color: #666; font-size: 14px;">Refunds typically take a few business days to appear in your bank/UPI account, depending on your bank.</p>
+
+        <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 20px 0;">
+        <p style="color: #999; font-size: 12px; text-align: center;">AgnelArena - Premium Turf Booking in Goa</p>
+      </div>
+    </body>
+    </html>
+  `;
+  const text = `Refund of ₹${refundAmount.toFixed(2)} for booking ${bookingRef} at ${arenaName} has been completed.`;
+  return { subject, html, text };
+}
+
 export function generateApprovalNotificationEmail(
   requestType: string,
   arenaName: string,

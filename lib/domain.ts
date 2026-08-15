@@ -609,6 +609,14 @@ export async function findUserByIdentifier(identifier: string) {
   );
 }
 
+const PLACEHOLDER_EMAIL_PATTERN = /^user-[0-9a-f]{8}@agnelarena\.com$/i;
+
+/** True for the auto-generated `user-xxxxxxxx@agnelarena.com` placeholder
+ * assigned to OTP-only users with no real email — never show this in the UI. */
+export function isPlaceholderEmail(email: string | null | undefined): boolean {
+  return !!email && PLACEHOLDER_EMAIL_PATTERN.test(email);
+}
+
 export async function findOrCreateUserByIdentifier(identifier: string) {
   const existingUser = await findUserByIdentifier(identifier);
   if (existingUser) return existingUser;

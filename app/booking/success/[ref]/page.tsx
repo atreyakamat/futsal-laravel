@@ -1,4 +1,5 @@
-import { getBookingsByRef, getArenaById, getRefundPolicyConfig, formatRefundPolicyText } from '@/lib/domain';
+import { getBookingsByRef, getArenaById, getRefundPolicyConfig, formatRefundPolicyText, query } from '@/lib/domain';
+import { DEFAULT_CANCEL_CUTOFF_HOURS } from '@/lib/refund-policy';
 import { getArenaUpiVpa } from '@/lib/admin';
 import { mergeSlots, getDurationText } from '@/lib/slot-merge';
 import Link from 'next/link';
@@ -26,12 +27,66 @@ export default async function BookingSuccessPage({ params }: Props) {
   const refundPolicy = await getRefundPolicyConfig();
   if (!arena) redirect('/');
 
-  // Guard: only show ticket for confirmed bookings (including free bookings)
-  const isConfirmed = bookings.every(
-    (b) => b.payment_status === 'confirmed'
-  );
-  if (!isConfirmed) {
+  // Guard: only show the ticket for confirmed bookings (including free bookings).
+  // A cancelled booking DID succeed at some point — it's not a payment
+  // failure — so it gets its own branch below rather than being routed
+  // into the generic "payment failed" page.
+  const isConfirmed = bookings.every((b) => b.payment_status === 'confirmed');
+  const isCancelled = bookings.every((b) => b.payment_status === 'cancelled');
+  if (!isConfirmed && !isCancelled) {
     redirect(`/booking/payment-failed/${bookingRef}`);
+  }
+
+  if (isCancelled) {
+    const refundStatus = (firstBooking as any).refund_status || 'PENDING_REVIEW';
+    const refundAmount = (firstBooking as any).refund_amount ? Number((firstBooking as any).refund_amount) : null;
+    const refundLabel: Record<string, string> = {
+      REFUNDED: 'Refund completed',
+      PROCESSING: 'Refund is being processed by PayU',
+      INITIATED: 'Refund has been initiated',
+      PENDING_REVIEW: 'Refund is pending admin review',
+      NOT_APPLICABLE: 'No refund was due for this booking',
+    };
+    return (
+      <div className="max-w-2xl mx-auto px-6 py-20 text-center">
+        <div className="w-24 h-24 bg-white/5 border border-white/10 rounded-3xl flex items-center justify-center mx-auto mb-10">
+          <span className="material-symbols-outlined text-white/40 text-6xl font-black">event_busy</span>
+        </div>
+        <h1 className="text-5xl md:text-6xl font-black mb-4 tracking-tighter italic uppercase">
+          Booking <span className="text-white/40">Cancelled</span>
+        </h1>
+        <p className="label-classic text-center mb-10">
+          Your booking at {arena.name} on {firstBooking.booking_date} was cancelled.
+        </p>
+        <div className="glass-card !p-8 text-left space-y-3">
+          <div className="flex justify-between text-sm">
+            <span className="text-white/40 font-bold uppercase tracking-widest text-[10px]">Reference</span>
+            <span className="font-black text-white">{bookingRef}</span>
+          </div>
+          {refundAmount !== null && (
+            <div className="flex justify-between text-sm">
+              <span className="text-white/40 font-bold uppercase tracking-widest text-[10px]">Refund Amount</span>
+              <span className="font-black text-primary">₹{refundAmount}</span>
+            </div>
+          )}
+          <div className="flex justify-between text-sm">
+            <span className="text-white/40 font-bold uppercase tracking-widest text-[10px]">Status</span>
+            <span className="font-black text-white">{refundLabel[refundStatus] || refundStatus}</span>
+          </div>
+        </div>
+        <div className="flex gap-6 mt-10">
+          <Link href="/" className="btn-primary flex-1 text-center">BOOK AGAIN</Link>
+          <Link href="/dashboard" className="btn-secondary flex-1 text-center">MY BOOKINGS</Link>
+        </div>
+      </div>
+    );
+  }
+
+  const cutoffSetting = await query<{ value: string }>(`SELECT value FROM settings WHERE key = 'cancellation_cutoff_hours'`);
+  let cutoffHours = DEFAULT_CANCEL_CUTOFF_HOURS;
+  if (cutoffSetting?.[0]?.value) {
+    const parsed = parseInt(cutoffSetting[0].value, 10);
+    if (!isNaN(parsed) && parsed >= 3 && parsed <= 72) cutoffHours = parsed;
   }
 
   const totalAmount = bookings.reduce((sum, b) => sum + Number(b.amount), 0);
@@ -197,7 +252,7 @@ export default async function BookingSuccessPage({ params }: Props) {
                 <div>
                   <p className="font-black text-sm mb-2 text-white uppercase tracking-tight">Cancellation Policy</p>
                   <p className="text-xs text-white/40 leading-relaxed font-medium">
-                    Cancellations are allowed up to 24 hours before your booking.<br/>
+                    Cancellations are allowed up to {cutoffHours} hours before your booking.<br/>
                     Eligible refunds are processed after deducting a {formatRefundPolicyText(refundPolicy)}.
                   </p>
                 </div>

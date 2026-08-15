@@ -10,6 +10,7 @@ const createStaffSchema = z.object({
   email: z.string().email(),
   phone: z.string().optional(),
   permissions: z.array(z.string()).optional(),
+  password: z.string().min(8).optional().or(z.literal('')),
 });
 
 export async function POST(request: Request) {
@@ -47,7 +48,8 @@ export async function POST(request: Request) {
       payload.email,
       payload.phone,
       payload.permissions || ['check_in', 'check_out'],
-      superAdminId
+      superAdminId,
+      payload.password || undefined
     );
 
     // Log audit action

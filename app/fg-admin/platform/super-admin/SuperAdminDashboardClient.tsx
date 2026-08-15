@@ -388,7 +388,11 @@ export default function SuperAdminDashboardClient() {
         if (editingAdminId) {
           setSuccess('Admin updated successfully!');
         } else {
-          setSuccess(`Admin created! Temporary password: ${data.data.credentials.tempPassword}`);
+          setSuccess(
+            data.data.credentials.tempPassword
+              ? `Admin created! Temporary password: ${data.data.credentials.tempPassword}`
+              : 'Admin created! They can log in immediately with the password you set.'
+          );
         }
         setAdminName('');
         setAdminEmail('');
@@ -447,7 +451,11 @@ export default function SuperAdminDashboardClient() {
         if (editingSecurityId) {
           setSuccess('Security staff updated successfully!');
         } else {
-          setSuccess(`Security staff created! Temporary password: ${data.data.credentials.tempPassword}`);
+          setSuccess(
+            data.data.credentials.tempPassword
+              ? `Security staff created! Temporary password: ${data.data.credentials.tempPassword}`
+              : 'Security staff created! They can log in immediately with the password you set.'
+          );
         }
         setSecurityName('');
         setSecurityEmail('');

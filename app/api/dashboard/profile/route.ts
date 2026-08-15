@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { readAuthUserId, readAuthRole } from '@/lib/session';
 import { query, queryOne } from '@/lib/db';
 import { normalizePhoneNumber } from '@/lib/phone';
+import { isPlaceholderEmail } from '@/lib/domain';
 
 const profileSchema = z.object({
   name: z.string().min(2).max(100),
@@ -54,7 +55,7 @@ export async function GET() {
 
   return NextResponse.json({
     success: true,
-    data: user,
+    data: { ...user, email: isPlaceholderEmail(user.email) ? '' : user.email },
   });
 }
 

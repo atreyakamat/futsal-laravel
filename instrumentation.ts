@@ -1,6 +1,11 @@
 export async function register() {
   if (process.env.NEXT_RUNTIME === 'nodejs') {
     await import('./sentry.server.config');
+
+    // In-process cron (node-cron) — only meaningful in the actual Node.js
+    // server runtime, never in edge or during a build-time pass.
+    const { startRefundCron } = await import('./lib/refund-cron');
+    startRefundCron();
   }
 
   if (process.env.NEXT_RUNTIME === 'edge') {

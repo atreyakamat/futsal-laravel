@@ -9,6 +9,7 @@ const createAdminSchema = z.object({
   name: z.string().min(1).max(255),
   email: z.string().email(),
   phone: z.string().optional(),
+  password: z.string().min(8).optional().or(z.literal('')),
 });
 
 export async function POST(request: Request) {
@@ -45,7 +46,8 @@ export async function POST(request: Request) {
       payload.name,
       payload.email,
       payload.phone,
-      superAdminId
+      superAdminId,
+      payload.password || undefined
     );
 
     // Log audit action

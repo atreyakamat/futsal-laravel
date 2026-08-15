@@ -3,6 +3,7 @@ import BookingSystem from '@/components/BookingSystem';
 import { getOrCreateCsrfToken } from '@/lib/csrf';
 import { readAuthUserId } from '@/lib/session';
 import Link from 'next/link';
+import type { Metadata } from 'next';
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -10,6 +11,37 @@ type Props = {
 };
 
 export const dynamic = 'force-dynamic';
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const arena = await getArenaBySlug(slug);
+  if (!arena) {
+    return { title: 'Turf Not Found | AgnelArena' };
+  }
+
+  const title = `${arena.name} — Book a Turf Slot Online | AgnelArena`;
+  const description = arena.description
+    ? arena.description.slice(0, 155)
+    : `Book your futsal slot at ${arena.name}${arena.address ? ` in ${arena.address}` : ''}. Instant confirmation, secure UPI payment.`;
+  const images = arena.cover_image ? [{ url: arena.cover_image }] : undefined;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      images,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: arena.cover_image ? [arena.cover_image] : undefined,
+    },
+  };
+}
 
 export default async function ArenaPage({ params, searchParams }: Props) {
   const { slug } = await params;

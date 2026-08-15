@@ -6,6 +6,15 @@ import CancelBookingBtn from '@/components/CancelBookingBtn';
 
 export const dynamic = 'force-dynamic';
 
+const REFUND_LABELS: Record<string, string> = {
+  REFUNDED: 'Refund Completed',
+  PROCESSING: 'Refund Processing',
+  INITIATED: 'Refund Initiated',
+  PENDING_REVIEW: 'Refund Pending Review',
+  NOT_APPLICABLE: 'No Refund Due',
+  REJECTED: 'Refund Rejected',
+};
+
 export default async function DashboardPage() {
   const userId = await readAuthUserId();
 
@@ -140,6 +149,11 @@ export default async function DashboardPage() {
                   >
                     {firstBooking.is_free_booking ? 'free' : firstBooking.payment_status}
                   </span>
+                  {firstBooking.payment_status === 'cancelled' && (firstBooking as any).refund_status && (
+                    <span className="pill-status text-[9px] mt-1 border-amber-500/20 text-amber-400">
+                      {REFUND_LABELS[(firstBooking as any).refund_status] || (firstBooking as any).refund_status}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>

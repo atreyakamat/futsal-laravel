@@ -1,4 +1,4 @@
-import { getArenaById, getArenaPricing, queryOne, query, getRefundPolicyConfig, formatRefundPolicyText } from '@/lib/domain';
+import { getArenaById, getArenaPricing, queryOne, query, getRefundPolicyConfig, formatRefundPolicyText, isPlaceholderEmail } from '@/lib/domain';
 import { readGuestIdentifier, readAuthUserId } from '@/lib/session';
 import { mergeSlots, getDurationText } from '@/lib/slot-merge';
 import { getPayuConfig } from '@/lib/payment';
@@ -6,6 +6,7 @@ import { getArenaEntryMode } from '@/lib/admin';
 import { getOrCreateCsrfToken } from '@/lib/csrf';
 import { evaluateCancellationEligibility, DEFAULT_CANCEL_CUTOFF_HOURS } from '@/lib/refund-policy';
 import Link from 'next/link';
+import CheckoutForm from '@/components/CheckoutForm';
 
 type Props = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -30,7 +31,7 @@ export default async function CheckoutPage({ searchParams }: Props) {
     if (currentUser) {
       paramName = currentUser.name || paramName;
       paramMobile = currentUser.customer_mobile || paramMobile;
-      paramEmail = currentUser.email || paramEmail;
+      paramEmail = (currentUser.email && !isPlaceholderEmail(currentUser.email)) ? currentUser.email : paramEmail;
     }
   }
 
@@ -113,89 +114,21 @@ export default async function CheckoutPage({ searchParams }: Props) {
               Customer Details
             </h2>
 
-            <form action={`${process.env.NEXT_PUBLIC_APP_URL}/api/bookings/process`} method="POST" className="space-y-6 sm:space-y-10">
-              <input type="hidden" name="arena_id" value={arena.id} />
-              <input type="hidden" name="date" value={date} />
-              <input type="hidden" name="slots" value={slotsJson} />
-              <input type="hidden" name="_csrf" value={csrfToken} />
-
-              <div className="grid md:grid-cols-2 gap-6 sm:gap-10">
-                <div className="space-y-3">
-                  <label htmlFor="customer_name" className="label-classic">Full Name</label>
-                  <div className="relative group">
-                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-primary transition-colors text-xl">
-                      person
-                    </span>
-                    <input
-                      id="customer_name"
-                      type="text"
-                      name="customer_name"
-                      required
-                      defaultValue={paramName}
-                      placeholder="John Doe"
-                      className="input-field pl-12"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <label htmlFor="customer_mobile" className="label-classic">Mobile Number</label>
-                  <div className="relative group">
-                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-primary transition-colors text-xl">
-                      phone_iphone
-                    </span>
-                    <input
-                      id="customer_mobile"
-                      type="tel"
-                      name="customer_mobile"
-                      required
-                      defaultValue={effectiveMobile}
-                      placeholder="+91 98765 43210"
-                      className="input-field pl-12"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <label htmlFor="customer_email" className="label-classic">
-                  Email Address <span className="text-white/20 italic lowercase">(optional)</span>
-                </label>
-                <div className="relative group">
-                  <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-primary transition-colors text-xl">
-                    mail
-                  </span>
-                  <input
-                    id="customer_email"
-                    type="email"
-                    name="customer_email"
-                    defaultValue={paramEmail}
-                    placeholder="john@example.com"
-                    className="input-field pl-12"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-6 sm:pt-10 space-y-6 sm:space-y-8">
-                <button
-                  type="submit"
-                  id="checkout-confirm-btn"
-                  className="btn-primary w-full py-5 sm:py-6 text-sm flex items-center justify-center gap-4 hover:scale-[1.02] active:scale-95 transition-all shadow-xl"
-                >
-                  <span className="font-black italic text-base">{checkoutTotal === 0 ? 'CONFIRM BOOKING' : `CONFIRM & PAY ₹${checkoutTotal}`}</span>
-                  <span className="material-symbols-outlined font-black text-xl">arrow_forward</span>
-                </button>
-
-                {!payuReady && checkoutTotal > 0 && (
-                  <div className="p-4 rounded-2xl border border-yellow-500/20 bg-yellow-500/5 text-yellow-300 text-[10px] font-black uppercase tracking-widest">
-                    PayU is not configured. Set PAYU_MERCHANT_KEY and PAYU_SALT to enable payments.
-                  </div>
-                )}
-
-                <p className="text-center text-[9px] text-white/20 uppercase tracking-[0.3em] font-black">
-                  End-to-End Encrypted Secure Checkout
-                </p>
-              </div>
-            </form>
+            <CheckoutForm
+              formAction={`${process.env.NEXT_PUBLIC_APP_URL}/api/bookings/process`}
+              arenaId={arena.id}
+              date={date}
+              slotsJson={slotsJson}
+              csrfToken={csrfToken}
+              paramName={paramName}
+              effectiveMobile={effectiveMobile}
+              paramEmail={paramEmail}
+              checkoutTotal={checkoutTotal}
+              payuReady={payuReady}
+              cutoffHours={cutoffHours}
+              refundFeeText={formatRefundPolicyText(refundPolicy)}
+              isWithinNoRefundWindow={isWithinNoRefundWindow}
+            />
           </div>
         </div>
 
@@ -260,7 +193,10 @@ export default async function CheckoutPage({ searchParams }: Props) {
           </div>
 
           <div className="flex flex-col gap-4">
-            <div className="flex items-start gap-4 p-4 sm:p-6 glass rounded-2xl sm:rounded-[2rem] border-primary/20 bg-primary/5">
+            {/* No backdrop-blur here (unlike .glass) — a translucent blurred
+                panel stacked under the sticky header mis-composites on
+                mobile Safari during scroll, flashing as a solid color block. */}
+            <div className="flex items-start gap-4 p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-primary/20 bg-primary/10">
               <span className="material-symbols-outlined text-primary text-xl sm:text-2xl animate-pulse flex-shrink-0">timer</span>
               <p className="text-[10px] font-black text-primary/80 uppercase tracking-[0.15em] sm:tracking-[0.2em] leading-relaxed">
                 These slots are temporarily locked. Complete the booking within{' '}
@@ -268,7 +204,7 @@ export default async function CheckoutPage({ searchParams }: Props) {
               </p>
             </div>
             
-            <div className="flex items-start gap-4 p-4 sm:p-6 glass rounded-2xl sm:rounded-[2rem] border-red-500/20 bg-red-500/5">
+            <div className="flex items-start gap-4 p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-red-500/20 bg-red-500/10">
               <span className="material-symbols-outlined text-red-500 text-xl sm:text-2xl flex-shrink-0">event_busy</span>
               <div className="space-y-2">
                 <p className="text-[10px] font-black text-red-500 uppercase tracking-[0.15em] sm:tracking-[0.2em] leading-relaxed">
@@ -284,7 +220,7 @@ export default async function CheckoutPage({ searchParams }: Props) {
             </div>
 
             {isWithinNoRefundWindow && checkoutTotal > 0 && (
-              <div className="flex items-start gap-4 p-4 sm:p-6 glass rounded-2xl sm:rounded-[2rem] border-red-500/40 bg-red-500/10">
+              <div className="flex items-start gap-4 p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-red-500/40 bg-red-500/10">
                 <span className="material-symbols-outlined text-red-500 text-xl sm:text-2xl flex-shrink-0 animate-pulse">warning</span>
                 <p className="text-xs font-black text-red-400 uppercase tracking-widest leading-relaxed">
                   This booking starts within {cutoffHours} hours. If you cancel or don't show up, you will NOT be eligible for any refund.
