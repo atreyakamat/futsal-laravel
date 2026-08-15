@@ -116,7 +116,7 @@ export async function POST(req: NextRequest) {
     const refundPolicyConfig = await getRefundPolicyConfig();
     await ensureSchemaColumns();
     const grossAmount = bookings.reduce((sum: number, b: any) => sum + Number(b.amount), 0);
-    const { serviceFee, refundAmount, feeMode, feeValue } = calculateRefundAmount(grossAmount, refundPolicyConfig);
+    const { serviceFee, refundAmount, feeMode, feeValue } = calculateRefundAmount(grossAmount, refundPolicyConfig, bookings.length);
 
     // Atomically transition to refund-initiated. payment_status may already be
     // 'cancelled' (slot freed by the player's own cancellation request) or
@@ -202,7 +202,9 @@ export async function POST(req: NextRequest) {
     // the refund itself).
     await issueCreditNote(payload.ref, refundAmount, `Super Admin Override: ${payload.reason}`);
 
-    const feeDescription = feeMode === 'PERCENTAGE' ? `${feeValue}% fee` : `₹${feeValue} flat booking charge`;
+    const feeDescription = feeMode === 'PERCENTAGE'
+      ? `${feeValue}% fee`
+      : `₹${feeValue} × ${bookings.length} slot${bookings.length > 1 ? 's' : ''} cancellation charge`;
     return NextResponse.json({
       success: true,
       message: `Refund of ₹${refundAmount} processed (₹${serviceFee} ${feeDescription} deducted from ₹${grossAmount}). Reason: "${payload.reason}".`,

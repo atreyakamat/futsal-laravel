@@ -787,9 +787,11 @@ export async function getRefundPolicyConfig(): Promise<{ mode: 'PERCENTAGE' | 'F
   }
 }
 
-export function formatRefundPolicyText(policy: { mode: 'PERCENTAGE' | 'FIXED'; value: number }): string {
+export function formatRefundPolicyText(policy: { mode: 'PERCENTAGE' | 'FIXED'; value: number }, slotCount: number = 1): string {
   if (policy.mode === 'PERCENTAGE') {
     return `${policy.value}% cancellation charge`;
   }
-  return `₹${policy.value} booking charge`;
+  return slotCount > 1
+    ? `₹${policy.value} per slot cancellation charge (₹${policy.value * slotCount} for ${slotCount} slots)`
+    : `₹${policy.value} per slot cancellation charge`;
 }

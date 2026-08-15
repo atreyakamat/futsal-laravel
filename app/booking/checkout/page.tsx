@@ -134,7 +134,7 @@ export default async function CheckoutPage({ searchParams }: Props) {
               checkoutTotal={checkoutTotal}
               payuReady={payuReady}
               cutoffHours={cutoffHours}
-              refundFeeText={formatRefundPolicyText(refundPolicy)}
+              refundFeeText={formatRefundPolicyText(refundPolicy, slots.length)}
               isWithinNoRefundWindow={isWithinNoRefundWindow}
             />
           </div>
@@ -222,7 +222,7 @@ export default async function CheckoutPage({ searchParams }: Props) {
                   Cancel up to {cutoffHours} hours before your scheduled session to be eligible for a refund.
                 </p>
                 <p className="text-xs font-medium text-white/60 leading-relaxed">
-                  Refund: {formatRefundPolicyText(refundPolicy)} deducted from the refundable amount.
+                  Refund: {formatRefundPolicyText(refundPolicy, slots.length)} deducted from the refundable amount.
                 </p>
               </div>
             </div>

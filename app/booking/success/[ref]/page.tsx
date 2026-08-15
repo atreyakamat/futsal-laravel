@@ -260,7 +260,7 @@ export default async function BookingSuccessPage({ params }: Props) {
                   <p className="font-black text-sm mb-2 text-white uppercase tracking-tight">Cancellation Policy</p>
                   <p className="text-xs text-white/40 leading-relaxed font-medium">
                     Cancellations are allowed up to {cutoffHours} hours before your booking.<br/>
-                    Eligible refunds are processed after deducting a {formatRefundPolicyText(refundPolicy)}.
+                    Eligible refunds are processed after deducting a {formatRefundPolicyText(refundPolicy, bookings.length)}.
                   </p>
                 </div>
               </li>

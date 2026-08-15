@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
     const { getRefundPolicyConfig } = await import('@/lib/domain');
     const refundPolicyConfig = await getRefundPolicyConfig();
     const grossAmount = bookings.reduce((sum: number, b: any) => sum + Number(b.amount), 0);
-    const { serviceFee, refundAmount } = calculateRefundAmount(grossAmount, refundPolicyConfig);
+    const { serviceFee, refundAmount } = calculateRefundAmount(grossAmount, refundPolicyConfig, bookings.length);
 
     // Cancelling frees the slot immediately (payment_status -> 'cancelled', so
     // it drops out of the active-slot query) — the actual refund still

@@ -50,10 +50,12 @@ export default function CancelBookingBtn({
   const { serviceFee, refundAmount: calculatedRefund, feeMode, feeValue } = calculateRefundAmount(totalAmount, {
     mode: refundFeeMode,
     value: refundFeeValue,
-  });
+  }, timeSlots.length);
   const displayRefund = refundAmount ?? calculatedRefund;
 
-  const feeLabel = feeMode === 'PERCENTAGE' ? `Cancellation Fee (${feeValue}%):` : `Cancellation Fee:`;
+  const feeLabel = feeMode === 'PERCENTAGE'
+    ? `Cancellation Fee (${feeValue}%):`
+    : `Cancellation Fee (₹${feeValue} × ${timeSlots.length} slot${timeSlots.length > 1 ? 's' : ''}):`;
 
   // Compute structured lifecycle status and messages
   const lifecycle = computeRefundLifecycleStatus({
@@ -189,7 +191,9 @@ export default function CancelBookingBtn({
   }
 
   const handleCancel = async () => {
-    const feeDescription = feeMode === 'PERCENTAGE' ? `${feeValue}% cancellation fee (₹${serviceFee})` : `cancellation fee of ₹${serviceFee}`;
+    const feeDescription = feeMode === 'PERCENTAGE'
+      ? `${feeValue}% cancellation fee (₹${serviceFee})`
+      : `cancellation fee of ₹${feeValue} × ${timeSlots.length} slot${timeSlots.length > 1 ? 's' : ''} (₹${serviceFee})`;
     if (!confirm(`Request cancellation for Booking ${bookingRef}?\n\nA ${feeDescription} will be deducted. Your expected refund is ₹${calculatedRefund}.\n\nExpected Refund Timeline: ${refundTimeline}`)) {
       return;
     }

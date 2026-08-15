@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { calculateRefundAmount, RefundFeeMode } from '@/lib/refund-policy';
 
 interface SlotItem {
   timeSlot: string;
@@ -17,18 +18,6 @@ interface SuperAdminRefundBtnProps {
   refundStatus?: string | null;
 }
 
-type FeeMode = 'PERCENTAGE' | 'FIXED';
-
-// Matches calculateRefundAmount() in lib/refund-policy.ts — the flat FIXED
-// fee is deducted once from the combined total, not per slot, since it's a
-// single booking-charge, not a per-slot service fee.
-function computeFee(totalGross: number, mode: FeeMode, value: number) {
-  if (mode === 'PERCENTAGE') {
-    return parseFloat(((totalGross * value) / 100).toFixed(2));
-  }
-  return parseFloat(Math.min(value, totalGross).toFixed(2));
-}
-
 export default function SuperAdminRefundBtn({
   bookingRef,
   slots,
@@ -40,7 +29,7 @@ export default function SuperAdminRefundBtn({
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  const [feeMode, setFeeMode] = useState<FeeMode>('PERCENTAGE');
+  const [feeMode, setFeeMode] = useState<RefundFeeMode>('PERCENTAGE');
   const [feeValue, setFeeValue] = useState(5);
 
   useEffect(() => {
@@ -62,9 +51,10 @@ export default function SuperAdminRefundBtn({
   if (paymentStatus === 'pending' || (refundStatus && TERMINAL_REFUND_STATES.includes(refundStatus))) return null;
 
   const totalGross = parseFloat(slots.reduce((s, sl) => s + sl.amount, 0).toFixed(2));
-  const totalFee = computeFee(totalGross, feeMode, feeValue);
-  const totalRefund = parseFloat((totalGross - totalFee).toFixed(2));
-  const feeLabel = feeMode === 'PERCENTAGE' ? `Handling Fee (${feeValue}%)` : `Booking Charge (₹${feeValue} flat)`;
+  const { serviceFee: totalFee, refundAmount: totalRefund } = calculateRefundAmount(totalGross, { mode: feeMode, value: feeValue }, slots.length);
+  const feeLabel = feeMode === 'PERCENTAGE'
+    ? `Handling Fee (${feeValue}%)`
+    : `Cancellation Charge (₹${feeValue} × ${slots.length} slot${slots.length > 1 ? 's' : ''})`;
 
   const handleRefund = async () => {
     if (!reason || reason.trim().length < 3) {
@@ -131,10 +121,10 @@ export default function SuperAdminRefundBtn({
               </button>
             </div>
 
-            {/* Per-slot breakdown — only shown when multi-slot. The fee is
-                deducted once from the combined total below (see feeLabel),
-                not per slot — a flat FIXED booking charge in particular
-                doesn't split meaningfully across slots. */}
+            {/* Per-slot breakdown — only shown when multi-slot. In FIXED mode
+                the cancellation charge is genuinely per-slot, so it's shown
+                here; PERCENTAGE mode is computed on the combined total (see
+                feeLabel below) rather than split per slot. */}
             {isMultiSlot && (
               <div className="space-y-2">
                 <p className="text-[10px] font-black text-white/30 uppercase tracking-widest mb-3">
@@ -154,7 +144,13 @@ export default function SuperAdminRefundBtn({
                         {sl.timeSlot}
                       </span>
                     </div>
-                    <span className="text-xs font-black text-white shrink-0">₹{sl.amount}</span>
+                    {feeMode === 'FIXED' ? (
+                      <span className="text-[10px] text-white/30 font-bold shrink-0">
+                        ₹{sl.amount} <span className="text-red-400">− ₹{feeValue}</span>
+                      </span>
+                    ) : (
+                      <span className="text-xs font-black text-white shrink-0">₹{sl.amount}</span>
+                    )}
                   </div>
                 ))}
               </div>

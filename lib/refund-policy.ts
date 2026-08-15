@@ -44,12 +44,19 @@ export const DEFAULT_REFUND_POLICY_CONFIG: RefundPolicyConfig = {
 };
 
 /**
- * Calculates the refundable amount after applying the configured fee policy (FIXED flat fee or PERCENTAGE).
+ * Calculates the refundable amount after applying the configured fee policy
+ * (FIXED per-slot fee or PERCENTAGE of gross). `slotCount` is the number of
+ * booked slots in the group being refunded (defaults to 1 for callers that
+ * only ever deal with a single slot) — in FIXED mode the fee is charged
+ * per slot, e.g. 3 slots × ₹300 = ₹900, not a single flat ₹300 for the
+ * whole booking. PERCENTAGE mode is unaffected by slot count since it
+ * already scales with the gross amount.
  * Guarantees refund amount never drops below 0 (safely caps deduction to gross amount).
  */
 export function calculateRefundAmount(
   grossAmount: number,
-  config: Partial<RefundPolicyConfig> = DEFAULT_REFUND_POLICY_CONFIG
+  config: Partial<RefundPolicyConfig> = DEFAULT_REFUND_POLICY_CONFIG,
+  slotCount: number = 1
 ): {
   grossAmount: number;
   serviceFee: number;
@@ -62,15 +69,16 @@ export function calculateRefundAmount(
     typeof config.value === 'number' && !isNaN(config.value) && config.value >= 0
       ? config.value
       : (mode === 'PERCENTAGE' ? 5 : 300);
+  const safeSlotCount = Number.isFinite(slotCount) && slotCount > 0 ? Math.floor(slotCount) : 1;
 
   let serviceFee: number;
 
   if (mode === 'PERCENTAGE') {
     serviceFee = parseFloat(((grossAmount * rawValue) / 100).toFixed(2));
   } else {
-    // FIXED mode: flat monetary deduction (e.g. ₹300)
+    // FIXED mode: flat monetary deduction PER SLOT (e.g. ₹300 × 3 slots = ₹900)
     // Capped at grossAmount to ensure refund is never negative
-    serviceFee = parseFloat(Math.min(rawValue, grossAmount).toFixed(2));
+    serviceFee = parseFloat(Math.min(rawValue * safeSlotCount, grossAmount).toFixed(2));
   }
 
   const refundAmount = parseFloat(Math.max(0, grossAmount - serviceFee).toFixed(2));
