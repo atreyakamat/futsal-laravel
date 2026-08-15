@@ -3,6 +3,7 @@ import { readAuthUserId } from '@/lib/session';
 import { mergeSlots, getDurationText } from '@/lib/slot-merge';
 import Link from 'next/link';
 import CancelBookingBtn from '@/components/CancelBookingBtn';
+import GetHelpButton from '@/components/GetHelpButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -217,10 +218,15 @@ export default async function DashboardPage() {
           <p className="label-classic">
             History of your arena reservations
           </p>
-          <div className="mt-4">
+          <div className="mt-4 flex flex-wrap gap-3">
             <Link href="/dashboard/profile" className="btn-secondary !py-2 !px-4 !rounded-xl text-[10px]">
               EDIT PROFILE
             </Link>
+            <GetHelpButton
+              subject="General query"
+              className="btn-secondary !py-2 !px-4 !rounded-xl text-[10px] flex items-center gap-2"
+              label="GET HELP"
+            />
           </div>
         </div>
         <div className="glass px-8 py-5 rounded-[2rem] border border-white/5">

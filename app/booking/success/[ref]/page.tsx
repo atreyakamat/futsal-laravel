@@ -7,6 +7,7 @@ import { redirect } from 'next/navigation';
 import { getTicketQrUrl } from '@/lib/ticket';
 import { generateQrDataUrl, buildUpiPaymentUri } from '@/lib/qr';
 import { generateTicketDownloadToken } from '@/lib/ticket-token';
+import GetHelpButton from '@/components/GetHelpButton';
 
 type Props = {
   params: Promise<{ ref: string }>;
@@ -77,6 +78,12 @@ export default async function BookingSuccessPage({ params }: Props) {
         <div className="flex gap-6 mt-10">
           <Link href="/" className="btn-primary flex-1 text-center">BOOK AGAIN</Link>
           <Link href="/dashboard" className="btn-secondary flex-1 text-center">MY BOOKINGS</Link>
+        </div>
+        <div className="mt-6 flex justify-center">
+          <GetHelpButton
+            subject={`Query about cancelled booking ${bookingRef}`}
+            description={`Booking ${bookingRef} at ${arena.name} on ${firstBooking.booking_date} was cancelled. Refund status: ${refundLabel[refundStatus] || refundStatus}.`}
+          />
         </div>
       </div>
     );
@@ -273,6 +280,12 @@ export default async function BookingSuccessPage({ params }: Props) {
             >
               MY BOOKINGS
             </Link>
+          </div>
+          <div className="flex justify-center">
+            <GetHelpButton
+              subject={`Query about booking ${bookingRef}`}
+              description={`Booking ${bookingRef} at ${arena.name} on ${firstBooking.booking_date}.`}
+            />
           </div>
         </div>
       </div>

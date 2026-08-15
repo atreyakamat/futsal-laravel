@@ -5,6 +5,7 @@ import './globals.css';
 import '@/lib/env-validate';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import SupportWidget from '@/components/SupportWidget';
 import { readAuthUserId, readAuthRole, readArenaId } from '@/lib/session';
 
 const spaceGrotesk = Space_Grotesk({
@@ -96,6 +97,7 @@ export default async function RootLayout({
           {children}
           <Footer />
         </div>
+        <SupportWidget />
       </body>
     </html>
   );
