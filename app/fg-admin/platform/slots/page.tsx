@@ -1,8 +1,9 @@
 import { readAuthUserId } from '@/lib/session';
 import { getAdminContext, getArenaEntryMode, listArenas } from '@/lib/admin';
-import { getArenaPricing, getArenaById, query } from '@/lib/domain';
+import { getArenaById, query } from '@/lib/domain';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import SlotManagementClient from '@/components/SlotManagementClient';
 
 const DAY_NAMES: Record<number, string> = {
   0: 'Sunday', 1: 'Monday', 2: 'Tuesday', 3: 'Wednesday', 4: 'Thursday', 5: 'Friday', 6: 'Saturday',
@@ -30,7 +31,6 @@ export default async function AdminSlotsPage({ searchParams }: Props) {
   const arenas = context.role === 'super_admin' ? await listArenas() : [];
   const arenaId = selectedArenaId ?? (arenas[0]?.id ?? null);
   const arena = arenaId ? await getArenaById(arenaId) : null;
-  const slots = arenaId ? await getArenaPricing(arenaId) : [];
   const entryMode = arenaId ? await getArenaEntryMode(arenaId) : 'open';
   const timings = arenaId
     ? await query<{ id: number; time_slot: string; start_time: string; end_time: string; day_of_week: number | null }>(
@@ -66,25 +66,22 @@ export default async function AdminSlotsPage({ searchParams }: Props) {
       )}
 
       {arenaId ? (
-        <div className="grid lg:grid-cols-2 gap-8">
-          <form action="/api/fg-admin/platform/slots" method="POST" className="glass-card space-y-6">
-            <input type="hidden" name="action" value="slot_template" />
-            <input type="hidden" name="arena_id" value={arenaId} />
-            <h2 className="text-2xl font-black uppercase italic">Slot Template</h2>
-            <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest">
-              One line per slot: <code>18:00-19:00,500</code>
-            </p>
-            <textarea name="slots_text" rows={8} className="input-field" placeholder="18:00-19:00,500" />
-            <textarea name="notes" rows={2} className="input-field" placeholder="Notes" />
-            <button className="btn-primary" type="submit">
-              {context.role === 'super_admin' ? 'Apply Slots' : 'Request Slot Change'}
-            </button>
-          </form>
+        <>
+          {context.role === 'super_admin' && (
+            <div className="flex justify-end">
+              <Link href="/fg-admin/platform/approvals" className="text-primary text-[10px] font-bold uppercase tracking-widest">
+                Review approvals →
+              </Link>
+            </div>
+          )}
 
-          <form action="/api/fg-admin/platform/slots" method="POST" className="glass-card space-y-6">
+          <SlotManagementClient arenaId={arenaId} isSuperAdmin={context.role === 'super_admin'} />
+
+          <form action="/api/fg-admin/platform/slots" method="POST" className="glass-card space-y-6 max-w-xl">
             <input type="hidden" name="action" value="entry_mode" />
             <input type="hidden" name="arena_id" value={arenaId} />
             <h2 className="text-2xl font-black uppercase italic">Entry Mode</h2>
+            <p className="label-classic !ml-0">Current: {entryMode}</p>
             <select name="mode" className="input-field" defaultValue={entryMode}>
               <option value="open">Open</option>
               <option value="blocked">Blocked</option>
@@ -95,7 +92,7 @@ export default async function AdminSlotsPage({ searchParams }: Props) {
               {context.role === 'super_admin' ? 'Apply Mode' : 'Request Mode Change'}
             </button>
           </form>
-        </div>
+        </>
       ) : (
         <div className="glass-card text-center py-20">
           <p className="text-white/20 font-black uppercase tracking-widest italic">Create an arena first to manage slots.</p>
@@ -169,29 +166,6 @@ export default async function AdminSlotsPage({ searchParams }: Props) {
         </div>
       )}
 
-      {arena && (
-        <div className="glass-card">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-black uppercase italic">{arena.name}</h2>
-            {context.role === 'super_admin' && (
-              <Link href="/fg-admin/platform/approvals" className="text-primary text-[10px] font-bold uppercase tracking-widest">
-                Review approvals →
-              </Link>
-            )}
-          </div>
-
-          <p className="label-classic !ml-0 mb-4">Current entry mode: {entryMode}</p>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {(slots || []).map((slot) => (
-              <div key={slot.id} className="p-4 rounded-2xl bg-white/[0.03] border border-white/5">
-                <div className="font-black uppercase italic">{slot.time_slot}</div>
-                <div className="text-primary font-black">₹{Number(slot.price)}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

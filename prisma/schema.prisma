@@ -126,17 +126,36 @@ model Booking {
   @@map("bookings")
 }
 
+/// day_of_week: NULL = applies every day (the default). A non-null value
+/// (0=Sunday..6=Saturday) overrides the default for that one weekday only.
+/// The uniqueness guarantee for this isn't expressible in Prisma's schema
+/// DSL (no partial indexes) — it's enforced via two raw partial unique
+/// indexes created directly in the migration SQL instead of `@@unique`
+/// here. See prisma/migrations/20260815000000_add_day_of_week_pricing/migration.sql.
 model Pricing {
-  id         Int      @id @default(autoincrement())
-  arena_id   Int
-  time_slot  String
-  price      Decimal  @db.Decimal(10, 2)
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  id          Int      @id @default(autoincrement())
+  arena_id    Int
+  time_slot   String
+  price       Decimal  @db.Decimal(10, 2)
+  day_of_week Int?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
 
-  @@unique([arena_id, time_slot])
   @@index([arena_id])
   @@map("pricings")
+}
+
+model ArenaHoliday {
+  id         Int      @id @default(autoincrement())
+  arena_id   Int
+  date       String
+  reason     String?
+  created_by Int?
+  created_at DateTime @default(now())
+
+  @@unique([arena_id, date])
+  @@index([arena_id])
+  @@map("arena_holidays")
 }
 
 model SlotLock {

@@ -90,6 +90,28 @@ export async function getArenaPricing(arenaId: number) {
   return dbQuery<PricingRow>('SELECT * FROM pricings WHERE arena_id = ? ORDER BY time_slot ASC', [arenaId]);
 }
 
+/**
+ * Resolves exactly one price per time_slot for a specific calendar date —
+ * a day-specific override row (day_of_week matching that date's weekday)
+ * wins over the "every day" default (day_of_week IS NULL) when both exist
+ * for the same time_slot. Use this (not getArenaPricing) anywhere a real
+ * booking date is known — availability display, checkout totals, and the
+ * actual amount charged at booking time — since getArenaPricing's flat,
+ * ungrouped list can return multiple rows for the same time_slot once
+ * day-specific overrides exist, which silently produces the wrong price
+ * if callers key results by time_slot alone.
+ */
+export async function getArenaPricingForDate(arenaId: number, dateStr: string) {
+  const dayOfWeek = new Date(`${dateStr}T00:00:00`).getDay();
+  return dbQuery<PricingRow>(
+    `SELECT DISTINCT ON (time_slot) *
+       FROM pricings
+      WHERE arena_id = ? AND (day_of_week = ? OR day_of_week IS NULL)
+      ORDER BY time_slot, day_of_week NULLS LAST`,
+    [arenaId, dayOfWeek]
+  );
+}
+
 export async function expirePendingBookings() {
   await dbQuery(
     `UPDATE bookings 
@@ -363,7 +385,11 @@ export async function createBookingBatch(params: {
 }) {
   await expirePendingBookings();
   const bookingRef = `REF-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
-  const bookings = await getArenaPricing(params.arenaId);
+  // Date-aware: once day-specific pricing overrides exist, the flat
+  // getArenaPricing() list can return more than one row for the same
+  // time_slot — getArenaPricingForDate resolves exactly one price per
+  // slot for this booking's actual date before it's used to charge anyone.
+  const bookings = await getArenaPricingForDate(params.arenaId, params.bookingDate);
   const priceBySlot = new Map(bookings.map((row) => [row.time_slot, Number(row.price)]));
   const created: Array<{ booking_ref: string; ticket_number: string; time_slot: string; amount: number }> = [];
   let effectiveUserId = params.userId;

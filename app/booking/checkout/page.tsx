@@ -1,4 +1,4 @@
-import { getArenaById, getArenaPricing, queryOne, query, getRefundPolicyConfig, formatRefundPolicyText, isPlaceholderEmail } from '@/lib/domain';
+import { getArenaById, getArenaPricingForDate, queryOne, query, getRefundPolicyConfig, formatRefundPolicyText, isPlaceholderEmail } from '@/lib/domain';
 import { readGuestIdentifier, readAuthUserId } from '@/lib/session';
 import { mergeSlots, getDurationText } from '@/lib/slot-merge';
 import { getPayuConfig } from '@/lib/payment';
@@ -55,7 +55,7 @@ export default async function CheckoutPage({ searchParams }: Props) {
   const arena = await getArenaById(arenaId);
   if (!arena) return <div className="p-10 text-center">Arena not found.</div>;
 
-  const pricing = await getArenaPricing(arenaId);
+  const pricing = await getArenaPricingForDate(arenaId, date);
   const safePricing = pricing || [];
   const selectedPricing = safePricing.filter((p) => slots.includes(p?.time_slot));
   const total = selectedPricing.reduce((sum, p) => sum + Number(p?.price || 0), 0);

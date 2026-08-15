@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 type Slot = {
   time_slot: string;
   price: number | string;
-  status: 'available' | 'booked' | 'locked' | 'selected';
+  status: 'available' | 'booked' | 'locked' | 'selected' | 'blocked';
 };
 
 export default function BookingSystem({ 
@@ -32,6 +32,7 @@ export default function BookingSystem({
   const [processing, setProcessing] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [holidayReason, setHolidayReason] = useState<string | null>(null);
 
   // Customer details state for quick inline mobile checkout
   const [customerName, setCustomerName] = useState(initialCustomerName);
@@ -50,6 +51,7 @@ export default function BookingSystem({
       const data = await response.json();
       const newSlots = data.slots || [];
       setSlots(newSlots);
+      setHolidayReason(data.holiday ? (data.closedReason || 'Closed') : null);
       setRetryCount(0);
       setError(null);
 
@@ -278,6 +280,12 @@ export default function BookingSystem({
                 <div className="w-14 h-14 border-4 border-primary/10 border-t-primary rounded-full animate-spin mb-6" />
                 <span className="label-classic">Syncing real-time locks...</span>
               </div>
+            ) : holidayReason ? (
+              <div className="py-24 flex flex-col items-center justify-center glass-card border-dashed border-white/5 text-center">
+                <span className="material-symbols-outlined text-5xl text-white/10 mb-4">event_busy</span>
+                <h3 className="text-xl font-black uppercase italic mb-2">Closed on this date</h3>
+                <p className="text-white/40 text-sm">{holidayReason}</p>
+              </div>
             ) : (
               <>
                 {error && (
@@ -288,7 +296,7 @@ export default function BookingSystem({
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
                   {(slots || []).map((slot) => {
                     const isSelected = selectedSlots.some((s) => s.time_slot === slot.time_slot);
-                    const isBooked = slot.status === 'booked';
+                    const isBooked = slot.status === 'booked' || slot.status === 'blocked';
                     const isLocked = slot.status === 'locked';
 
                     return (

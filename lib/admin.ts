@@ -786,6 +786,97 @@ export async function resolveApprovalRequest(input: {
         reason: input.reason
       });
     }
+
+    if (request.request_type === 'slot_add') {
+      const slotPayload = payload as { time_slot?: string; price?: number; day_of_week?: number | null };
+      if (!request.arena_id || !slotPayload.time_slot || typeof slotPayload.price !== 'number') {
+        throw new Error('Missing slot details.');
+      }
+      await query(
+        `INSERT INTO pricings (arena_id, time_slot, price, day_of_week, created_at, updated_at)
+         VALUES (?, ?, ?, ?, NOW(), NOW())`,
+        [request.arena_id, slotPayload.time_slot, slotPayload.price, slotPayload.day_of_week ?? null]
+      );
+      await createAdminAuditLog({
+        action: 'slot_added',
+        requestedBy: request.requested_by,
+        approvedBy: input.decisionBy,
+        arenaId: request.arena_id,
+        fieldChanged: 'Slot',
+        newValue: payload,
+        reason: input.reason,
+      });
+    }
+
+    if (request.request_type === 'slot_edit') {
+      const slotPayload = payload as { slot_id?: number; price?: number; day_of_week?: number | null };
+      if (!request.arena_id || !slotPayload.slot_id || typeof slotPayload.price !== 'number') {
+        throw new Error('Missing slot details.');
+      }
+      await query(
+        `UPDATE pricings SET price = ?, day_of_week = ?, updated_at = NOW() WHERE id = ? AND arena_id = ?`,
+        [slotPayload.price, slotPayload.day_of_week ?? null, slotPayload.slot_id, request.arena_id]
+      );
+      await createAdminAuditLog({
+        action: 'slot_edited',
+        requestedBy: request.requested_by,
+        approvedBy: input.decisionBy,
+        arenaId: request.arena_id,
+        fieldChanged: 'Slot',
+        newValue: payload,
+        reason: input.reason,
+      });
+    }
+
+    if (request.request_type === 'slot_delete') {
+      const slotPayload = payload as { slot_id?: number };
+      if (!request.arena_id || !slotPayload.slot_id) throw new Error('Missing slot details.');
+      await query(`DELETE FROM pricings WHERE id = ? AND arena_id = ?`, [slotPayload.slot_id, request.arena_id]);
+      await createAdminAuditLog({
+        action: 'slot_deleted',
+        requestedBy: request.requested_by,
+        approvedBy: input.decisionBy,
+        arenaId: request.arena_id,
+        fieldChanged: 'Slot',
+        newValue: payload,
+        reason: input.reason,
+      });
+    }
+
+    if (request.request_type === 'holiday_add') {
+      const holidayPayload = payload as { date?: string; reason?: string | null };
+      if (!request.arena_id || !holidayPayload.date) throw new Error('Missing holiday details.');
+      await query(
+        `INSERT INTO arena_holidays (arena_id, date, reason, created_by, created_at)
+         VALUES (?, ?, ?, ?, NOW())
+         ON CONFLICT (arena_id, date) DO UPDATE SET reason = EXCLUDED.reason`,
+        [request.arena_id, holidayPayload.date, holidayPayload.reason ?? null, input.decisionBy]
+      );
+      await createAdminAuditLog({
+        action: 'holiday_added',
+        requestedBy: request.requested_by,
+        approvedBy: input.decisionBy,
+        arenaId: request.arena_id,
+        fieldChanged: 'Holiday',
+        newValue: payload,
+        reason: input.reason,
+      });
+    }
+
+    if (request.request_type === 'holiday_delete') {
+      const holidayPayload = payload as { holiday_id?: number };
+      if (!request.arena_id || !holidayPayload.holiday_id) throw new Error('Missing holiday details.');
+      await query(`DELETE FROM arena_holidays WHERE id = ? AND arena_id = ?`, [holidayPayload.holiday_id, request.arena_id]);
+      await createAdminAuditLog({
+        action: 'holiday_deleted',
+        requestedBy: request.requested_by,
+        approvedBy: input.decisionBy,
+        arenaId: request.arena_id,
+        fieldChanged: 'Holiday',
+        newValue: payload,
+        reason: input.reason,
+      });
+    }
   }
 
   await query(

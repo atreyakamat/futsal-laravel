@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import SlotManagementClient from '@/components/SlotManagementClient';
 
 type Slot = { id: number; time_slot: string; price: number };
 type Timing = { id: number; time_slot: string; start_time: string; end_time: string; day_of_week: number | null };
@@ -73,6 +74,11 @@ function RequestTypeBadge({ type }: { type: string }) {
     ARENA_UPDATE: 'Arena Info',
     BLOCK_SLOT_REQUEST: 'Slot Block',
     image_update: 'Images',
+    slot_add: 'Add Slot',
+    slot_edit: 'Edit Slot',
+    slot_delete: 'Delete Slot',
+    holiday_add: 'Add Holiday',
+    holiday_delete: 'Delete Holiday',
   };
   return <span className="text-[9px] font-black uppercase tracking-widest text-white/40">{labels[type] ?? type.replace(/_/g, ' ')}</span>;
 }
@@ -92,6 +98,16 @@ function RequestDetail({ request }: { request: ApprovalRequest }) {
   } else if (request.request_type === 'BLOCK_SLOT_REQUEST') {
     const slots = Array.isArray(payload.slots) ? (payload.slots as string[]).join(', ') : '';
     detail = `${payload.bookingDate ?? ''} — ${slots}`;
+  } else if (request.request_type === 'slot_add') {
+    detail = `${payload.time_slot ?? ''} @ ₹${payload.price ?? ''}${payload.day_of_week != null ? ` (day ${payload.day_of_week})` : ' (every day)'}`;
+  } else if (request.request_type === 'slot_edit') {
+    detail = `Slot #${payload.slot_id ?? ''} → ₹${payload.price ?? ''}${payload.day_of_week != null ? ` (day ${payload.day_of_week})` : ' (every day)'}`;
+  } else if (request.request_type === 'slot_delete') {
+    detail = `Slot #${payload.slot_id ?? ''}`;
+  } else if (request.request_type === 'holiday_add') {
+    detail = `${payload.date ?? ''}${payload.reason ? ` — ${payload.reason}` : ''}`;
+  } else if (request.request_type === 'holiday_delete') {
+    detail = `Holiday #${payload.holiday_id ?? ''}`;
   }
   return detail ? <p className="text-xs text-white/50 italic mt-0.5 truncate max-w-xs">{detail}</p> : null;
 }
@@ -115,14 +131,6 @@ export default function ArenaAdminSlotsClient({
   freeBookings,
   entryMode,
 }: Props) {
-  // Slot template — multi-row dropdown form
-  const [slotRows, setSlotRows] = useState<{ time_slot: string; price: string }[]>([
-    { time_slot: '', price: '' },
-  ]);
-  const [slotNotes, setSlotNotes] = useState('');
-  const [slotSubmitting, setSlotSubmitting] = useState(false);
-  const [slotMsg, setSlotMsg] = useState('');
-
   // Entry mode
   const [entryModeVal, setEntryModeVal] = useState(entryMode);
   const [entryNotes, setEntryNotes] = useState('');
@@ -140,50 +148,6 @@ export default function ArenaAdminSlotsClient({
   const [fbReason, setFbReason] = useState('');
   const [fbMsg, setFbMsg] = useState('');
   const [fbSubmitting, setFbSubmitting] = useState(false);
-
-  // Block slot
-  const [blockDate, setBlockDate] = useState('');
-  const [blockSlot, setBlockSlot] = useState('');
-  const [blockReason, setBlockReason] = useState('');
-
-  const addSlotRow = () => setSlotRows((prev) => [...prev, { time_slot: '', price: '' }]);
-  const removeSlotRow = (i: number) => setSlotRows((prev) => prev.filter((_, idx) => idx !== i));
-  const updateSlotRow = (i: number, field: 'time_slot' | 'price', value: string) => {
-    setSlotRows((prev) => prev.map((r, idx) => idx === i ? { ...r, [field]: value } : r));
-  };
-
-  const handleSlotSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSlotSubmitting(true);
-    setSlotMsg('');
-    try {
-      const parsedSlots = slotRows.map((r) => ({ time_slot: r.time_slot, price: Number(r.price) }));
-      const res = await fetch('/api/fg-admin/platform/slots', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'slot_template', arena_id: arenaId, slots, slots_text: '', _slots: parsedSlots, notes: slotNotes, slotRows: parsedSlots }),
-      });
-      // Use form submit approach so it redirects properly
-      const form = document.createElement('form');
-      form.method = 'POST';
-      form.action = '/api/fg-admin/platform/slots';
-      const slotsText = slotRows.map((r) => `${r.time_slot},${r.price}`).join('\n');
-      [
-        ['action', 'slot_template'],
-        ['arena_id', String(arenaId)],
-        ['slots_text', slotsText],
-        ['notes', slotNotes],
-      ].forEach(([name, value]) => {
-        const input = document.createElement('input');
-        input.name = name; input.value = value; form.appendChild(input);
-      });
-      document.body.appendChild(form);
-      form.submit();
-    } catch {
-      setSlotMsg('Error submitting. Please try again.');
-      setSlotSubmitting(false);
-    }
-  };
 
   const toggleFbSlot = (slot: string) => {
     setFbSlots((prev) =>
@@ -234,92 +198,37 @@ export default function ArenaAdminSlotsClient({
         </Link>
       </div>
 
-      {/* Row 1: Slot Template + Entry Mode */}
-      <div className="grid lg:grid-cols-2 gap-8">
-        {/* Slot Template — Dropdown rows */}
-        <form onSubmit={handleSlotSubmit} className="glass-card space-y-5">
-          <div>
-            <h2 className="text-2xl font-black uppercase italic">Request Slot Template Change</h2>
-            <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mt-1">
-              Select time slots and set price per slot. Current slots are replaced if approved.
-            </p>
-          </div>
+      {/* Slots, holidays, and blocked-slot requests — same component the
+          super admin page uses, backend already branches direct-apply vs
+          approval-request based on role. */}
+      <SlotManagementClient arenaId={arenaId} isSuperAdmin={false} />
 
-          <div className="space-y-3">
-            {slotRows.map((row, i) => (
-              <div key={i} className="flex gap-3 items-center">
-                <select
-                  className="input-field flex-1 !min-h-0 !py-3"
-                  value={row.time_slot}
-                  onChange={(e) => updateSlotRow(i, 'time_slot', e.target.value)}
-                  required
-                >
-                  <option value="">— Select Slot —</option>
-                  {TIME_SLOTS.map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-xs font-bold">₹</span>
-                  <input
-                    type="number"
-                    className="input-field !min-h-0 !py-3 !pl-7 w-28"
-                    placeholder="Price"
-                    value={row.price}
-                    onChange={(e) => updateSlotRow(i, 'price', e.target.value)}
-                    min={0}
-                    required
-                  />
-                </div>
-                {slotRows.length > 1 && (
-                  <button type="button" onClick={() => removeSlotRow(i)} className="text-red-400 hover:text-red-300 transition-colors">
-                    <span className="material-symbols-outlined text-xl">remove_circle</span>
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-
-          <button type="button" onClick={addSlotRow} className="w-full py-2.5 rounded-xl border border-white/10 text-white/50 font-bold text-xs uppercase tracking-widest hover:bg-white/5 transition-all flex items-center justify-center gap-2">
-            <span className="material-symbols-outlined text-sm">add</span>
-            ADD SLOT
-          </button>
-
-          <textarea name="notes" rows={2} className="input-field" placeholder="Why is this slot template being changed?" required value={slotNotes} onChange={(e) => setSlotNotes(e.target.value)} />
-
-          {slotMsg && <p className="text-red-400 text-xs font-bold">{slotMsg}</p>}
-          <button className="btn-primary w-full" type="submit" disabled={slotSubmitting}>
-            {slotSubmitting ? 'SUBMITTING...' : 'SUBMIT SLOT TEMPLATE REQUEST'}
-          </button>
-        </form>
-
-        {/* Entry Mode */}
-        <form action="/api/fg-admin/platform/slots" method="POST" className="glass-card space-y-6">
-          <input type="hidden" name="action" value="entry_mode" />
-          <input type="hidden" name="arena_id" value={arenaId} />
-          <div>
-            <h2 className="text-2xl font-black uppercase italic">Request Entry Mode Change</h2>
-            <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mt-1">
-              Open (public bookings) · Blocked (no entry) · Free Entry (no fees)
-            </p>
-          </div>
-          <div className="p-4 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between">
-            <span className="text-xs font-bold text-white/40 uppercase tracking-widest">Current Mode</span>
-            <span className={`text-xs font-black uppercase tracking-widest px-3 py-1 rounded-full border ${
-              entryMode === 'open' ? 'text-primary border-primary/30 bg-primary/10' :
-              entryMode === 'blocked' ? 'text-red-400 border-red-500/30 bg-red-500/10' :
-              'text-yellow-400 border-yellow-500/30 bg-yellow-500/10'
-            }`}>{entryMode}</span>
-          </div>
-          <select name="mode" className="input-field" defaultValue={entryMode}>
-            <option value="open">Open — Public Bookings</option>
-            <option value="blocked">Blocked — Turf Shutdown</option>
-            <option value="free">Free Entry — No Fees</option>
-          </select>
-          <textarea name="notes" rows={3} className="input-field" placeholder="Reason for changing turf entry mode?" required />
-          <button className="btn-primary w-full" type="submit">Submit Entry Mode Request</button>
-        </form>
-      </div>
+      {/* Entry Mode */}
+      <form action="/api/fg-admin/platform/slots" method="POST" className="glass-card space-y-6 max-w-xl">
+        <input type="hidden" name="action" value="entry_mode" />
+        <input type="hidden" name="arena_id" value={arenaId} />
+        <div>
+          <h2 className="text-2xl font-black uppercase italic">Request Entry Mode Change</h2>
+          <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mt-1">
+            Open (public bookings) · Blocked (no entry) · Free Entry (no fees)
+          </p>
+        </div>
+        <div className="p-4 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between">
+          <span className="text-xs font-bold text-white/40 uppercase tracking-widest">Current Mode</span>
+          <span className={`text-xs font-black uppercase tracking-widest px-3 py-1 rounded-full border ${
+            entryMode === 'open' ? 'text-primary border-primary/30 bg-primary/10' :
+            entryMode === 'blocked' ? 'text-red-400 border-red-500/30 bg-red-500/10' :
+            'text-yellow-400 border-yellow-500/30 bg-yellow-500/10'
+          }`}>{entryMode}</span>
+        </div>
+        <select name="mode" className="input-field" defaultValue={entryMode}>
+          <option value="open">Open — Public Bookings</option>
+          <option value="blocked">Blocked — Turf Shutdown</option>
+          <option value="free">Free Entry — No Fees</option>
+        </select>
+        <textarea name="notes" rows={3} className="input-field" placeholder="Reason for changing turf entry mode?" required />
+        <button className="btn-primary w-full" type="submit">Submit Entry Mode Request</button>
+      </form>
 
       {/* Row 2: Timings + Free Booking */}
       <div className="grid lg:grid-cols-2 gap-8">
@@ -426,71 +335,24 @@ export default function ArenaAdminSlotsClient({
         </form>
       </div>
 
-      {/* Row 3: Block Slot */}
-      <div className="grid lg:grid-cols-2 gap-8">
-        <form action="/api/fg-admin/arena/requests" method="POST" className="glass-card space-y-5">
-          <input type="hidden" name="request_type" value="BLOCK_SLOT_REQUEST" />
-          <div>
-            <h2 className="text-2xl font-black uppercase italic">Request Slot Block</h2>
-            <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mt-1">
-              Block a specific slot from being booked by customers.
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="label-classic">Date</label>
-              <input name="payload[bookingDate]" type="date" className="input-field !min-h-0 !py-3" min={today} required />
-            </div>
-            <div className="space-y-2">
-              <label className="label-classic">Time Slot</label>
-              <select name="payload[slots][]" className="input-field !min-h-0 !py-3" required>
-                <option value="">— Select Slot —</option>
-                {TIME_SLOTS.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-          </div>
-          <textarea name="reason" rows={2} className="input-field" placeholder="Reason for blocking" required />
-          <button className="btn-primary w-full" type="submit">Submit Block Request</button>
-        </form>
-
-        {/* Current Config */}
-        <div className="space-y-6">
-          <div className="glass-card">
-            <h2 className="text-xl font-black uppercase italic mb-4">Active Pricing & Slots</h2>
-            {slots.length === 0 ? (
-              <p className="text-white/20 text-xs font-bold uppercase tracking-widest">No slots configured.</p>
-            ) : (
-              <div className="grid grid-cols-2 gap-3">
-                {slots.map((s) => (
-                  <div key={s.id} className="p-3 rounded-xl bg-white/[0.02] border border-white/5">
-                    <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Slot</div>
-                    <div className="font-black text-white italic text-sm">{s.time_slot}</div>
-                    <div className="font-black text-primary mt-1">₹{Number(s.price)}</div>
-                  </div>
-                ))}
+      {/* Operating Hours (display only — out of scope for this pass) */}
+      <div className="glass-card max-w-xl">
+        <h2 className="text-xl font-black uppercase italic mb-4">Operating Hours</h2>
+        {timings.length === 0 ? (
+          <p className="text-white/20 text-xs font-bold uppercase tracking-widest">No timings configured.</p>
+        ) : (
+          <div className="space-y-2">
+            {timings.map((t) => (
+              <div key={t.id} className="p-3 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between">
+                <div>
+                  <div className="font-black text-white italic text-sm">{t.time_slot}</div>
+                  <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{getDayName(t.day_of_week)}</div>
+                </div>
+                <div className="text-primary font-black text-sm">{t.start_time}–{t.end_time}</div>
               </div>
-            )}
+            ))}
           </div>
-
-          <div className="glass-card">
-            <h2 className="text-xl font-black uppercase italic mb-4">Operating Hours</h2>
-            {timings.length === 0 ? (
-              <p className="text-white/20 text-xs font-bold uppercase tracking-widest">No timings configured.</p>
-            ) : (
-              <div className="space-y-2">
-                {timings.map((t) => (
-                  <div key={t.id} className="p-3 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between">
-                    <div>
-                      <div className="font-black text-white italic text-sm">{t.time_slot}</div>
-                      <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{getDayName(t.day_of_week)}</div>
-                    </div>
-                    <div className="text-primary font-black text-sm">{t.start_time}–{t.end_time}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Requests History */}
