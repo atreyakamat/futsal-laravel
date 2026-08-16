@@ -9,30 +9,51 @@ type Slot = {
   status: 'available' | 'booked' | 'locked' | 'selected' | 'blocked';
 };
 
-export default function BookingSystem({ 
-  arenaId, 
-  initialDate, 
+const DAYS_VISIBLE = 4;
+
+function addDays(dateStr: string, days: number): string {
+  const d = new Date(`${dateStr}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+}
+
+function formatDayLabel(dateStr: string) {
+  const d = new Date(`${dateStr}T00:00:00`);
+  return {
+    weekday: d.toLocaleDateString('en-US', { weekday: 'short' }),
+    day: d.getDate(),
+    month: d.toLocaleDateString('en-US', { month: 'short' }),
+  };
+}
+
+export default function BookingSystem({
+  arenaId,
+  initialDate,
   csrfToken,
   initialCustomerName = '',
   initialCustomerMobile = '',
   initialCustomerEmail = ''
-}: { 
-  arenaId: number; 
-  initialDate: string; 
+}: {
+  arenaId: number;
+  initialDate: string;
   csrfToken: string;
   initialCustomerName?: string;
   initialCustomerMobile?: string;
   initialCustomerEmail?: string;
 }) {
   // 1. All State declarations at the top
+  // `date` doubles as both the "active" booking date AND the start of the
+  // visible grid window — the grid always shows this date plus the next
+  // (DAYS_VISIBLE - 1) days, so there's one source of truth instead of a
+  // separate window-position state that could drift out of sync with it.
   const [date, setDate] = useState(initialDate || new Date().toISOString().split('T')[0]);
-  const [slots, setSlots] = useState<Slot[]>([]);
+  const [slotsByDate, setSlotsByDate] = useState<Record<string, Slot[]>>({});
+  const [holidayByDate, setHolidayByDate] = useState<Record<string, string | null>>({});
   const [selectedSlots, setSelectedSlots] = useState<Slot[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [holidayReason, setHolidayReason] = useState<string | null>(null);
 
   // Customer details state for quick inline mobile checkout
   const [customerName, setCustomerName] = useState(initialCustomerName);
@@ -42,25 +63,41 @@ export default function BookingSystem({
   const customerDetailsRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
-  // 2. Fetch Slots Logic
-  const fetchSlots = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/slots/status?arena_id=${arenaId}&date=${date}`);
-      if (!response.ok) throw new Error('Failed to fetch slot status');
+  const windowDates = Array.from({ length: DAYS_VISIBLE }, (_, i) => addDays(date, i));
+  const slots = slotsByDate[date] || [];
+  const holidayReason = holidayByDate[date] || null;
 
-      const data = await response.json();
-      const newSlots = data.slots || [];
-      setSlots(newSlots);
-      setHolidayReason(data.holiday ? (data.closedReason || 'Closed') : null);
+  // 2. Fetch Slots Logic — one call per visible column, in parallel. Still
+  // just the existing single-date endpoint (no new API), so this is a
+  // purely client-side reshaping of the same data the old single-day view
+  // used, fetched 4x instead of 1x.
+  const fetchWindow = useCallback(async () => {
+    try {
+      const results = await Promise.all(
+        windowDates.map(async (d) => {
+          const response = await fetch(`/api/slots/status?arena_id=${arenaId}&date=${d}`);
+          if (!response.ok) throw new Error('Failed to fetch slot status');
+          const data = await response.json();
+          return { date: d, slots: data.slots || [], holiday: data.holiday ? (data.closedReason || 'Closed') : null };
+        })
+      );
+
+      const nextSlotsByDate: Record<string, Slot[]> = {};
+      const nextHolidayByDate: Record<string, string | null> = {};
+      for (const r of results) {
+        nextSlotsByDate[r.date] = r.slots;
+        nextHolidayByDate[r.date] = r.holiday;
+      }
+      setSlotsByDate(nextSlotsByDate);
+      setHolidayByDate(nextHolidayByDate);
       setRetryCount(0);
       setError(null);
 
-      // Sync selected slots with latest availability
+      // Sync selected slots (always for the active date) with latest availability
+      const activeSlots = nextSlotsByDate[date] || [];
       setSelectedSlots((prev) =>
         prev.filter((ps) =>
-          newSlots.some(
-            (s: Slot) => s.time_slot === ps.time_slot && (s.status === 'available' || s.status === 'selected')
-          )
+          activeSlots.some((s) => s.time_slot === ps.time_slot && (s.status === 'available' || s.status === 'selected'))
         )
       );
     } catch (e) {
@@ -70,25 +107,28 @@ export default function BookingSystem({
     } finally {
       setLoading(false);
     }
+    // windowDates is derived fresh from `date` every render — depending on
+    // `date` alone (not the derived array) avoids an infinite effect loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [arenaId, date]);
 
   // 3. Effects
   useEffect(() => {
     setLoading(true);
-    fetchSlots();
-    const interval = setInterval(fetchSlots, 30000);
+    fetchWindow();
+    const interval = setInterval(fetchWindow, 30000);
     return () => clearInterval(interval);
-  }, [fetchSlots]);
+  }, [fetchWindow]);
 
   useEffect(() => {
     if (retryCount > 0 && retryCount < 5) {
-      const timer = setTimeout(fetchSlots, 2000 * retryCount);
+      const timer = setTimeout(fetchWindow, 2000 * retryCount);
       return () => clearTimeout(timer);
     } else if (retryCount >= 5) {
       setLoading(false);
       setError('System offline. Cannot reach booking servers. Please refresh the page manually.');
     }
-  }, [retryCount, fetchSlots]);
+  }, [retryCount, fetchWindow]);
 
   // Scroll to customer details section on mobile when first slot is selected
   useEffect(() => {
@@ -100,8 +140,20 @@ export default function BookingSystem({
   }, [selectedSlots.length]);
 
   // 4. Actions
-  async function toggleSlot(slot: Slot) {
-    const isSelected = selectedSlots.some((s) => s.time_slot === slot.time_slot);
+  // Switching the active date always clears any in-progress selection —
+  // same behavior the old date-card strip already had.
+  function changeDate(newDate: string) {
+    setDate(newDate);
+    setSelectedSlots([]);
+  }
+
+  // Takes the target date explicitly (not read from the `date` state
+  // closure) so a click on a non-active grid column locks/selects against
+  // the column that was actually clicked, not whatever `date` was when
+  // this render happened.
+  async function toggleSlotForDate(targetDate: string, slot: Slot) {
+    const isActiveColumn = targetDate === date;
+    const isSelected = isActiveColumn && selectedSlots.some((s) => s.time_slot === slot.time_slot);
 
     try {
       if (isSelected) {
@@ -111,7 +163,7 @@ export default function BookingSystem({
             'Content-Type': 'application/json',
             'x-csrf-token': csrfToken,
           },
-          body: JSON.stringify({ arena_id: arenaId, date, slots: [slot.time_slot] }),
+          body: JSON.stringify({ arena_id: arenaId, date: targetDate, slots: [slot.time_slot] }),
         });
         setSelectedSlots((prev) => prev.filter((s) => s.time_slot !== slot.time_slot));
       } else {
@@ -121,17 +173,23 @@ export default function BookingSystem({
             'Content-Type': 'application/json',
             'x-csrf-token': csrfToken,
           },
-          body: JSON.stringify({ arena_id: arenaId, date, slots: [slot.time_slot] }),
+          body: JSON.stringify({ arena_id: arenaId, date: targetDate, slots: [slot.time_slot] }),
         });
 
         if (!response.ok) throw new Error('Lock failed');
         const data = await response.json();
 
         if (data.success) {
-          setSelectedSlots((prev) => [...prev, slot]);
+          if (!isActiveColumn) {
+            // Switching columns starts a fresh selection on the new date.
+            setDate(targetDate);
+            setSelectedSlots([slot]);
+          } else {
+            setSelectedSlots((prev) => [...prev, slot]);
+          }
         } else {
           alert('This slot was just taken. Refreshing...');
-          fetchSlots();
+          fetchWindow();
         }
       }
     } catch (e) {
@@ -166,7 +224,7 @@ export default function BookingSystem({
         router.push(checkoutUrl);
       } else {
         alert('Some selected slots were just taken. Refreshing...');
-        fetchSlots();
+        fetchWindow();
       }
     } catch (e) {
       console.error('Proceed error:', e);
@@ -184,11 +242,12 @@ export default function BookingSystem({
     return sum + (isNaN(price) ? 0 : price);
   }, 0);
 
-  const dates = Array.from({ length: 14 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() + i);
-    return d.toISOString().split('T')[0];
-  });
+  // Grid rows: every distinct time_slot offered on ANY visible date (a
+  // weekend-only override, for example, might only appear on some
+  // columns) — sorted so rows line up predictably.
+  const allTimeSlots = Array.from(
+    new Set(windowDates.flatMap((d) => (slotsByDate[d] || []).map((s) => s.time_slot)))
+  ).sort();
 
   return (
     <section className="py-6 sm:py-12 lg:py-20 max-w-7xl mx-auto px-4 sm:px-6">
@@ -220,62 +279,55 @@ export default function BookingSystem({
 
       <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 pb-24 lg:pb-0">
         <div className="lg:col-span-8 space-y-10 lg:space-y-12">
-          {/* Date Picker */}
+          {/* Slot Grid — dates as columns, times as rows */}
           <div>
-            <div className="flex items-center justify-between mb-8 sm:mb-10">
-              <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight flex items-center gap-3 sm:gap-4 italic">
-                <span className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-inner">
-                  <span className="material-symbols-outlined text-lg sm:text-xl">calendar_month</span>
-                </span>
-                1. Choose <span className="text-primary text-stroke">Date</span>
-              </h2>
-            </div>
-            <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-4 sm:pb-8 -mx-4 px-4 no-scrollbar">
-              {dates.map((d) => {
-                const dateObj = new Date(d);
-                const isActive = d === date;
-                return (
-                  <button
-                    key={d}
-                    onClick={() => {
-                      setDate(d);
-                      setSelectedSlots([]);
-                    }}
-                    className={`date-card flex-shrink-0 flex flex-col items-center justify-center w-16 h-20 sm:w-24 sm:h-28 rounded-2xl sm:rounded-[1.5rem] border glass transition-all duration-300 ${
-                      isActive
-                        ? 'bg-primary text-black border-primary -translate-y-1 sm:-translate-y-2 shadow-[0_10px_30px_rgba(13,242,32,0.3)]'
-                        : 'border-white/5 hover:border-primary/30'
-                    }`}
-                  >
-                    <span className={`text-[9px] sm:text-[10px] font-black uppercase mb-0.5 sm:mb-1 tracking-widest ${isActive ? 'text-black/60' : 'text-white/40'}`}>
-                      {dateObj.toLocaleDateString('en-US', { weekday: 'short' })}
-                    </span>
-                    <span className="text-xl sm:text-3xl font-black mb-0.5 sm:mb-1 leading-none">{dateObj.getDate()}</span>
-                    <span className={`text-[9px] sm:text-[10px] font-black uppercase tracking-widest ${isActive ? 'text-black/60' : 'text-white/40'}`}>
-                      {dateObj.toLocaleDateString('en-US', { month: 'short' })}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Slots Grid */}
-          <div>
-            <div className="flex items-center justify-between mb-8 sm:mb-10">
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-6 sm:mb-8">
               <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight flex items-center gap-3 sm:gap-4 italic">
                 <span className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-inner">
                   <span className="material-symbols-outlined text-lg sm:text-xl">schedule</span>
                 </span>
-                2. Pick <span className="text-primary text-stroke">Slots</span>
+                Pick a <span className="text-primary text-stroke">Slot</span>
               </h2>
-              <div className="flex gap-4 sm:gap-6 text-[10px] font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] text-white/40">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_10px_rgba(13,242,32,0.5)]" /> Available
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-white/10" /> Taken
-                </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => changeDate(addDays(date, -1))}
+                  className="btn-secondary !p-2 !rounded-xl"
+                  aria-label="Previous day"
+                >
+                  <span className="material-symbols-outlined text-lg">chevron_left</span>
+                </button>
+                <input
+                  type="date"
+                  value={date}
+                  min={new Date().toISOString().split('T')[0]}
+                  onChange={(e) => e.target.value && changeDate(e.target.value)}
+                  className="input-field !py-2 !px-3 !min-h-0 text-xs"
+                />
+                <button
+                  type="button"
+                  onClick={() => changeDate(addDays(date, 1))}
+                  className="btn-secondary !p-2 !rounded-xl"
+                  aria-label="Next day"
+                >
+                  <span className="material-symbols-outlined text-lg">chevron_right</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-4 sm:gap-6 text-[10px] font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] text-white/40 mb-6">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_10px_rgba(13,242,32,0.5)]" /> Available
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-500/40" /> Booked
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500/40" /> Locked
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-white/10" /> Not Available
               </div>
             </div>
 
@@ -284,12 +336,6 @@ export default function BookingSystem({
                 <div className="w-14 h-14 border-4 border-primary/10 border-t-primary rounded-full animate-spin mb-6" />
                 <span className="label-classic">Syncing real-time locks...</span>
               </div>
-            ) : holidayReason ? (
-              <div className="py-24 flex flex-col items-center justify-center glass-card border-dashed border-white/5 text-center">
-                <span className="material-symbols-outlined text-5xl text-white/10 mb-4">event_busy</span>
-                <h3 className="text-xl font-black uppercase italic mb-2">Closed on this date</h3>
-                <p className="text-white/40 text-sm">{holidayReason}</p>
-              </div>
             ) : (
               <>
                 {error && (
@@ -297,41 +343,102 @@ export default function BookingSystem({
                     {error}
                   </div>
                 )}
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-                  {(slots || []).map((slot) => {
-                    const isSelected = selectedSlots.some((s) => s.time_slot === slot.time_slot);
-                    const isBooked = slot.status === 'booked' || slot.status === 'blocked';
-                    const isLocked = slot.status === 'locked';
 
-                    return (
-                      <button
-                        key={slot.time_slot}
-                        onClick={() => toggleSlot(slot)}
-                        disabled={isBooked || isLocked}
-                        className={`slot-card p-3 sm:p-5 lg:p-8 rounded-xl sm:rounded-2xl lg:rounded-3xl border transition-all duration-300 group relative overflow-hidden text-left ${
-                          isBooked ? 'opacity-20 grayscale cursor-not-allowed bg-white/[0.02] border-white/5' : ''
-                        } ${isLocked ? 'opacity-40 cursor-not-allowed border-white/5' : ''} ${
-                          isSelected
-                            ? 'border-primary bg-primary/10 text-primary shadow-[0_0_30px_rgba(13,242,32,0.15)] scale-[1.03]'
-                            : 'bg-white/[0.02] border-white/5 hover:border-primary/50 hover:bg-white/[0.04] hover:scale-[1.02]'
-                        }`}
-                      >
-                        <div className="text-sm sm:text-base lg:text-xl font-black tracking-tight mb-1 sm:mb-2 uppercase italic leading-tight">{slot.time_slot}</div>
-                        <div className={`text-[9px] sm:text-[10px] font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] ${isSelected ? 'text-primary' : 'text-white/40'}`}>
-                          {slot.status === 'available' || isSelected ? `₹${slot.price}` : slot.status}
-                        </div>
-                        {isSelected && (
-                          <div className="absolute top-2 right-2 sm:top-3 sm:right-3 text-primary animate-pulse">
-                            <span className="material-symbols-outlined text-base sm:text-lg">check_circle</span>
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-                {(slots?.length || 0) === 0 && (
+                {allTimeSlots.length === 0 ? (
                   <div className="py-24 text-center glass-card border-dashed border-white/5">
-                    <p className="label-classic">No slots configured for this date.</p>
+                    <p className="label-classic">No slots configured for these dates.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-2xl border border-white/5 -mx-4 px-4 sm:mx-0 sm:px-0">
+                    <table className="w-full border-collapse min-w-[560px]">
+                      <thead>
+                        <tr>
+                          <th className="sticky left-0 z-10 bg-dark p-3 text-left">
+                            <span className="text-[9px] font-black text-white/30 uppercase tracking-widest">Time</span>
+                          </th>
+                          {windowDates.map((d) => {
+                            const { weekday, day, month } = formatDayLabel(d);
+                            const isActive = d === date;
+                            return (
+                              <th
+                                key={d}
+                                className={`p-3 text-center border-l border-white/5 ${isActive ? 'bg-primary/10' : ''}`}
+                              >
+                                <div className={`text-[9px] font-black uppercase tracking-widest ${isActive ? 'text-primary' : 'text-white/40'}`}>
+                                  {weekday}
+                                </div>
+                                <div className={`text-lg font-black italic ${isActive ? 'text-primary' : 'text-white'}`}>{day}</div>
+                                <div className={`text-[9px] font-black uppercase tracking-widest ${isActive ? 'text-primary' : 'text-white/40'}`}>
+                                  {month}
+                                </div>
+                              </th>
+                            );
+                          })}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {allTimeSlots.map((timeSlot) => (
+                          <tr key={timeSlot} className="border-t border-white/5">
+                            <td className="sticky left-0 z-10 bg-dark p-3 text-xs font-black uppercase italic text-white/70 whitespace-nowrap">
+                              {timeSlot}
+                            </td>
+                            {windowDates.map((d) => {
+                              const dayHoliday = holidayByDate[d];
+                              const slot = (slotsByDate[d] || []).find((s) => s.time_slot === timeSlot);
+                              const isActiveColumn = d === date;
+                              const isSelected = isActiveColumn && selectedSlots.some((s) => s.time_slot === timeSlot);
+
+                              if (dayHoliday) {
+                                return (
+                                  <td key={d} className="p-3 text-center border-l border-white/5 text-white/15 text-[10px] font-bold uppercase tracking-widest">
+                                    Closed
+                                  </td>
+                                );
+                              }
+                              if (!slot) {
+                                return <td key={d} className="p-3 text-center border-l border-white/5 text-white/10">—</td>;
+                              }
+
+                              const isBookedOrBlocked = slot.status === 'booked' || slot.status === 'blocked';
+                              const isLocked = slot.status === 'locked';
+                              const isClickable = !isBookedOrBlocked && !isLocked;
+
+                              return (
+                                <td key={d} className="p-1.5 text-center border-l border-white/5">
+                                  <button
+                                    type="button"
+                                    disabled={!isClickable}
+                                    onClick={() => toggleSlotForDate(d, slot)}
+                                    className={`w-full py-2.5 px-2 rounded-xl border text-[11px] font-black transition-all ${
+                                      isBookedOrBlocked
+                                        ? 'opacity-30 grayscale cursor-not-allowed bg-white/[0.02] border-white/5 text-white/30'
+                                        : isLocked
+                                          ? 'opacity-40 cursor-not-allowed border-white/5 text-white/30'
+                                          : isSelected
+                                            ? 'border-primary bg-primary/10 text-primary shadow-[0_0_15px_rgba(13,242,32,0.15)]'
+                                            : 'bg-white/[0.02] border-white/5 hover:border-primary/50 hover:bg-white/[0.04] text-white/70'
+                                    }`}
+                                  >
+                                    {isSelected ? (
+                                      <span className="flex items-center justify-center gap-1">
+                                        <span className="material-symbols-outlined text-sm">check_circle</span>
+                                        ₹{slot.price}
+                                      </span>
+                                    ) : isBookedOrBlocked ? (
+                                      'Booked'
+                                    ) : isLocked ? (
+                                      'Locked'
+                                    ) : (
+                                      `₹${slot.price}`
+                                    )}
+                                  </button>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </>
@@ -346,7 +453,7 @@ export default function BookingSystem({
                   <span className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-inner">
                     <span className="material-symbols-outlined text-lg sm:text-xl">person</span>
                   </span>
-                  3. Customer <span className="text-primary text-stroke">Details</span>
+                  Customer <span className="text-primary text-stroke">Details</span>
                 </h2>
                 <span className="pill-status">
                   <span className="material-symbols-outlined text-xs">lock</span>
