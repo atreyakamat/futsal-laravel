@@ -657,11 +657,15 @@ export default function BookingSystem({
                   </div>
                 </div>
 
+                {/* lg:hidden — the desktop sidebar already has its own always-visible
+                    proceed button; showing both at once (as in the reported
+                    screenshot) reads as two different actions. Mobile hides the
+                    sidebar entirely, so this is the only proceed button there. */}
                 <button
                   onClick={handleProceed}
                   disabled={processing}
                   id="inline-proceed-btn"
-                  className="btn-primary w-full py-4 text-sm flex items-center justify-center gap-3 mt-4"
+                  className="btn-primary w-full py-4 text-sm flex items-center justify-center gap-3 mt-4 lg:hidden"
                 >
                   {processing ? (
                     <>
