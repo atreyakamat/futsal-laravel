@@ -121,9 +121,11 @@ export default async function ArenaPage({ params, searchParams }: Props) {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-2 text-white/60 hover:text-primary font-black uppercase tracking-widest text-[10px] sm:text-xs transition-colors"
+                    title="Get Directions"
                   >
                     <span className="material-symbols-outlined text-primary text-lg sm:text-xl">location_on</span>
-                    {arena.address}
+                    <span>{arena.address}</span>
+                    <span className="underline decoration-primary/50 underline-offset-4">Get Directions</span>
                   </a>
                 )}
                 <span className="w-1.5 h-1.5 rounded-full bg-primary/40 shadow-[0_0_10px_rgba(13,242,32,0.5)] hidden sm:block" />
