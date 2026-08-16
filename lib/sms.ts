@@ -187,7 +187,6 @@ export class AiSensyProvider implements SmsProvider {
 
       // Try to parse structured confirmation or OTP message
       let templateParams: string[] = [];
-      let buttonText = 'user';
       let ticketNumber = '';
       let isOtp = false;
 
@@ -199,7 +198,6 @@ export class AiSensyProvider implements SmsProvider {
         const dateStr = parts[1] || '';
         const timeRange = parts[2] || '';
         ticketNumber = parts[3] || '';
-        const bookingRef = parts[4] || '';
         const customerName = parts[5] || 'Player';
 
         let formattedDate = dateStr;
@@ -220,14 +218,11 @@ export class AiSensyProvider implements SmsProvider {
         }
 
         templateParams = ['$FirstName', '$FirstName', '$FirstName', '$FirstName']; // placeholders as per approved template
-        buttonText = ticketNumber || bookingRef;
       } else if (otp) {
         isOtp = true;
         templateParams = [otp];
-        buttonText = otp;
       } else {
         templateParams = [message, message, message, message];
-        buttonText = 'user';
       }
 
       // Try to extract dynamic ticket number if present (starts with TKT-)
@@ -254,17 +249,19 @@ export class AiSensyProvider implements SmsProvider {
           url: pdfUrl,
           filename: ticketNumber ? `ticket-${ticketNumber}.pdf` : "booking_confirmation.pdf"
         },
+        // The approved WhatsApp template's URL button is registered as
+        // static (no {{1}} placeholder) — AiSensy rejects the send with
+        // "Button at index 0 of type Url does not require parameters" if a
+        // `parameters` array is attached. Sending the button with no
+        // parameters lets the template's own fixed URL render. Getting a
+        // per-ticket dynamic link back would require re-registering the
+        // template on AiSensy/Meta with a dynamic URL button, not a code
+        // change here.
         buttons: [
           {
             type: "button",
             sub_type: "url",
-            index: 0,
-            parameters: [
-              {
-                type: "text",
-                text: buttonText
-              }
-            ]
+            index: 0
           }
         ],
         carouselCards: [],
