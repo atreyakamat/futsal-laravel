@@ -285,20 +285,27 @@ export default function BookingSystem({
         <div className="lg:col-span-8 space-y-10 lg:space-y-12">
           {/* Slot Grid — dates as columns, times as rows */}
           <div>
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-6 sm:mb-8">
-              <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight flex items-center gap-3 sm:gap-4 italic">
+            <div className="mb-6 sm:mb-8">
+              <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight flex items-center gap-3 sm:gap-4 italic mb-4">
                 <span className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-inner">
                   <span className="material-symbols-outlined text-lg sm:text-xl">schedule</span>
                 </span>
                 Pick a <span className="text-primary text-stroke">Slot</span>
               </h2>
 
-              <div className="flex items-center gap-2 w-full sm:w-auto">
+              {/* Grid, not flex — prev/next are fixed "auto" columns that
+                  can never get squeezed out of view; the middle column is
+                  the only one allowed to shrink (min-w-0 + truncate), so
+                  the arrows stay on-screen and clickable no matter how
+                  narrow the viewport or how long the date label gets. This
+                  replaced a flex row where the date button could grow wide
+                  enough to push the next arrow off-screen on mobile. */}
+              <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2 sm:inline-grid sm:w-auto">
                 <button
                   type="button"
                   onClick={() => changeDate(addDays(date, -1))}
                   disabled={date <= todayStr}
-                  className="btn-secondary !p-2.5 !rounded-xl shrink-0 disabled:opacity-20 disabled:cursor-not-allowed disabled:pointer-events-none"
+                  className="btn-secondary !p-2.5 !rounded-xl disabled:opacity-20 disabled:cursor-not-allowed disabled:pointer-events-none"
                   aria-label="Previous day"
                 >
                   <span className="material-symbols-outlined text-lg">chevron_left</span>
@@ -307,17 +314,17 @@ export default function BookingSystem({
                 {/* A button that opens the native date picker, rather than a
                     raw <input type="date"> — the raw input lets people type
                     an arbitrary date and its width/rendering is inconsistent
-                    on mobile (it was clipping off-screen). This button fully
-                    controls its own layout and the underlying input is
-                    visually hidden, only used to drive showPicker(). */}
+                    on mobile. This button fully controls its own layout and
+                    the underlying input is visually hidden, only used to
+                    drive showPicker(). */}
                 <button
                   type="button"
                   onClick={() => dateInputRef.current?.showPicker?.()}
-                  className="btn-secondary !rounded-xl !py-2.5 !px-3 sm:!px-4 flex-1 sm:flex-none min-w-0 flex items-center justify-center gap-2 text-[11px] sm:text-xs"
+                  className="btn-secondary !rounded-xl !py-2.5 !px-3 sm:!px-4 min-w-0 w-full flex items-center justify-center gap-2 text-[11px] sm:text-xs"
                 >
                   <span className="material-symbols-outlined text-base shrink-0">calendar_month</span>
                   <span className="truncate">
-                    {new Date(`${date}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', weekday: 'short' })}
+                    {new Date(`${date}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
                   </span>
                 </button>
                 <input
@@ -334,7 +341,7 @@ export default function BookingSystem({
                 <button
                   type="button"
                   onClick={() => changeDate(addDays(date, 1))}
-                  className="btn-secondary !p-2.5 !rounded-xl shrink-0"
+                  className="btn-secondary !p-2.5 !rounded-xl"
                   aria-label="Next day"
                 >
                   <span className="material-symbols-outlined text-lg">chevron_right</span>
@@ -407,7 +414,7 @@ export default function BookingSystem({
                       <p className="label-classic">No slots configured for this date.</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <div className="flex flex-col gap-2.5">
                       {slots.map((slot) => {
                         const isSelected = selectedSlots.some((s) => s.time_slot === slot.time_slot);
                         const isBookedOrBlocked = slot.status === 'booked' || slot.status === 'blocked';
@@ -420,7 +427,7 @@ export default function BookingSystem({
                             type="button"
                             disabled={!isClickable}
                             onClick={() => toggleSlotForDate(date, slot)}
-                            className={`py-3 px-2 rounded-xl border text-[11px] font-black transition-all ${
+                            className={`w-full py-3.5 px-4 rounded-xl border text-xs font-black transition-all flex items-center justify-between ${
                               isBookedOrBlocked
                                 ? 'opacity-30 grayscale cursor-not-allowed bg-white/[0.02] border-white/5 text-white/30'
                                 : isLocked
@@ -430,11 +437,11 @@ export default function BookingSystem({
                                     : 'bg-white/[0.02] border-white/5 hover:border-primary/50 text-white/70'
                             }`}
                           >
-                            <div className="uppercase italic">{slot.time_slot}</div>
-                            <div className="mt-1 flex items-center justify-center gap-1">
-                              {isSelected && <span className="material-symbols-outlined text-sm">check_circle</span>}
+                            <span className="uppercase italic">{slot.time_slot}</span>
+                            <span className="flex items-center gap-1.5">
+                              {isSelected && <span className="material-symbols-outlined text-base">check_circle</span>}
                               {isBookedOrBlocked ? 'Booked' : isLocked ? 'Locked' : `₹${slot.price}`}
-                            </div>
+                            </span>
                           </button>
                         );
                       })}
