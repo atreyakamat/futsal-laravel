@@ -10,6 +10,22 @@ const DAY_NAMES: Record<number, string> = {
 // this rules out accidentally typing an off-hour or malformed time range.
 const HOURS = Array.from({ length: 25 }, (_, h) => `${String(h).padStart(2, '0')}:00`);
 
+/** Splits a From/To range into individual 1-hour slot strings, matching
+ * the "18:00-19:00" granularity every other part of the app (booking,
+ * availability, pricing lookup) already assumes — a single admin
+ * selection like 18:00-21:00 becomes three separate hourly slot rows,
+ * not one 3-hour slot the rest of the system wouldn't recognize. */
+function splitIntoHourlySlots(fromHour: string, toHour: string): string[] {
+  const fromIdx = HOURS.indexOf(fromHour);
+  const toIdx = HOURS.indexOf(toHour);
+  if (fromIdx === -1 || toIdx === -1 || toIdx <= fromIdx) return [];
+  const result: string[] = [];
+  for (let h = fromIdx; h < toIdx; h++) {
+    result.push(`${HOURS[h]}-${HOURS[h + 1]}`);
+  }
+  return result;
+}
+
 type SlotRow = { id: number; time_slot: string; price: number; day_of_week: number | null };
 type HolidayRow = { id: number; date: string; reason: string | null };
 type BlockRow = { id: number; booking_date: string; time_slot: string; reason: string | null };
@@ -64,9 +80,10 @@ export default function SlotManagementClient({ arenaId, isSuperAdmin }: Props) {
     refresh().finally(() => setLoading(false));
   }, [refresh]);
 
-  const post = async (payload: Record<string, unknown>) => {
-    setError('');
-    setMessage('');
+  // Fires one request, no refresh/message side effects — used directly by
+  // callers (like handleAddSlot) that need to fire several in sequence and
+  // only refresh/report once at the end.
+  const postOnce = async (payload: Record<string, unknown>): Promise<{ ok: boolean; message?: string }> => {
     try {
       const res = await fetch('/api/fg-admin/platform/slots', {
         method: 'POST',
@@ -74,36 +91,60 @@ export default function SlotManagementClient({ arenaId, isSuperAdmin }: Props) {
         body: JSON.stringify({ arena_id: arenaId, ...payload }),
       });
       const data = await res.json();
-      if (data.success) {
-        setMessage(isSuperAdmin ? 'Applied successfully.' : 'Request submitted for approval.');
-        await refresh();
-        return true;
-      }
-      setError(data.message || 'Something went wrong.');
-      return false;
+      return { ok: !!data.success, message: data.message };
     } catch {
-      setError('Network error.');
-      return false;
+      return { ok: false, message: 'Network error.' };
     }
   };
 
+  const post = async (payload: Record<string, unknown>) => {
+    setError('');
+    setMessage('');
+    const result = await postOnce(payload);
+    if (result.ok) {
+      setMessage(isSuperAdmin ? 'Applied successfully.' : 'Request submitted for approval.');
+      await refresh();
+      return true;
+    }
+    setError(result.message || 'Something went wrong.');
+    return false;
+  };
+
+  const newHourlySlots = splitIntoHourlySlots(newFromHour, newToHour);
+
   const handleAddSlot = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newToHour <= newFromHour) {
+    if (newHourlySlots.length === 0) {
       setError('End time must be after start time.');
       return;
     }
-    const timeSlot = `${newFromHour}-${newToHour}`;
-    const ok = await post({
-      action: 'slot_add',
-      time_slot: timeSlot,
-      price: Number(newPrice),
-      day_of_week: newDayOfWeek === '' ? '' : newDayOfWeek,
-      notes: `Add slot ${timeSlot}`,
-    });
-    if (ok) {
+    setError('');
+    setMessage('');
+
+    const failures: string[] = [];
+    for (const timeSlot of newHourlySlots) {
+      const result = await postOnce({
+        action: 'slot_add',
+        time_slot: timeSlot,
+        price: Number(newPrice),
+        day_of_week: newDayOfWeek === '' ? '' : newDayOfWeek,
+        notes: `Add slot ${timeSlot}`,
+      });
+      if (!result.ok) failures.push(`${timeSlot}: ${result.message || 'failed'}`);
+    }
+
+    await refresh();
+
+    if (failures.length === 0) {
+      setMessage(
+        isSuperAdmin
+          ? `Applied — ${newHourlySlots.length} slot${newHourlySlots.length > 1 ? 's' : ''} created.`
+          : `Request submitted for approval — ${newHourlySlots.length} slot${newHourlySlots.length > 1 ? 's' : ''}.`
+      );
       setNewPrice('');
       setNewDayOfWeek('');
+    } else {
+      setError(`${failures.length} of ${newHourlySlots.length} slot(s) failed: ${failures.join('; ')}`);
     }
   };
 
@@ -143,17 +184,40 @@ export default function SlotManagementClient({ arenaId, isSuperAdmin }: Props) {
     await post({ action: 'holiday_delete', holiday_id: holidayId, notes: `Delete holiday #${holidayId}` });
   };
 
+  const blockHourlySlots = splitIntoHourlySlots(blockFromHour, blockToHour);
+
   const handleAddBlock = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (blockToHour <= blockFromHour) {
+    if (blockHourlySlots.length === 0) {
       setError('End time must be after start time.');
       return;
     }
-    const timeSlot = `${blockFromHour}-${blockToHour}`;
-    const ok = await post({ action: 'block_add', booking_date: blockDate, time_slot: timeSlot, reason: blockReason || 'Blocked' });
-    if (ok) {
+    setError('');
+    setMessage('');
+
+    // Blocks are matched against real hourly slot strings in the
+    // availability check (app/api/slots/status/route.ts), so a multi-hour
+    // range has to become one block per hour, same as adding slots —
+    // otherwise a "18:00-21:00" block would never match any actual
+    // 1-hour slot and silently block nothing.
+    const failures: string[] = [];
+    for (const timeSlot of blockHourlySlots) {
+      const result = await postOnce({ action: 'block_add', booking_date: blockDate, time_slot: timeSlot, reason: blockReason || 'Blocked' });
+      if (!result.ok) failures.push(`${timeSlot}: ${result.message || 'failed'}`);
+    }
+
+    await refresh();
+
+    if (failures.length === 0) {
+      setMessage(
+        isSuperAdmin
+          ? `Applied — ${blockHourlySlots.length} slot${blockHourlySlots.length > 1 ? 's' : ''} blocked.`
+          : `Request submitted for approval — ${blockHourlySlots.length} slot${blockHourlySlots.length > 1 ? 's' : ''}.`
+      );
       setBlockDate('');
       setBlockReason('');
+    } else {
+      setError(`${failures.length} of ${blockHourlySlots.length} block(s) failed: ${failures.join('; ')}`);
     }
   };
 
@@ -243,8 +307,16 @@ export default function SlotManagementClient({ arenaId, isSuperAdmin }: Props) {
           </div>
           <button type="submit" className="btn-primary">{applyLabel} Slot</button>
         </form>
+        {newHourlySlots.length > 0 ? (
+          <div className="px-4 py-3 rounded-xl border border-primary/20 bg-primary/5 text-primary text-xs font-bold">
+            This creates {newHourlySlots.length} slot{newHourlySlots.length > 1 ? 's' : ''}
+            {newPrice ? ` at ₹${newPrice} each` : ''}: {newHourlySlots.join(', ')}
+          </div>
+        ) : (
+          <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest">End time must be after start time.</p>
+        )}
         <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest">
-          Slots are whole-hour blocks. Leave "Day" as All Days for a slot that applies every day. Adding a specific day creates an override for just that weekday (e.g. a different weekend price for the same time range).
+          Slots are whole-hour blocks — a multi-hour range creates one slot per hour, each at the price entered above. Leave "Day" as All Days for a slot that applies every day. Adding a specific day creates an override for just that weekday (e.g. a different weekend price for the same time range).
         </p>
       </div>
 
@@ -317,6 +389,13 @@ export default function SlotManagementClient({ arenaId, isSuperAdmin }: Props) {
               </select>
             </div>
             <input className="input-field" placeholder="Reason (optional)" value={blockReason} onChange={(e) => setBlockReason(e.target.value)} />
+            {blockHourlySlots.length > 0 ? (
+              <p className="text-[10px] font-bold text-amber-400 uppercase tracking-widest">
+                This blocks {blockHourlySlots.length} slot{blockHourlySlots.length > 1 ? 's' : ''}: {blockHourlySlots.join(', ')}
+              </p>
+            ) : (
+              <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest">End time must be after start time.</p>
+            )}
             <button type="submit" className="btn-primary w-full">{applyLabel} Block</button>
           </form>
           <div className="space-y-2 pt-2">

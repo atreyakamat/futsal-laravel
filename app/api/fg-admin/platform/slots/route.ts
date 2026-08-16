@@ -10,6 +10,7 @@ import {
 } from '@/lib/admin';
 import { getArenaPricing, query, queryOne } from '@/lib/domain';
 import { readAuthUserId } from '@/lib/session';
+import { reportServerError } from '@/lib/error-log';
 
 function parseSlotRows(value: string) {
   return value
@@ -78,8 +79,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: Request) {
   const isJson = request.headers.get('content-type')?.includes('application/json');
+  let action = 'slot_template';
+  try {
   const form = isJson ? await request.json() : Object.fromEntries((await request.formData()).entries());
-  const action = String((form as Record<string, string>).action ?? 'slot_template');
+  action = String((form as Record<string, string>).action ?? 'slot_template');
   const userId = await readAuthUserId();
   const context = await getAdminContext(userId);
 
@@ -431,4 +434,19 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ success: true });
+  } catch (err: any) {
+    // A duplicate slot (same time range already exists for that day, or as
+    // an "every day" default) hits the pricings unique index and throws
+    // rather than failing gracefully — without this catch, any DB error
+    // here crashed as a raw HTML 500 page, which the client can't parse as
+    // JSON and reports as a generic "network error".
+    if (err?.code === '23505') {
+      return NextResponse.json(
+        { success: false, message: 'That exact time slot already exists for this arena/day. Edit the existing one instead of adding a duplicate.' },
+        { status: 409 }
+      );
+    }
+    reportServerError(err, { route: 'fg-admin/platform/slots', action });
+    return NextResponse.json({ success: false, message: 'Something went wrong saving that change. Please try again.' }, { status: 500 });
+  }
 }
