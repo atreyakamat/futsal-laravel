@@ -75,6 +75,7 @@ export default function SuperAdminDashboardClient() {
   const [arenaAddress, setArenaAddress] = useState('');
   const [arenaContactPhone, setArenaContactPhone] = useState('');
   const [arenaWhatsappNumber, setArenaWhatsappNumber] = useState('');
+  const [arenaGmapsLink, setArenaGmapsLink] = useState('');
   const [arenaCoverImage, setArenaCoverImage] = useState('');
   const [arenaLogoUrl, setArenaLogoUrl] = useState('');
   const [arenaPaymentMode, setArenaPaymentMode] = useState<'online' | 'offline'>('online');
@@ -302,6 +303,7 @@ export default function SuperAdminDashboardClient() {
           address: arenaAddress,
           contact_phone: arenaContactPhone,
           whatsapp_number: arenaWhatsappNumber,
+          gmaps_link: arenaGmapsLink,
           cover_image: arenaCoverImage,
           logo_url: arenaLogoUrl,
           payment_mode: arenaPaymentMode,
@@ -343,6 +345,7 @@ export default function SuperAdminDashboardClient() {
       setArenaAddress(arena.address || '');
       setArenaContactPhone((arena as any).contact_phone || '');
       setArenaWhatsappNumber((arena as any).whatsapp_number || '');
+      setArenaGmapsLink((arena as any).gmaps_link || '');
       setArenaCoverImage((arena as any).cover_image || '');
       setArenaLogoUrl((arena as any).logo_url || '');
       // The arenas list doesn't carry payment_mode/upi_vpa/gst_place_of_supply
@@ -360,6 +363,7 @@ export default function SuperAdminDashboardClient() {
           setArenaGstPlaceOfSupply(data.data.gst_place_of_supply || '');
           setArenaContactPhone(data.data.contact_phone || '');
           setArenaWhatsappNumber(data.data.whatsapp_number || '');
+          setArenaGmapsLink(data.data.gmaps_link || '');
         }
       } catch (err) {
         console.error('Failed to fetch arena payment/GST settings:', err);
@@ -386,6 +390,7 @@ export default function SuperAdminDashboardClient() {
       setArenaAddress('');
       setArenaContactPhone('');
       setArenaWhatsappNumber('');
+      setArenaGmapsLink('');
       setArenaCoverImage('');
       setArenaLogoUrl('');
       setArenaPaymentMode('online');
@@ -695,6 +700,11 @@ export default function SuperAdminDashboardClient() {
               Cancellations Review
             </a>
 
+            <a href="/fg-admin/platform/reviews" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-colors text-gray-400 hover:text-white hover:bg-white/5">
+              <span className="material-symbols-outlined text-lg">star</span>
+              Reviews Moderation
+            </a>
+
             <a href="/fg-admin/platform/slots" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-colors text-gray-400 hover:text-white hover:bg-white/5">
               <span className="material-symbols-outlined text-lg">payments</span>
               Slot Pricing
@@ -951,6 +961,18 @@ export default function SuperAdminDashboardClient() {
                         />
                         <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-2">
                           Shown as a "Chat on WhatsApp" button on this turf's public page. Leave blank to hide it.
+                        </p>
+                      </div>
+                      <div>
+                        <label className="label-classic">Google Maps Link</label>
+                        <input
+                          className="input-field"
+                          value={arenaGmapsLink}
+                          onChange={e => setArenaGmapsLink(e.target.value)}
+                          placeholder="https://maps.google.com/?q=..."
+                        />
+                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-2">
+                          Clicking the address on the public page opens this. Leave blank to fall back to a Maps search for the address text.
                         </p>
                       </div>
                        <div>

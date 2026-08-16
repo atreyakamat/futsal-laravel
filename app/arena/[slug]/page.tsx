@@ -4,6 +4,9 @@ import { getOrCreateCsrfToken } from '@/lib/csrf';
 import { readAuthUserId } from '@/lib/session';
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import ShareButton from '@/components/ShareButton';
+import TurfReviews from '@/components/TurfReviews';
+import { getReviewAggregate, getApprovedReviews, canUserReviewArena, getUserReviewForArena } from '@/lib/reviews';
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -69,7 +72,7 @@ export default async function ArenaPage({ params, searchParams }: Props) {
     currentUser = await queryOne<{ name?: string; email?: string; customer_mobile?: string }>('SELECT name, email, customer_mobile FROM users WHERE id = ?', [userId]);
   }
 
-  const [galleryImages, amenities] = await Promise.all([
+  const [galleryImages, amenities, reviewAggregate, approvedReviews, canReview, existingReview] = await Promise.all([
     query<{ id: number; url: string }>('SELECT id, url FROM arena_images WHERE arena_id = ? ORDER BY sort_order ASC, id ASC', [arena.id]),
     query<{ id: number; name: string; icon: string }>(
       `SELECT am.id, am.name, am.icon FROM amenities am
@@ -78,6 +81,10 @@ export default async function ArenaPage({ params, searchParams }: Props) {
        ORDER BY am.name ASC`,
       [arena.id]
     ),
+    getReviewAggregate(arena.id),
+    getApprovedReviews(arena.id),
+    userId ? canUserReviewArena(userId, arena.id) : Promise.resolve(false),
+    userId ? getUserReviewForArena(userId, arena.id) : Promise.resolve(null),
   ]);
 
   return (
@@ -108,15 +115,33 @@ export default async function ArenaPage({ params, searchParams }: Props) {
               </Link>
               <h1 className="text-4xl sm:text-5xl md:text-7xl font-black tracking-tighter uppercase mb-3 sm:mb-6 italic">{arena.name}</h1>
               <div className="flex flex-wrap items-center gap-3 sm:gap-6">
-                <span className="flex items-center gap-2 text-white/60 font-black uppercase tracking-widest text-[10px] sm:text-xs">
-                  <span className="material-symbols-outlined text-primary text-lg sm:text-xl">location_on</span>
-                  {arena.address}
-                </span>
+                {arena.address && (
+                  <a
+                    href={arena.gmaps_link || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(arena.address)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-white/60 hover:text-primary font-black uppercase tracking-widest text-[10px] sm:text-xs transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-primary text-lg sm:text-xl">location_on</span>
+                    {arena.address}
+                  </a>
+                )}
                 <span className="w-1.5 h-1.5 rounded-full bg-primary/40 shadow-[0_0_10px_rgba(13,242,32,0.5)] hidden sm:block" />
+                {reviewAggregate.count > 0 && (
+                  <span className="pill-status">
+                    <span className="material-symbols-outlined text-lg">star</span>
+                    {reviewAggregate.average.toFixed(1)} ({reviewAggregate.count})
+                  </span>
+                )}
                 <span className="pill-status">
                   <span className="material-symbols-outlined text-lg">verified</span>
                   Premium Grade Turf
                 </span>
+                <ShareButton
+                  title={arena.name}
+                  text={`Check out ${arena.name} on AgnelArena${arena.address ? ` — ${arena.address}` : ''}`}
+                  className="btn-secondary !py-2 !px-4 !rounded-full !text-[10px] inline-flex items-center gap-2"
+                />
               </div>
             </div>
             <div className="glass-card !p-4 sm:!p-6 md:!p-8 text-right md:min-w-[200px] lg:min-w-[240px] md:scale-110 origin-bottom-right self-end">
@@ -195,6 +220,15 @@ export default async function ArenaPage({ params, searchParams }: Props) {
           initialCustomerEmail={(currentUser?.email && !isPlaceholderEmail(currentUser.email)) ? currentUser.email : ''}
         />
       </div>
+
+      <TurfReviews
+        arenaId={arena.id}
+        aggregate={reviewAggregate}
+        reviews={approvedReviews}
+        isLoggedIn={!!userId}
+        canReview={canReview}
+        existingReview={existingReview ? { rating: existingReview.rating, comment: existingReview.comment, status: existingReview.status } : null}
+      />
     </div>
   );
 }

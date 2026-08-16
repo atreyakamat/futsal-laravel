@@ -47,6 +47,29 @@ model Arena {
   @@map("arenas")
 }
 
+/// One review per (arena, user) — resubmitting an existing review updates
+/// it in place and resets it to pending for re-moderation rather than
+/// creating a duplicate. Only customers with at least one confirmed
+/// booking at the arena are allowed to submit (enforced in lib/reviews.ts,
+/// not at the DB level).
+model ArenaReview {
+  id          Int       @id @default(autoincrement())
+  arena_id    Int
+  user_id     Int
+  rating      Int
+  comment     String?
+  status      String    @default("pending")
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  reviewed_by Int?
+  reviewed_at DateTime?
+
+  @@unique([arena_id, user_id])
+  @@index([arena_id])
+  @@index([status])
+  @@map("arena_reviews")
+}
+
 model ArenaImage {
   id         Int      @id @default(autoincrement())
   arena_id   Int
