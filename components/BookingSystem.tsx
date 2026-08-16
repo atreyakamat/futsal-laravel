@@ -354,7 +354,14 @@ export default function BookingSystem({
                 </span>
               </div>
 
-              <div className="glass-card !p-6 sm:!p-8 space-y-6">
+              {/* No .glass-card here (backdrop-blur-xl) — this section
+                  sits directly below an orange-selected slot card in
+                  normal scroll flow on mobile, and a backdrop-blur layer
+                  scrolling past a solid-color neighbor is exactly what
+                  flashes as a flat/empty colored bar during momentum
+                  scroll (same root cause as the checkout page and mobile
+                  sticky bar fixes). Same visual weight without the blur. */}
+              <div className="bg-white/[0.03] border border-white/10 rounded-[1.5rem] sm:rounded-[2.5rem] !p-6 sm:!p-8 space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label htmlFor="booking_customer_name" className="label-classic">Full Name</label>
