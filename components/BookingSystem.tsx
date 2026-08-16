@@ -61,9 +61,12 @@ export default function BookingSystem({
   const [customerEmail, setCustomerEmail] = useState(initialCustomerEmail);
 
   const customerDetailsRef = useRef<HTMLDivElement>(null);
+  const dateInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
+  const todayStr = new Date().toISOString().split('T')[0];
   const windowDates = Array.from({ length: DAYS_VISIBLE }, (_, i) => addDays(date, i));
+  const mobileDates = Array.from({ length: 7 }, (_, i) => addDays(todayStr, i));
   const slots = slotsByDate[date] || [];
   const holidayReason = holidayByDate[date] || null;
 
@@ -143,6 +146,7 @@ export default function BookingSystem({
   // Switching the active date always clears any in-progress selection —
   // same behavior the old date-card strip already had.
   function changeDate(newDate: string) {
+    if (newDate < todayStr) newDate = todayStr;
     setDate(newDate);
     setSelectedSlots([]);
   }
@@ -289,26 +293,48 @@ export default function BookingSystem({
                 Pick a <span className="text-primary text-stroke">Slot</span>
               </h2>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
                 <button
                   type="button"
                   onClick={() => changeDate(addDays(date, -1))}
-                  className="btn-secondary !p-2 !rounded-xl"
+                  disabled={date <= todayStr}
+                  className="btn-secondary !p-2.5 !rounded-xl shrink-0 disabled:opacity-20 disabled:cursor-not-allowed disabled:pointer-events-none"
                   aria-label="Previous day"
                 >
                   <span className="material-symbols-outlined text-lg">chevron_left</span>
                 </button>
+
+                {/* A button that opens the native date picker, rather than a
+                    raw <input type="date"> — the raw input lets people type
+                    an arbitrary date and its width/rendering is inconsistent
+                    on mobile (it was clipping off-screen). This button fully
+                    controls its own layout and the underlying input is
+                    visually hidden, only used to drive showPicker(). */}
+                <button
+                  type="button"
+                  onClick={() => dateInputRef.current?.showPicker?.()}
+                  className="btn-secondary !rounded-xl !py-2.5 !px-3 sm:!px-4 flex-1 sm:flex-none min-w-0 flex items-center justify-center gap-2 text-[11px] sm:text-xs"
+                >
+                  <span className="material-symbols-outlined text-base shrink-0">calendar_month</span>
+                  <span className="truncate">
+                    {new Date(`${date}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', weekday: 'short' })}
+                  </span>
+                </button>
                 <input
+                  ref={dateInputRef}
                   type="date"
                   value={date}
-                  min={new Date().toISOString().split('T')[0]}
+                  min={todayStr}
                   onChange={(e) => e.target.value && changeDate(e.target.value)}
-                  className="input-field !py-2 !px-3 !min-h-0 text-xs"
+                  tabIndex={-1}
+                  aria-hidden="true"
+                  className="sr-only"
                 />
+
                 <button
                   type="button"
                   onClick={() => changeDate(addDays(date, 1))}
-                  className="btn-secondary !p-2 !rounded-xl"
+                  className="btn-secondary !p-2.5 !rounded-xl shrink-0"
                   aria-label="Next day"
                 >
                   <span className="material-symbols-outlined text-lg">chevron_right</span>
@@ -344,12 +370,84 @@ export default function BookingSystem({
                   </div>
                 )}
 
+                {/* Mobile: a horizontal date-chip strip + a single-day slot
+                    list, instead of the desktop day-vs-time grid — the table
+                    layout doesn't fit comfortably on small screens even with
+                    horizontal scroll, so mobile gets its own simpler flow. */}
+                <div className="lg:hidden">
+                  <div className="flex gap-2 overflow-x-auto pb-2 mb-5 no-scrollbar -mx-4 px-4">
+                    {mobileDates.map((d) => {
+                      const { weekday, day, month } = formatDayLabel(d);
+                      const isActive = d === date;
+                      return (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => changeDate(d)}
+                          className={`shrink-0 flex flex-col items-center justify-center w-16 py-3 rounded-2xl border transition-all ${
+                            isActive
+                              ? 'border-primary bg-primary/10 text-primary shadow-[0_0_15px_rgba(13,242,32,0.15)]'
+                              : 'border-white/5 bg-white/[0.02] text-white/50'
+                          }`}
+                        >
+                          <span className="text-[9px] font-black uppercase tracking-widest">{weekday}</span>
+                          <span className="text-lg font-black italic">{day}</span>
+                          <span className="text-[9px] font-black uppercase tracking-widest">{month}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {holidayReason ? (
+                    <div className="py-16 text-center glass-card border-dashed border-white/5">
+                      <p className="label-classic">Closed: {holidayReason}</p>
+                    </div>
+                  ) : slots.length === 0 ? (
+                    <div className="py-16 text-center glass-card border-dashed border-white/5">
+                      <p className="label-classic">No slots configured for this date.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {slots.map((slot) => {
+                        const isSelected = selectedSlots.some((s) => s.time_slot === slot.time_slot);
+                        const isBookedOrBlocked = slot.status === 'booked' || slot.status === 'blocked';
+                        const isLocked = slot.status === 'locked';
+                        const isClickable = !isBookedOrBlocked && !isLocked;
+
+                        return (
+                          <button
+                            key={slot.time_slot}
+                            type="button"
+                            disabled={!isClickable}
+                            onClick={() => toggleSlotForDate(date, slot)}
+                            className={`py-3 px-2 rounded-xl border text-[11px] font-black transition-all ${
+                              isBookedOrBlocked
+                                ? 'opacity-30 grayscale cursor-not-allowed bg-white/[0.02] border-white/5 text-white/30'
+                                : isLocked
+                                  ? 'opacity-40 cursor-not-allowed border-white/5 text-white/30'
+                                  : isSelected
+                                    ? 'border-primary bg-primary/10 text-primary shadow-[0_0_15px_rgba(13,242,32,0.15)]'
+                                    : 'bg-white/[0.02] border-white/5 hover:border-primary/50 text-white/70'
+                            }`}
+                          >
+                            <div className="uppercase italic">{slot.time_slot}</div>
+                            <div className="mt-1 flex items-center justify-center gap-1">
+                              {isSelected && <span className="material-symbols-outlined text-sm">check_circle</span>}
+                              {isBookedOrBlocked ? 'Booked' : isLocked ? 'Locked' : `₹${slot.price}`}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
                 {allTimeSlots.length === 0 ? (
-                  <div className="py-24 text-center glass-card border-dashed border-white/5">
+                  <div className="hidden lg:block py-24 text-center glass-card border-dashed border-white/5">
                     <p className="label-classic">No slots configured for these dates.</p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto rounded-2xl border border-white/5 -mx-4 px-4 sm:mx-0 sm:px-0">
+                  <div className="hidden lg:block overflow-x-auto rounded-2xl border border-white/5">
                     <table className="w-full border-collapse min-w-[560px]">
                       <thead>
                         <tr>
