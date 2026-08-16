@@ -11,10 +11,26 @@ type Slot = {
 
 const DAYS_VISIBLE = 4;
 
+// Pure UTC-based date arithmetic — deliberately avoids the
+// "new Date(`${str}T00:00:00`)" + toISOString() round trip. That pattern
+// parses the time as *local* midnight, then toISOString() converts back to
+// UTC — for any timezone ahead of UTC (e.g. India, UTC+5:30) that silently
+// rolls the date back by one, turning every addDays call into a net (n-1)
+// day shift (forward-by-1 became a no-op, back-by-1 jumped two days).
+// Building/reading purely in UTC sidesteps local-timezone conversion
+// entirely, so the arithmetic is exact regardless of the browser's zone.
 function addDays(dateStr: string, days: number): string {
-  const d = new Date(`${dateStr}T00:00:00`);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().split('T')[0];
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().split('T')[0];
+}
+
+// Local (not UTC) calendar date — "today" must reflect the viewer's actual
+// wall-clock day. `new Date().toISOString()` converts to UTC first, which
+// lags a full calendar day behind local time for part of the day in any
+// UTC+ timezone (e.g. midnight-5:30am IST is still "yesterday" in UTC).
+function todayLocalStr(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 function formatDayLabel(dateStr: string) {
@@ -46,7 +62,7 @@ export default function BookingSystem({
   // visible grid window — the grid always shows this date plus the next
   // (DAYS_VISIBLE - 1) days, so there's one source of truth instead of a
   // separate window-position state that could drift out of sync with it.
-  const [date, setDate] = useState(initialDate || new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(initialDate || todayLocalStr());
   const [slotsByDate, setSlotsByDate] = useState<Record<string, Slot[]>>({});
   const [holidayByDate, setHolidayByDate] = useState<Record<string, string | null>>({});
   const [selectedSlots, setSelectedSlots] = useState<Slot[]>([]);
@@ -64,7 +80,7 @@ export default function BookingSystem({
   const dateInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = todayLocalStr();
   const windowDates = Array.from({ length: DAYS_VISIBLE }, (_, i) => addDays(date, i));
   const mobileDates = Array.from({ length: 7 }, (_, i) => addDays(todayStr, i));
   const slots = slotsByDate[date] || [];
@@ -116,6 +132,18 @@ export default function BookingSystem({
   }, [arenaId, date]);
 
   // 3. Effects
+  // Self-heal a stale server-rendered initial date: the server computes its
+  // "today" fallback using its own host timezone, which may not match the
+  // viewer's. If that ever lands before the viewer's actual local today,
+  // snap forward once on mount rather than showing already-past dates.
+  useEffect(() => {
+    const localToday = todayLocalStr();
+    if (date < localToday) setDate(localToday);
+    // Mount-only check — this isn't meant to re-run as `date` changes from
+    // normal navigation afterward.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     setLoading(true);
     fetchWindow();
