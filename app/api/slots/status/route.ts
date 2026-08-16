@@ -47,14 +47,8 @@ export async function GET(request: NextRequest) {
     )
   ).map((r) => r.time_slot);
 
-  // Parse day of the week for the booking date (local time)
-  const dateObj = new Date(bookingDate + 'T00:00:00');
-  const dayOfWeek = dateObj.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-  const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5;
-  const isAssagao = arena?.slug === 'aiem-assagao';
-
   const slots = pricing.map((price) => {
-    let status = bookedSlots.includes(price.time_slot)
+    const status = bookedSlots.includes(price.time_slot)
       ? 'booked'
       : blockedSlots.includes(price.time_slot)
         ? 'blocked'
@@ -63,15 +57,6 @@ export async function GET(request: NextRequest) {
           : lockedByMe.includes(price.time_slot)
             ? 'selected'
             : 'available';
-
-    // Override status to 'booked' for 3 PM - 5 PM on weekdays for AIEM Assagao (reserved for college students)
-    // TODO: migrate this arena's 15:00-16:00/16:00-17:00 slots to real
-    // weekend-only day_of_week rows via the slot management UI, then
-    // remove this hardcode — left in place until that reconfiguration is
-    // done so this doesn't silently open those slots up on weekdays.
-    if (isAssagao && isWeekday && (price.time_slot === '15:00-16:00' || price.time_slot === '16:00-17:00')) {
-      status = 'booked';
-    }
 
     return {
       time_slot: price.time_slot,

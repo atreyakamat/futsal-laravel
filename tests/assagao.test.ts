@@ -16,7 +16,12 @@ describe('AIEM Assagao Weekday Student Slot Reservation', () => {
     }
   });
 
-  it('should block 15:00-16:00 and 16:00-17:00 slots on a weekday (Wednesday, 2026-07-01)', async () => {
+  it('should not offer 15:00-16:00 and 16:00-17:00 slots at all on a weekday (Wednesday, 2026-07-01)', async () => {
+    // This was previously a hardcoded 'booked' override in
+    // app/api/slots/status/route.ts. Migrated to real day-of-week pricing
+    // data (see prisma/migrations/20260816000000_migrate_assagao_weekend_only_slots)
+    // -- these slots simply don't exist as an offering on weekdays now,
+    // rather than existing but being force-marked unavailable.
     const request = new NextRequest(
       `http://localhost:3000/api/slots/status?arena_id=${assagaoId}&date=2026-07-01`
     );
@@ -31,10 +36,7 @@ describe('AIEM Assagao Weekday Student Slot Reservation', () => {
       (s: any) => s.time_slot === '15:00-16:00' || s.time_slot === '16:00-17:00'
     );
 
-    expect(targetSlots).toHaveLength(2);
-    for (const slot of targetSlots) {
-      expect(slot.status).toBe('booked');
-    }
+    expect(targetSlots).toHaveLength(0);
   });
 
   it('should not block 15:00-16:00 and 16:00-17:00 slots on a weekend (Saturday, 2026-07-04)', async () => {

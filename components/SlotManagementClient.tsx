@@ -6,6 +6,10 @@ const DAY_NAMES: Record<number, string> = {
   0: 'Sunday', 1: 'Monday', 2: 'Tuesday', 3: 'Wednesday', 4: 'Thursday', 5: 'Friday', 6: 'Saturday',
 };
 
+// Hourly marks only (00:00..24:00) — slots are always whole-hour blocks,
+// this rules out accidentally typing an off-hour or malformed time range.
+const HOURS = Array.from({ length: 25 }, (_, h) => `${String(h).padStart(2, '0')}:00`);
+
 type SlotRow = { id: number; time_slot: string; price: number; day_of_week: number | null };
 type HolidayRow = { id: number; date: string; reason: string | null };
 type BlockRow = { id: number; booking_date: string; time_slot: string; reason: string | null };
@@ -24,7 +28,8 @@ export default function SlotManagementClient({ arenaId, isSuperAdmin }: Props) {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
-  const [newTimeSlot, setNewTimeSlot] = useState('');
+  const [newFromHour, setNewFromHour] = useState('18:00');
+  const [newToHour, setNewToHour] = useState('19:00');
   const [newPrice, setNewPrice] = useState('');
   const [newDayOfWeek, setNewDayOfWeek] = useState('');
 
@@ -36,7 +41,8 @@ export default function SlotManagementClient({ arenaId, isSuperAdmin }: Props) {
   const [holidayReason, setHolidayReason] = useState('');
 
   const [blockDate, setBlockDate] = useState('');
-  const [blockSlot, setBlockSlot] = useState('');
+  const [blockFromHour, setBlockFromHour] = useState('18:00');
+  const [blockToHour, setBlockToHour] = useState('19:00');
   const [blockReason, setBlockReason] = useState('');
 
   const applyLabel = isSuperAdmin ? 'Apply' : 'Request';
@@ -83,15 +89,19 @@ export default function SlotManagementClient({ arenaId, isSuperAdmin }: Props) {
 
   const handleAddSlot = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (newToHour <= newFromHour) {
+      setError('End time must be after start time.');
+      return;
+    }
+    const timeSlot = `${newFromHour}-${newToHour}`;
     const ok = await post({
       action: 'slot_add',
-      time_slot: newTimeSlot,
+      time_slot: timeSlot,
       price: Number(newPrice),
       day_of_week: newDayOfWeek === '' ? '' : newDayOfWeek,
-      notes: `Add slot ${newTimeSlot}`,
+      notes: `Add slot ${timeSlot}`,
     });
     if (ok) {
-      setNewTimeSlot('');
       setNewPrice('');
       setNewDayOfWeek('');
     }
@@ -135,10 +145,14 @@ export default function SlotManagementClient({ arenaId, isSuperAdmin }: Props) {
 
   const handleAddBlock = async (e: React.FormEvent) => {
     e.preventDefault();
-    const ok = await post({ action: 'block_add', booking_date: blockDate, time_slot: blockSlot, reason: blockReason || 'Blocked' });
+    if (blockToHour <= blockFromHour) {
+      setError('End time must be after start time.');
+      return;
+    }
+    const timeSlot = `${blockFromHour}-${blockToHour}`;
+    const ok = await post({ action: 'block_add', booking_date: blockDate, time_slot: timeSlot, reason: blockReason || 'Blocked' });
     if (ok) {
       setBlockDate('');
-      setBlockSlot('');
       setBlockReason('');
     }
   };
@@ -201,10 +215,18 @@ export default function SlotManagementClient({ arenaId, isSuperAdmin }: Props) {
       {/* Add Slot */}
       <div className="glass-card space-y-4">
         <h2 className="text-2xl font-black uppercase italic">Add Slot</h2>
-        <form onSubmit={handleAddSlot} className="grid md:grid-cols-4 gap-4 items-end">
+        <form onSubmit={handleAddSlot} className="grid md:grid-cols-5 gap-4 items-end">
           <div className="space-y-2">
-            <label className="label-classic">Time Range</label>
-            <input required className="input-field" placeholder="18:00-19:00" value={newTimeSlot} onChange={(e) => setNewTimeSlot(e.target.value)} />
+            <label className="label-classic">From</label>
+            <select required className="input-field" value={newFromHour} onChange={(e) => setNewFromHour(e.target.value)}>
+              {HOURS.slice(0, -1).map((h) => <option key={h} value={h}>{h}</option>)}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <label className="label-classic">To</label>
+            <select required className="input-field" value={newToHour} onChange={(e) => setNewToHour(e.target.value)}>
+              {HOURS.slice(1).map((h) => <option key={h} value={h}>{h}</option>)}
+            </select>
           </div>
           <div className="space-y-2">
             <label className="label-classic">Price (₹)</label>
@@ -222,7 +244,7 @@ export default function SlotManagementClient({ arenaId, isSuperAdmin }: Props) {
           <button type="submit" className="btn-primary">{applyLabel} Slot</button>
         </form>
         <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest">
-          Leave "Day" as All Days for a slot that applies every day. Adding a specific day creates an override for just that weekday (e.g. a different weekend price for the same time range).
+          Slots are whole-hour blocks. Leave "Day" as All Days for a slot that applies every day. Adding a specific day creates an override for just that weekday (e.g. a different weekend price for the same time range).
         </p>
       </div>
 
@@ -286,7 +308,14 @@ export default function SlotManagementClient({ arenaId, isSuperAdmin }: Props) {
           </p>
           <form onSubmit={handleAddBlock} className="space-y-3">
             <input required type="date" className="input-field" value={blockDate} onChange={(e) => setBlockDate(e.target.value)} />
-            <input required className="input-field" placeholder="18:00-19:00" value={blockSlot} onChange={(e) => setBlockSlot(e.target.value)} />
+            <div className="grid grid-cols-2 gap-3">
+              <select required className="input-field" value={blockFromHour} onChange={(e) => setBlockFromHour(e.target.value)}>
+                {HOURS.slice(0, -1).map((h) => <option key={h} value={h}>{h}</option>)}
+              </select>
+              <select required className="input-field" value={blockToHour} onChange={(e) => setBlockToHour(e.target.value)}>
+                {HOURS.slice(1).map((h) => <option key={h} value={h}>{h}</option>)}
+              </select>
+            </div>
             <input className="input-field" placeholder="Reason (optional)" value={blockReason} onChange={(e) => setBlockReason(e.target.value)} />
             <button type="submit" className="btn-primary w-full">{applyLabel} Block</button>
           </form>
