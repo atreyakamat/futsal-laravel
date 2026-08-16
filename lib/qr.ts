@@ -39,3 +39,22 @@ export async function generateQrDataUrl(text: string): Promise<string> {
     throw err;
   }
 }
+
+/**
+ * Same QR code as generateQrDataUrl, as raw PNG bytes instead of a
+ * data: URL. Most email clients (Gmail, Outlook) strip or block
+ * data:-URI <img> sources as a spam/tracking precaution, so email HTML
+ * needs a real hosted image URL — see app/api/ticket/[ticketId]/qr/route.ts.
+ */
+export async function generateQrPngBuffer(text: string): Promise<Buffer> {
+  try {
+    return await QRCode.toBuffer(text, {
+      errorCorrectionLevel: 'H',
+      margin: 1,
+      width: 300,
+    });
+  } catch (err) {
+    console.error('[QR] Local QR generation error:', err);
+    throw err;
+  }
+}

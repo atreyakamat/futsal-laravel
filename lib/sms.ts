@@ -217,7 +217,13 @@ export class AiSensyProvider implements SmsProvider {
           endTime = (times[1] ?? '').trim();
         }
 
-        templateParams = ['$FirstName', '$FirstName', '$FirstName', '$FirstName']; // placeholders as per approved template
+        // Template reads "Hi {{1}} your booking ... on {{2}} from {{3}} to
+        // {{4}} is confirmed!" — these four values were already parsed out
+        // above but were never actually used here; the literal string
+        // '$FirstName' was being sent as all four params, which AiSensy
+        // interpreted as an unresolved contact-attribute reference and
+        // rendered as "UNKNOWN" for every slot.
+        templateParams = [customerName, formattedDate, startTime, endTime];
       } else if (otp) {
         isOtp = true;
         templateParams = [otp];

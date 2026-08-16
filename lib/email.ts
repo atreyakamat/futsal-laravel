@@ -101,6 +101,7 @@ export function generateOtpEmail(otp: string, identifier: string): { subject: st
 export function generateBookingConfirmationEmail(
   bookingRef: string,
   arenaName: string,
+  arenaAddress: string,
   bookingDate: string,
   timeSlots: string[],
   customerName: string,
@@ -111,6 +112,7 @@ export function generateBookingConfirmationEmail(
 ): { subject: string; html: string; text: string } {
   const subject = `Booking Confirmed: ${bookingRef} - ${arenaName}`;
   const mergedSlots = timeSlots.join(', ');
+  const arenaRowValue = arenaAddress ? `${arenaName}<br><span style="font-weight: 400; color: #999; font-size: 12px;">${arenaAddress}</span>` : arenaName;
   const amountRowLabel = payAtVenue ? 'Amount Due At Venue' : 'Amount Paid';
   const payAtVenueNotice = payAtVenue
     ? `<div style="background: #fff8e1; border: 1px solid #ffd54f; border-radius: 8px; padding: 16px; margin: 20px 0; color: #7a5c00; font-size: 14px;">
@@ -136,7 +138,7 @@ export function generateBookingConfirmationEmail(
         <div style="background: #f5f5f5; border-radius: 8px; padding: 20px; margin: 20px 0;">
           <table style="width: 100%; border-collapse: collapse;">
             <tr><td style="padding: 8px 0; color: #666; font-size: 14px;">Booking Reference</td><td style="padding: 8px 0; font-weight: 700; text-align: right;">${bookingRef}</td></tr>
-            <tr><td style="padding: 8px 0; color: #666; font-size: 14px;">Arena</td><td style="padding: 8px 0; font-weight: 700; text-align: right;">${arenaName}</td></tr>
+            <tr><td style="padding: 8px 0; color: #666; font-size: 14px; vertical-align: top;">Arena</td><td style="padding: 8px 0; font-weight: 700; text-align: right;">${arenaRowValue}</td></tr>
             <tr><td style="padding: 8px 0; color: #666; font-size: 14px;">Date</td><td style="padding: 8px 0; font-weight: 700; text-align: right;">${new Date(bookingDate).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</td></tr>
             <tr><td style="padding: 8px 0; color: #666; font-size: 14px;">Time Slots</td><td style="padding: 8px 0; font-weight: 700; text-align: right; color: #0df220;">${mergedSlots}</td></tr>
             <tr><td style="padding: 8px 0; color: #666; font-size: 14px;">Tickets</td><td style="padding: 8px 0; font-weight: 700; text-align: right;">${ticketNumbers.join(', ')}</td></tr>

@@ -8,6 +8,7 @@ import { generateTicketDownloadToken } from '@/lib/ticket-token';
 export type TicketPackage = {
   bookingRef: string;
   arenaName: string;
+  arenaAddress: string;
   customerName: string;
   bookingDate: string;
   ticketNumbers: string[];
@@ -16,6 +17,18 @@ export type TicketPackage = {
 
 export async function getTicketQrUrl(ticketNumber: string): Promise<string> {
   return generateQrDataUrl(buildTicketVerificationUrl(ticketNumber));
+}
+
+// A hosted PNG URL (app/api/ticket/[ticketId]/qr/route.ts), not a
+// data:-URI — used specifically for email, since Gmail/Outlook strip or
+// block inline data: image sources but render a normal hosted <img> fine.
+// The in-app ticket page (buildTicketHtml, below) keeps using the data:
+// URL version since a browser rendering its own page has no such
+// restriction and it avoids an extra network round trip there.
+export function getTicketQrEmailUrl(ticketNumber: string, appUrl?: string): string {
+  const baseUrl = (appUrl || process.env.NEXT_PUBLIC_APP_URL || 'https://agnelarenagoa.com').replace(/\/$/, '');
+  const token = generateTicketDownloadToken(ticketNumber);
+  return `${baseUrl}/api/ticket/${encodeURIComponent(ticketNumber)}/qr?token=${token}`;
 }
 
 export async function buildTicketHtml(ticket: TicketPackage): Promise<string> {
@@ -68,6 +81,7 @@ export async function getTicketPackage(bookingRef: string): Promise<TicketPackag
   return {
     bookingRef,
     arenaName: arena.name,
+    arenaAddress: arena.address || '',
     customerName: firstBooking.customer_name,
     bookingDate: firstBooking.booking_date,
     ticketNumbers: bookings.map((booking) => booking.ticket_number).filter(Boolean) as string[],
@@ -108,13 +122,14 @@ export async function sendTicketEmail(bookingRef: string, appUrl?: string) {
 
   // 2. Send Email Notification
   if (firstBooking.customer_email) {
-    const qrUrl = await getTicketQrUrl(ticket.ticketNumbers[0] ?? ticket.bookingRef);
+    const qrUrl = getTicketQrEmailUrl(ticket.ticketNumbers[0] ?? ticket.bookingRef, appUrl);
     const totalAmount = bookings.reduce((sum, b) => sum + Number(b.amount), 0);
 
     const payAtVenue = firstBooking.payment_method === 'offline' && firstBooking.venue_payment_status !== 'PAID';
     const { subject, html, text } = generateBookingConfirmationEmail(
       ticket.bookingRef,
       ticket.arenaName,
+      ticket.arenaAddress,
       ticket.bookingDate,
       ticket.slots,
       ticket.customerName,
