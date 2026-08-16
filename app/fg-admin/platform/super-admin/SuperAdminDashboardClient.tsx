@@ -247,13 +247,48 @@ export default function SuperAdminDashboardClient() {
     }
   }, [selectedArenaId, fetchArenaDetails]);
 
+  // Shared by the standalone "Save Amenities" button AND the main arena
+  // Update button below — amenities used to only save via the separate
+  // button, so an admin who checked boxes and then clicked the obvious
+  // "UPDATE" button (not realizing amenities were a distinct save action)
+  // would silently lose their selections. Now UPDATE saves both.
+  const saveAmenities = async (arenaId: number) => {
+    setAmenitiesSaving(true);
+    try {
+      const customNames = customAmenityInput.trim() ? [customAmenityInput.trim()] : [];
+      const res = await fetch(`/api/fg-admin/super-admin/arenas/${arenaId}/amenities`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amenityIds: selectedAmenityIds, customNames }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCustomAmenityInput('');
+        const refreshed = await fetch(`/api/fg-admin/super-admin/arenas/${arenaId}/amenities`);
+        const refreshedData = await refreshed.json();
+        if (refreshedData.success) {
+          setAllAmenities(refreshedData.data.allAmenities || []);
+          setSelectedAmenityIds(refreshedData.data.selectedIds || []);
+        }
+        return true;
+      }
+      alert(data.message || 'Failed to save amenities');
+      return false;
+    } catch (err) {
+      alert('Failed to save amenities');
+      return false;
+    } finally {
+      setAmenitiesSaving(false);
+    }
+  };
+
   const handleCreateArena = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
-    
+
     try {
-      const url = editingArenaId 
+      const url = editingArenaId
         ? `/api/fg-admin/super-admin/arenas/${editingArenaId}`
         : '/api/fg-admin/super-admin/arenas';
       const method = editingArenaId ? 'PUT' : 'POST';
@@ -274,9 +309,15 @@ export default function SuperAdminDashboardClient() {
           gst_place_of_supply: arenaGstPlaceOfSupply
         })
       });
-      
+
       const data = await res.json();
       if (data.success) {
+        // Amenities only apply to an existing arena (the join table needs
+        // a real arena_id) — a brand-new arena has nothing to attach them
+        // to yet until it's saved once and reopened for editing.
+        if (editingArenaId) {
+          await saveAmenities(editingArenaId);
+        }
         setSuccess(`Arena ${editingArenaId ? 'updated' : 'created'} successfully!`);
         setArenaName('');
         setArenaSlug('');
@@ -1122,37 +1163,14 @@ export default function SuperAdminDashboardClient() {
                           <button
                             type="button"
                             disabled={amenitiesSaving}
-                            onClick={async () => {
-                              setAmenitiesSaving(true);
-                              try {
-                                const customNames = customAmenityInput.trim() ? [customAmenityInput.trim()] : [];
-                                const res = await fetch(`/api/fg-admin/super-admin/arenas/${editingArenaId}/amenities`, {
-                                  method: 'PUT',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ amenityIds: selectedAmenityIds, customNames }),
-                                });
-                                const data = await res.json();
-                                if (data.success) {
-                                  setCustomAmenityInput('');
-                                  const refreshed = await fetch(`/api/fg-admin/super-admin/arenas/${editingArenaId}/amenities`);
-                                  const refreshedData = await refreshed.json();
-                                  if (refreshedData.success) {
-                                    setAllAmenities(refreshedData.data.allAmenities || []);
-                                    setSelectedAmenityIds(refreshedData.data.selectedIds || []);
-                                  }
-                                } else {
-                                  alert(data.message || 'Failed to save amenities');
-                                }
-                              } catch (err) {
-                                alert('Failed to save amenities');
-                              } finally {
-                                setAmenitiesSaving(false);
-                              }
-                            }}
+                            onClick={() => editingArenaId && saveAmenities(editingArenaId)}
                             className="btn-secondary !py-2 !px-4 text-[10px]"
                           >
-                            {amenitiesSaving ? 'SAVING...' : 'SAVE AMENITIES'}
+                            {amenitiesSaving ? 'SAVING...' : 'SAVE AMENITIES NOW'}
                           </button>
+                          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-2">
+                            Amenities also save automatically when you click UPDATE below — this button is only for saving amenities on their own, without touching other fields.
+                          </p>
                         </div>
                       )}
 

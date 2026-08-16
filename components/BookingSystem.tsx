@@ -192,9 +192,13 @@ export default function BookingSystem({
 
   return (
     <section className="py-6 sm:py-12 lg:py-20 max-w-7xl mx-auto px-4 sm:px-6">
-      {/* Mobile Sticky Action Bar */}
+      {/* Mobile Sticky Action Bar — no backdrop-blur: a `fixed` element with
+          backdrop-filter is exactly what mis-composites into a flat empty
+          bar during scroll on mobile Safari/Chrome (same root cause fixed
+          on the checkout page earlier). bg-dark/95 alone is opaque enough
+          without it. */}
       {selectedSlots.length > 0 && (
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-dark/95 backdrop-blur-xl border-t border-white/10 px-4 py-3 flex items-center justify-between gap-4 shadow-2xl pb-[calc(1rem+env(safe-area-inset-bottom))]">
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-dark/95 border-t border-white/10 px-4 py-3 flex items-center justify-between gap-4 shadow-2xl pb-[calc(1rem+env(safe-area-inset-bottom))]">
           <div>
             <div className="text-[10px] font-black text-white/50 uppercase tracking-widest">
               {selectedSlots.length} slot{selectedSlots.length > 1 ? 's' : ''} selected

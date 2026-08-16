@@ -21,10 +21,15 @@ export default async function CheckoutPage({ searchParams }: Props) {
   const date = typeof resolvedSearchParams.date === 'string' ? resolvedSearchParams.date : '';
   const slotsJson = typeof resolvedSearchParams.slots === 'string' ? resolvedSearchParams.slots : '[]';
 
-  // Optional pre-filled customer details from query params
+  // Optional pre-filled customer details from query params. The email in
+  // particular can arrive here carrying the placeholder value if an
+  // upstream page (e.g. the arena page) forwarded an unfiltered
+  // currentUser.email into its URL — filter it here too, not just at the
+  // DB read below, so a placeholder can never survive either path.
   let paramName = typeof resolvedSearchParams.name === 'string' ? resolvedSearchParams.name : '';
   let paramMobile = typeof resolvedSearchParams.mobile === 'string' ? resolvedSearchParams.mobile : '';
-  let paramEmail = typeof resolvedSearchParams.email === 'string' ? resolvedSearchParams.email : '';
+  const rawParamEmail = typeof resolvedSearchParams.email === 'string' ? resolvedSearchParams.email : '';
+  let paramEmail = isPlaceholderEmail(rawParamEmail) ? '' : rawParamEmail;
 
   const userId = await readAuthUserId();
   if (userId) {

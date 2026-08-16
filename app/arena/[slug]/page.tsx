@@ -1,4 +1,4 @@
-import { getArenaBySlug, getArenaPricing, queryOne, query } from '@/lib/domain';
+import { getArenaBySlug, getArenaPricing, queryOne, query, isPlaceholderEmail } from '@/lib/domain';
 import BookingSystem from '@/components/BookingSystem';
 import { getOrCreateCsrfToken } from '@/lib/csrf';
 import { readAuthUserId } from '@/lib/session';
@@ -192,7 +192,7 @@ export default async function ArenaPage({ params, searchParams }: Props) {
           csrfToken={csrfToken} 
           initialCustomerName={currentUser?.name || ''}
           initialCustomerMobile={currentUser?.customer_mobile || ''}
-          initialCustomerEmail={currentUser?.email || ''}
+          initialCustomerEmail={(currentUser?.email && !isPlaceholderEmail(currentUser.email)) ? currentUser.email : ''}
         />
       </div>
     </div>
