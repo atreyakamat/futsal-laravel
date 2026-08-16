@@ -4,6 +4,7 @@ import { getArenaById, query } from '@/lib/domain';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import SlotManagementClient from '@/components/SlotManagementClient';
+import ArenaPickerForm from '@/components/ArenaPickerForm';
 
 const DAY_NAMES: Record<number, string> = {
   0: 'Sunday', 1: 'Monday', 2: 'Tuesday', 3: 'Wednesday', 4: 'Thursday', 5: 'Friday', 6: 'Saturday',
@@ -52,17 +53,7 @@ export default async function AdminSlotsPage({ searchParams }: Props) {
       </div>
 
       {context.role === 'super_admin' && (arenas?.length || 0) > 0 && (
-        <form method="GET" className="glass-card flex flex-wrap items-end gap-4">
-          <div className="space-y-2">
-            <label className="label-classic">Arena</label>
-            <select name="arena_id" defaultValue={arenaId ?? undefined} className="input-field">
-              {(arenas || []).map((arenaOption) => (
-                <option key={arenaOption.id} value={arenaOption.id}>{arenaOption.name}</option>
-              ))}
-            </select>
-          </div>
-          <button className="btn-primary" type="submit">Load Arena</button>
-        </form>
+        <ArenaPickerForm arenas={arenas} selectedArenaId={arenaId} />
       )}
 
       {arenaId ? (

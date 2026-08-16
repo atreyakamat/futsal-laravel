@@ -690,6 +690,11 @@ export default function SuperAdminDashboardClient() {
               All Bookings
             </a>
 
+            <a href="/fg-admin/platform/cancellations" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-colors text-gray-400 hover:text-white hover:bg-white/5">
+              <span className="material-symbols-outlined text-lg">pending_actions</span>
+              Cancellations Review
+            </a>
+
             <a href="/fg-admin/platform/slots" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-colors text-gray-400 hover:text-white hover:bg-white/5">
               <span className="material-symbols-outlined text-lg">payments</span>
               Slot Pricing

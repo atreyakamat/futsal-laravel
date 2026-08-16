@@ -31,6 +31,8 @@ export default function SuperAdminRefundBtn({
   const [error, setError] = useState('');
   const [feeMode, setFeeMode] = useState<RefundFeeMode>('PERCENTAGE');
   const [feeValue, setFeeValue] = useState(5);
+  const [overrideAmount, setOverrideAmount] = useState('');
+  const [declining, setDeclining] = useState(false);
 
   useEffect(() => {
     fetch('/api/fg-admin/super-admin/settings')
@@ -51,10 +53,15 @@ export default function SuperAdminRefundBtn({
   if (paymentStatus === 'pending' || (refundStatus && TERMINAL_REFUND_STATES.includes(refundStatus))) return null;
 
   const totalGross = parseFloat(slots.reduce((s, sl) => s + sl.amount, 0).toFixed(2));
-  const { serviceFee: totalFee, refundAmount: totalRefund } = calculateRefundAmount(totalGross, { mode: feeMode, value: feeValue }, slots.length);
-  const feeLabel = feeMode === 'PERCENTAGE'
-    ? `Handling Fee (${feeValue}%)`
-    : `Cancellation Charge (₹${feeValue} × ${slots.length} slot${slots.length > 1 ? 's' : ''})`;
+  const { serviceFee: autoFee, refundAmount: autoRefund } = calculateRefundAmount(totalGross, { mode: feeMode, value: feeValue }, slots.length);
+  const isOverridden = overrideAmount.trim() !== '' && !isNaN(Number(overrideAmount));
+  const totalRefund = isOverridden ? Math.max(0, Math.min(Number(overrideAmount), totalGross)) : autoRefund;
+  const totalFee = isOverridden ? parseFloat((totalGross - totalRefund).toFixed(2)) : autoFee;
+  const feeLabel = isOverridden
+    ? 'Admin-Overridden Deduction'
+    : feeMode === 'PERCENTAGE'
+      ? `Handling Fee (${feeValue}%)`
+      : `Cancellation Charge (₹${feeValue} × ${slots.length} slot${slots.length > 1 ? 's' : ''})`;
 
   const handleRefund = async () => {
     if (!reason || reason.trim().length < 3) {
@@ -70,7 +77,11 @@ export default function SuperAdminRefundBtn({
       const res = await fetch('/api/fg-admin/super-admin/refund', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ref: bookingRef, reason: reason.trim() }),
+        body: JSON.stringify({
+          ref: bookingRef,
+          reason: reason.trim(),
+          ...(isOverridden ? { overrideAmount: totalRefund } : {}),
+        }),
       });
       const data = await res.json();
       if (data.success) {
@@ -86,6 +97,40 @@ export default function SuperAdminRefundBtn({
       setError('Network error. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDecline = async () => {
+    if (!reason || reason.trim().length < 3) {
+      setError('Please provide a valid reason for declining the refund.');
+      return;
+    }
+    if (!confirm(`Decline this refund? The customer will receive ₹0. This cannot be undone.`)) return;
+
+    setDeclining(true);
+    setError('');
+    setMessage('');
+
+    try {
+      const res = await fetch('/api/fg-admin/super-admin/refund/decline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ref: bookingRef, reason: reason.trim() }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessage(data.message);
+        setTimeout(() => {
+          setOpen(false);
+          window.location.reload();
+        }, 2000);
+      } else {
+        setError(data.message || 'Failed to decline refund.');
+      }
+    } catch {
+      setError('Network error. Please try again.');
+    } finally {
+      setDeclining(false);
     }
   };
 
@@ -184,9 +229,25 @@ export default function SuperAdminRefundBtn({
               </div>
             </div>
 
+            {/* Override */}
+            <div>
+              <label className="label-classic !ml-0 block mb-2">
+                Override Refund Amount <span className="text-white/30 normal-case">(optional — leave blank to use the calculated amount above)</span>
+              </label>
+              <input
+                type="number"
+                min={0}
+                max={totalGross}
+                value={overrideAmount}
+                onChange={(e) => setOverrideAmount(e.target.value)}
+                placeholder={`Default: ₹${autoRefund}`}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm font-bold focus:outline-none focus:border-primary/50"
+              />
+            </div>
+
             {/* Warning */}
             <div className="px-4 py-3 rounded-xl border border-orange-500/20 bg-orange-500/5 text-orange-400 text-xs font-bold">
-              ⚠ This bypasses all time restrictions. A reason is required and will be logged in system audit logs.
+              ⚠ Confirm Refund processes the payout via PayU; Decline marks the refund rejected with ₹0 paid out. Either way bypasses all time restrictions, requires a reason, and is logged in system audit logs.
             </div>
 
             {/* Reason */}
@@ -219,13 +280,25 @@ export default function SuperAdminRefundBtn({
               <button
                 onClick={() => setOpen(false)}
                 className="btn-secondary flex-1 !py-3"
-                disabled={loading}
+                disabled={loading || declining}
               >
                 CANCEL
               </button>
               <button
+                onClick={handleDecline}
+                disabled={loading || declining}
+                className="flex-1 !py-3 px-4 rounded-xl font-black text-xs uppercase tracking-widest transition-all bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 text-red-400 flex items-center justify-center gap-2"
+              >
+                {declining ? (
+                  <span className="w-4 h-4 border-2 border-red-400/20 border-t-red-400 rounded-full animate-spin" />
+                ) : (
+                  <span className="material-symbols-outlined text-sm">close</span>
+                )}
+                DECLINE
+              </button>
+              <button
                 onClick={handleRefund}
-                disabled={loading}
+                disabled={loading || declining}
                 className="flex-1 !py-3 px-6 rounded-xl font-black text-xs uppercase tracking-widest transition-all bg-orange-500 hover:bg-orange-400 text-black flex items-center justify-center gap-2"
               >
                 {loading ? (

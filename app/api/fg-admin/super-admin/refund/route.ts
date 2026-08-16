@@ -26,6 +26,7 @@ import { z } from 'zod';
 const schema = z.object({
   ref: z.string().min(1, 'Booking reference is required'),
   reason: z.string().min(3, 'A valid reason for the refund override is required'),
+  overrideAmount: z.number().min(0).optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -116,7 +117,20 @@ export async function POST(req: NextRequest) {
     const refundPolicyConfig = await getRefundPolicyConfig();
     await ensureSchemaColumns();
     const grossAmount = bookings.reduce((sum: number, b: any) => sum + Number(b.amount), 0);
-    const { serviceFee, refundAmount, feeMode, feeValue } = calculateRefundAmount(grossAmount, refundPolicyConfig, bookings.length);
+
+    // A super admin can override the policy-calculated fee with a custom
+    // refund amount (e.g. a goodwill exception) — still clamped to
+    // [0, grossAmount] so it can never go negative or exceed what was paid.
+    const isOverridden = typeof payload.overrideAmount === 'number';
+    const autoCalc = calculateRefundAmount(grossAmount, refundPolicyConfig, bookings.length);
+    const refundAmount = isOverridden
+      ? parseFloat(Math.max(0, Math.min(payload.overrideAmount as number, grossAmount)).toFixed(2))
+      : autoCalc.refundAmount;
+    const serviceFee = isOverridden
+      ? parseFloat((grossAmount - refundAmount).toFixed(2))
+      : autoCalc.serviceFee;
+    const feeMode = autoCalc.feeMode;
+    const feeValue = autoCalc.feeValue;
 
     // Atomically transition to refund-initiated. payment_status may already be
     // 'cancelled' (slot freed by the player's own cancellation request) or
@@ -174,6 +188,7 @@ export async function POST(req: NextRequest) {
         grossAmount,
         serviceFee,
         refundAmount,
+        amountOverridden: isOverridden,
         overrideReason: payload.reason,
         payuTxnId: payuResult.payuTxnId,
         payuRefundRequestId: payuResult.refundRequestId,
@@ -202,15 +217,18 @@ export async function POST(req: NextRequest) {
     // the refund itself).
     await issueCreditNote(payload.ref, refundAmount, `Super Admin Override: ${payload.reason}`);
 
-    const feeDescription = feeMode === 'PERCENTAGE'
-      ? `${feeValue}% fee`
-      : `₹${feeValue} × ${bookings.length} slot${bookings.length > 1 ? 's' : ''} cancellation charge`;
+    const feeDescription = isOverridden
+      ? 'admin-overridden amount'
+      : feeMode === 'PERCENTAGE'
+        ? `${feeValue}% fee`
+        : `₹${feeValue} × ${bookings.length} slot${bookings.length > 1 ? 's' : ''} cancellation charge`;
     return NextResponse.json({
       success: true,
       message: `Refund of ₹${refundAmount} processed (₹${serviceFee} ${feeDescription} deducted from ₹${grossAmount}). Reason: "${payload.reason}".`,
       grossAmount,
       serviceFee,
       refundAmount,
+      amountOverridden: isOverridden,
       overrideReason: payload.reason,
       payuRefundDetails: {
         refundRequestId: payuResult.refundRequestId,

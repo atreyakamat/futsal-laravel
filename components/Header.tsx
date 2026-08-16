@@ -71,6 +71,9 @@ export default function Header({ userId, role, arenaId, userName }: HeaderProps)
                   <Link href="/fg-admin/platform/bookings" className={`text-xs font-black uppercase tracking-widest hover:text-primary transition-colors ${pathname.includes('/bookings') ? 'text-primary' : 'text-white/60'}`}>
                     Bookings
                   </Link>
+                  <Link href="/fg-admin/platform/cancellations" className={`text-xs font-black uppercase tracking-widest hover:text-primary transition-colors ${pathname.includes('/cancellations') ? 'text-primary' : 'text-white/60'}`}>
+                    Cancellations
+                  </Link>
                   <Link href="/fg-admin/platform/slots" className={`text-xs font-black uppercase tracking-widest hover:text-primary transition-colors ${pathname.includes('/slots') ? 'text-primary' : 'text-white/60'}`}>
                     Pricing
                   </Link>
