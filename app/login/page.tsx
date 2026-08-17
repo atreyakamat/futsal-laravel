@@ -1,9 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function LoginPage() {
+type Channel = 'mobile' | 'email';
+
+function LoginPageInner() {
+  const [channel, setChannel] = useState<Channel>('mobile');
   const [identifier, setIdentifier] = useState('');
   const [otp, setOtp] = useState('');
   const [step, setStep] = useState(1);
@@ -11,25 +14,35 @@ export default function LoginPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // Only ever a same-site path (e.g. from checkout redirecting here) —
+  // never followed if it isn't, so this can't be used as an open redirect.
+  const next = searchParams.get('next');
+
+  function fullIdentifier() {
+    if (channel === 'mobile') return identifier ? `+91${identifier}` : '';
+    return identifier.trim();
+  }
 
   async function handleSendOtp() {
     setErrorMsg('');
     setSuccessMsg('');
-    if (!identifier) return setErrorMsg('Please enter your mobile number');
+    const value = fullIdentifier();
+    if (!value) return setErrorMsg(channel === 'mobile' ? 'Please enter your mobile number' : 'Please enter your email address');
     setLoading(true);
 
     try {
       const response = await fetch('/api/auth/send-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier }),
+        body: JSON.stringify({ identifier: value }),
       });
 
       const data = await response.json().catch(() => ({}));
 
       if (response.ok) {
         setStep(2);
-        setSuccessMsg('OTP sent via WhatsApp!');
+        setSuccessMsg(channel === 'mobile' ? 'OTP sent via WhatsApp!' : 'OTP sent to your email!');
       } else {
         setErrorMsg(data.message || 'Failed to send OTP');
       }
@@ -50,7 +63,7 @@ export default function LoginPage() {
       const response = await fetch('/api/auth/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier, otp }),
+        body: JSON.stringify({ identifier: fullIdentifier(), otp, next: next || undefined }),
       });
 
       const data = await response.json();
@@ -69,6 +82,14 @@ export default function LoginPage() {
     }
   }
 
+  function switchChannel(next: Channel) {
+    setChannel(next);
+    setIdentifier('');
+    setStep(1);
+    setErrorMsg('');
+    setSuccessMsg('');
+  }
+
   return (
     <div className="max-w-md mx-auto mt-20 px-6 py-20">
       <div className="glass-card">
@@ -82,12 +103,35 @@ export default function LoginPage() {
           Login with OTP
         </p>
 
+        {step === 1 && (
+          <div className="flex justify-center gap-2 mb-8">
+            <button
+              type="button"
+              onClick={() => switchChannel('mobile')}
+              className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors ${
+                channel === 'mobile' ? 'bg-primary text-black' : 'bg-white/5 text-white/40 hover:text-white/70'
+              }`}
+            >
+              Mobile
+            </button>
+            <button
+              type="button"
+              onClick={() => switchChannel('email')}
+              className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors ${
+                channel === 'email' ? 'bg-primary text-black' : 'bg-white/5 text-white/40 hover:text-white/70'
+              }`}
+            >
+              Email
+            </button>
+          </div>
+        )}
+
         {errorMsg && (
           <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl mb-6 text-sm font-medium text-center">
             {errorMsg}
           </div>
         )}
-        
+
         {successMsg && (
           <div className="bg-green-500/10 border border-green-500/20 text-green-400 px-4 py-3 rounded-xl mb-6 text-sm font-medium text-center">
             {successMsg}
@@ -98,21 +142,32 @@ export default function LoginPage() {
           <div className="space-y-8">
             <div className="space-y-3">
               <label className="label-classic" htmlFor="identifier">
-                Mobile Number
+                {channel === 'mobile' ? 'Mobile Number' : 'Email Address'}
               </label>
-              <div className="relative group flex border-2 border-white/10 rounded-xl overflow-hidden focus-within:border-primary transition-colors bg-white/5">
-                <div className="flex items-center justify-center px-4 border-r border-white/10 bg-black/20 font-black text-white/50">
-                  +91
+              {channel === 'mobile' ? (
+                <div className="relative group flex border-2 border-white/10 rounded-xl overflow-hidden focus-within:border-primary transition-colors bg-white/5">
+                  <div className="flex items-center justify-center px-4 border-r border-white/10 bg-black/20 font-black text-white/50">
+                    +91
+                  </div>
+                  <input
+                    className="w-full bg-transparent px-4 py-4 outline-none text-white font-medium"
+                    id="identifier"
+                    type="tel"
+                    value={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
+                    placeholder="77440 20601"
+                  />
                 </div>
+              ) : (
                 <input
-                  className="w-full bg-transparent px-4 py-4 outline-none text-white font-medium"
+                  className="input-field"
                   id="identifier"
-                  type="tel"
-                  value={identifier.replace('+91', '').trim()}
+                  type="email"
+                  value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
-                  placeholder="77440 20601"
+                  placeholder="you@example.com"
                 />
-              </div>
+              )}
             </div>
             <button
               onClick={handleSendOtp}
@@ -177,5 +232,13 @@ export default function LoginPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageInner />
+    </Suspense>
   );
 }

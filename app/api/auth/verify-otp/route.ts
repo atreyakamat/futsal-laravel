@@ -12,7 +12,18 @@ const bodySchema = z.object({
   // (see lib/otp-test-bypass.ts) — a wrong-length real OTP still fails the
   // underlying hash comparison, so this doesn't weaken real verification.
   otp: z.string().min(4).max(6),
+  next: z.string().optional(),
 });
+
+// Only a same-site path is ever honored — a `next` value that isn't an
+// internal path (e.g. an absolute/protocol-relative URL someone crafted
+// into the query string) is dropped rather than followed, so this can't
+// become an open redirect.
+function safeNextPath(next: string | undefined): string | null {
+  if (!next) return null;
+  if (!next.startsWith('/') || next.startsWith('//')) return null;
+  return next;
+}
 
 export async function POST(request: Request) {
   const isJson = request.headers.get('content-type')?.includes('application/json');
@@ -56,10 +67,15 @@ export async function POST(request: Request) {
   const user = await findOrCreateUserByIdentifier(cleanIdentifier);
   await removeOtp(cleanIdentifier);
 
-  const redirectUrl = user?.role === 'super_admin' ? '/fg-admin/platform/super-admin' 
+  const roleRedirect = user?.role === 'super_admin' ? '/fg-admin/platform/super-admin'
     : user?.role === 'arena_admin' ? '/fg-admin/arena/dashboard'
     : user?.role === 'security' ? '/fg-admin/security/scan'
     : '/dashboard';
+  // `next` (e.g. back to checkout with the original slot selection) only
+  // applies to a genuine customer login — a staff role logging in via OTP
+  // always lands on their own dashboard regardless of what `next` was set to.
+  const isStaffRole = user?.role === 'super_admin' || user?.role === 'arena_admin' || user?.role === 'security';
+  const redirectUrl = (!isStaffRole && safeNextPath(payload.next)) || roleRedirect;
 
   const response = NextResponse.json({ success: true, userExists: Boolean(user), redirect: redirectUrl });
   let redirectResponse = NextResponse.redirect(new URL(redirectUrl, baseUrl), 303);

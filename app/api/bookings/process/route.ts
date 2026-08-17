@@ -52,6 +52,21 @@ export async function POST(request: Request) {
   const sessionId = getWritableSessionId(request);
   const authUserId = await readAuthUserId();
   const authRole = await readAuthRole();
+  const isStaffRole = authRole === 'super_admin' || authRole === 'arena_admin' || authRole === 'security';
+
+  // Checkout requires a verified session (mobile/email OTP) — this used to
+  // fall back to creating a brand-new `users` row from whatever
+  // customer_mobile/email was typed into the form, with zero verification.
+  // The checkout page itself now redirects to /login first when there's no
+  // session, but this is the actual enforcement point: a request that
+  // reaches this API directly, bypassing the page, is rejected the same
+  // way. Staff roles (super_admin/arena_admin/security) are unaffected —
+  // they've always been allowed to submit a booking on a walk-in
+  // customer's behalf with userId left null; see below.
+  if (!authUserId && !isStaffRole) {
+    return NextResponse.json({ success: false, message: 'Please log in to complete your booking.' }, { status: 401 });
+  }
+
   const entryMode = await getArenaEntryMode(payload.arena_id);
 
   if (entryMode === 'blocked') {

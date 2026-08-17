@@ -5,6 +5,7 @@ import { getPayuConfig } from '@/lib/payment';
 import { getArenaEntryMode } from '@/lib/admin';
 import { getOrCreateCsrfToken } from '@/lib/csrf';
 import { evaluateCancellationEligibility, DEFAULT_CANCEL_CUTOFF_HOURS } from '@/lib/refund-policy';
+import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import CheckoutForm from '@/components/CheckoutForm';
 
@@ -32,13 +33,25 @@ export default async function CheckoutPage({ searchParams }: Props) {
   let paramEmail = isPlaceholderEmail(rawParamEmail) ? '' : rawParamEmail;
 
   const userId = await readAuthUserId();
-  if (userId) {
-    const currentUser = await queryOne<{ name?: string; email?: string; customer_mobile?: string }>('SELECT name, email, customer_mobile FROM users WHERE id = ?', [userId]);
-    if (currentUser) {
-      paramName = currentUser.name || paramName;
-      paramMobile = currentUser.customer_mobile || paramMobile;
-      paramEmail = (currentUser.email && !isPlaceholderEmail(currentUser.email)) ? currentUser.email : paramEmail;
+  if (!userId) {
+    // Checkout requires a verified session (mobile or email OTP) rather
+    // than the guest-checkout flow this used to allow, which silently
+    // created a real `users` row from whatever mobile/email was typed into
+    // the form with zero verification. Preserve the exact checkout URL
+    // (arena/date/slots/pre-fill params) via `next` so the customer lands
+    // right back here, slot selection intact, once they've logged in.
+    const qs = new URLSearchParams();
+    for (const [key, value] of Object.entries(resolvedSearchParams)) {
+      if (typeof value === 'string') qs.set(key, value);
     }
+    redirect(`/login?next=${encodeURIComponent(`/booking/checkout?${qs.toString()}`)}`);
+  }
+
+  const currentUser = await queryOne<{ name?: string; email?: string; customer_mobile?: string }>('SELECT name, email, customer_mobile FROM users WHERE id = ?', [userId]);
+  if (currentUser) {
+    paramName = currentUser.name || paramName;
+    paramMobile = currentUser.customer_mobile || paramMobile;
+    paramEmail = (currentUser.email && !isPlaceholderEmail(currentUser.email)) ? currentUser.email : paramEmail;
   }
 
   let slots: string[] = [];

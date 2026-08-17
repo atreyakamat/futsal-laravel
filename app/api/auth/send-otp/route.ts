@@ -25,8 +25,9 @@ export async function POST(request: Request) {
   );
 
   const isMobileNum = isMobile(payload.identifier);
-  if (!isMobileNum) {
-    const msg = 'Only mobile number login is supported. Please enter a valid mobile number.';
+  const isEmailAddr = !isMobileNum && isEmail(payload.identifier);
+  if (!isMobileNum && !isEmailAddr) {
+    const msg = 'Please enter a valid mobile number or email address.';
     const baseUrl = getBaseUrl(request);
     if (!isJson) {
       return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(msg)}`, baseUrl));
@@ -34,7 +35,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, message: msg }, { status: 400 });
   }
 
-  const cleanIdentifier = normalizePhoneNumber(payload.identifier);
+  const cleanIdentifier = isMobileNum ? normalizePhoneNumber(payload.identifier) : payload.identifier.trim().toLowerCase();
 
   const allowed = await canSendOtp(cleanIdentifier);
   if (!allowed) {
@@ -57,32 +58,46 @@ export async function POST(request: Request) {
   // SECURITY: never log OTP value in production. Log send attempt only.
   console.info(`[OTP] Sending to ${cleanIdentifier.slice(0, 4)}****`);
 
-  // Trigger SMS/WhatsApp Provider if identifier is a mobile number — skipped
-  // entirely for the test bypass number so QA doesn't need a real WhatsApp send.
-  if (isMobileNum && !isTestNumber) {
-    const provider = getSmsProvider();
-    try {
-      const sent = await provider.sendSms(
-        cleanIdentifier,
-        `Your OTP for AgnelArena is ${otp}. Valid for 10 minutes.`
-      );
-      if (!sent) {
-        console.error(`[SMS] Provider reported failure sending OTP to ${cleanIdentifier}`);
+  // Skip the real send entirely for the test bypass number so QA doesn't
+  // need a real WhatsApp/email round trip.
+  if (!isTestNumber) {
+    if (isMobileNum) {
+      const provider = getSmsProvider();
+      try {
+        const sent = await provider.sendSms(
+          cleanIdentifier,
+          `Your OTP for AgnelArena is ${otp}. Valid for 10 minutes.`
+        );
+        if (!sent) {
+          console.error(`[SMS] Provider reported failure sending OTP to ${cleanIdentifier}`);
+        }
+      } catch (smsErr) {
+        console.error('[SMS] Failed to send SMS via provider:', smsErr);
       }
-    } catch (smsErr) {
-      console.error('[SMS] Failed to send SMS via provider:', smsErr);
-    }
-    
-    // Look up user to see if they have an email on file to send backup OTP
-    try {
-      const { findUserByIdentifier } = await import('@/lib/domain');
-      const user = await findUserByIdentifier(cleanIdentifier);
-      if (user && user.email) {
-        const { subject, html, text } = generateOtpEmail(otp, user.email);
-        await sendEmail({ to: user.email, subject, html, text });
+
+      // Look up user to see if they have an email on file to send backup OTP
+      try {
+        const { findUserByIdentifier } = await import('@/lib/domain');
+        const user = await findUserByIdentifier(cleanIdentifier);
+        if (user && user.email) {
+          const { subject, html, text } = generateOtpEmail(otp, user.email);
+          await sendEmail({ to: user.email, subject, html, text });
+        }
+      } catch (err) {
+        console.error('[OTP] Failed to send backup email:', err);
       }
-    } catch (err) {
-      console.error('[OTP] Failed to send backup email:', err);
+    } else {
+      // Email-identified login — the OTP email is the only channel, there's
+      // no mobile number on file yet to fall back to at this point.
+      try {
+        const { subject, html, text } = generateOtpEmail(otp, cleanIdentifier);
+        const result = await sendEmail({ to: cleanIdentifier, subject, html, text });
+        if (!result.success) {
+          console.error(`[OTP] Failed to send OTP email to ${cleanIdentifier}:`, result.error);
+        }
+      } catch (err) {
+        console.error('[OTP] Failed to send OTP email:', err);
+      }
     }
   }
 
