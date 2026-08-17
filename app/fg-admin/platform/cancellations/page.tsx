@@ -19,6 +19,7 @@ interface CancellationRow {
   amount: number;
   updated_at: string;
   cancellation_reason: string | null;
+  payment_method: string | null;
 }
 
 interface CancellationGroup {
@@ -31,6 +32,7 @@ interface CancellationGroup {
   cancellation_reason: string | null;
   slots: { timeSlot: string; amount: number }[];
   totalAmount: number;
+  payment_method: string | null;
 }
 
 /**
@@ -52,7 +54,7 @@ export default async function CancellationsQueuePage() {
   const rows = await query<CancellationRow>(`
     SELECT b.id, b.arena_id, a.name AS arena_name, b.booking_ref,
            b.customer_name, b.customer_mobile, b.booking_date, b.time_slot,
-           b.amount, b.updated_at, b.cancellation_reason
+           b.amount, b.updated_at, b.cancellation_reason, b.payment_method
       FROM bookings b
       JOIN arenas a ON a.id = b.arena_id
      WHERE b.refund_status = 'PENDING_REVIEW'
@@ -73,6 +75,7 @@ export default async function CancellationsQueuePage() {
         cancellation_reason: row.cancellation_reason,
         slots: [],
         totalAmount: 0,
+        payment_method: row.payment_method,
       });
     }
     const group = groupMap.get(row.booking_ref)!;
@@ -136,6 +139,11 @@ export default async function CancellationsQueuePage() {
                           <span className="pill-status text-[9px] mt-1 border-amber-500/20 text-amber-400">
                             PENDING REVIEW
                           </span>
+                          {g.payment_method === 'offline' && (
+                            <span className="pill-status text-[9px] mt-1 ml-1 border-yellow-500/20 text-yellow-400">
+                              PAY AT VENUE
+                            </span>
+                          )}
                         </div>
                       </div>
 
@@ -173,6 +181,7 @@ export default async function CancellationsQueuePage() {
                         slots={g.slots}
                         paymentStatus="cancelled"
                         refundStatus="PENDING_REVIEW"
+                        paymentMethod={g.payment_method}
                       />
                       <CheckRefundStatusBtn bookingRef={g.booking_ref} refundStatus="PENDING_REVIEW" />
                     </div>

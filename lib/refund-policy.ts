@@ -29,7 +29,7 @@ export interface CancellationEligibility {
   cutoffHoursApplied: number;
 }
 
-export type RefundLifecycleStatus = 'PENDING_REVIEW' | 'APPROVED' | 'PROCESSING' | 'REFUNDED' | 'REJECTED';
+export type RefundLifecycleStatus = 'PENDING_REVIEW' | 'APPROVED' | 'PROCESSING' | 'REFUNDED' | 'REJECTED' | 'NOT_APPLICABLE';
 
 export type RefundFeeMode = 'PERCENTAGE' | 'FIXED';
 
@@ -116,6 +116,7 @@ export function computeRefundLifecycleStatus(booking: {
   isPending: boolean;
   isProcessing: boolean;
   isApproved: boolean;
+  isNotApplicable: boolean;
   decisionText: string;
 } {
   const explicitStatus = (booking.refund_status || '').toUpperCase();
@@ -136,6 +137,7 @@ export function computeRefundLifecycleStatus(booking: {
       isPending: false,
       isProcessing: false,
       isApproved: true,
+      isNotApplicable: false,
       decisionText: 'Accepted & Refunded',
     };
   }
@@ -152,6 +154,7 @@ export function computeRefundLifecycleStatus(booking: {
       isPending: false,
       isProcessing: false,
       isApproved: false,
+      isNotApplicable: false,
       decisionText: 'Request Rejected',
     };
   }
@@ -168,6 +171,7 @@ export function computeRefundLifecycleStatus(booking: {
       isPending: false,
       isProcessing: true,
       isApproved: true,
+      isNotApplicable: false,
       decisionText: 'Approved (Processing Refund)',
     };
   }
@@ -184,7 +188,26 @@ export function computeRefundLifecycleStatus(booking: {
       isPending: false,
       isProcessing: false,
       isApproved: true,
+      isNotApplicable: false,
       decisionText: 'Request Approved',
+    };
+  }
+
+  // 4b. NOT_APPLICABLE — pay-at-venue booking where nothing was ever collected,
+  // so there is no refund to review or process.
+  if (explicitStatus === 'NOT_APPLICABLE') {
+    return {
+      status: 'NOT_APPLICABLE',
+      statusText: 'NO REFUND DUE',
+      badgeClass: 'border-white/20 text-white/50 bg-white/5',
+      customerMessage: 'This was a pay-at-venue booking with no payment collected, so no refund applies.',
+      isRefunded: false,
+      isRejected: false,
+      isPending: false,
+      isProcessing: false,
+      isApproved: false,
+      isNotApplicable: true,
+      decisionText: 'No Refund Due',
     };
   }
 
@@ -199,6 +222,7 @@ export function computeRefundLifecycleStatus(booking: {
     isPending: true,
     isProcessing: false,
     isApproved: false,
+    isNotApplicable: false,
     decisionText: 'Awaiting Admin Review',
   };
 }

@@ -17,6 +17,7 @@ interface CheckoutFormProps {
   cutoffHours: number;
   refundFeeText: string;
   isWithinNoRefundWindow: boolean;
+  paymentMode: 'online' | 'offline';
 }
 
 export default function CheckoutForm({
@@ -33,6 +34,7 @@ export default function CheckoutForm({
   cutoffHours,
   refundFeeText,
   isWithinNoRefundWindow,
+  paymentMode,
 }: CheckoutFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const [showPolicyModal, setShowPolicyModal] = useState(false);
@@ -150,19 +152,30 @@ export default function CheckoutForm({
           <div className="glass-card !p-8 sm:!p-10 max-w-lg w-full space-y-6 my-8">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-black uppercase tracking-tighter italic">
-                Cancellation & <span className="text-primary">Refund Policy</span>
+                {paymentMode === 'online' ? (
+                  <>Cancellation & <span className="text-primary">Refund Policy</span></>
+                ) : (
+                  <>Cancellation <span className="text-primary">Policy</span></>
+                )}
               </h2>
               <button onClick={() => setShowPolicyModal(false)} className="text-white/40 hover:text-white transition-colors">
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
 
-            <div className="space-y-3 text-sm text-white/70">
-              <p>Cancel up to <strong className="text-white">{cutoffHours} hours</strong> before your scheduled session to be eligible for a refund.</p>
-              <p>Eligible refunds are processed after deducting a <strong className="text-white">{refundFeeText}</strong>.</p>
-            </div>
+            {paymentMode === 'online' ? (
+              <div className="space-y-3 text-sm text-white/70">
+                <p>Cancel up to <strong className="text-white">{cutoffHours} hours</strong> before your scheduled session to be eligible for a refund.</p>
+                <p>Eligible refunds are processed after deducting a <strong className="text-white">{refundFeeText}</strong>.</p>
+              </div>
+            ) : (
+              <div className="space-y-3 text-sm text-white/70">
+                <p>This is a <strong className="text-white">pay-at-venue</strong> booking — payment is not collected online.</p>
+                <p>You can cancel this booking from your dashboard. Since no online payment is taken, <strong className="text-white">no refund applies</strong>.</p>
+              </div>
+            )}
 
-            {isWithinNoRefundWindow && checkoutTotal > 0 && (
+            {paymentMode === 'online' && isWithinNoRefundWindow && checkoutTotal > 0 && (
               <div className="px-4 py-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400 text-xs font-black uppercase tracking-widest flex items-start gap-3">
                 <span className="material-symbols-outlined text-lg shrink-0 animate-pulse">warning</span>
                 This booking starts within {cutoffHours} hours. If you cancel or don't show up, you will NOT be eligible for any refund.
@@ -177,7 +190,9 @@ export default function CheckoutForm({
                 className="mt-1 w-4 h-4 accent-primary shrink-0"
               />
               <span className="text-sm font-bold text-white">
-                I Agree to the Cancellation & Refund Policy{isWithinNoRefundWindow && checkoutTotal > 0 ? ', including the no-refund window above' : ''}.
+                {paymentMode === 'online'
+                  ? `I Agree to the Cancellation & Refund Policy${isWithinNoRefundWindow && checkoutTotal > 0 ? ', including the no-refund window above' : ''}.`
+                  : 'I Agree to the Cancellation Policy.'}
               </span>
             </label>
 

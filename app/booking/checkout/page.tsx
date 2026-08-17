@@ -2,7 +2,7 @@ import { getArenaById, getArenaPricingForDate, queryOne, query, getRefundPolicyC
 import { readGuestIdentifier, readAuthUserId } from '@/lib/session';
 import { mergeSlots, getDurationText } from '@/lib/slot-merge';
 import { getPayuConfig } from '@/lib/payment';
-import { getArenaEntryMode } from '@/lib/admin';
+import { getArenaEntryMode, getArenaPaymentMode } from '@/lib/admin';
 import { getOrCreateCsrfToken } from '@/lib/csrf';
 import { evaluateCancellationEligibility, DEFAULT_CANCEL_CUTOFF_HOURS } from '@/lib/refund-policy';
 import { redirect } from 'next/navigation';
@@ -88,6 +88,7 @@ export default async function CheckoutPage({ searchParams }: Props) {
   }
 
   const checkoutTotal = entryMode === 'free' ? 0 : total;
+  const paymentMode = await getArenaPaymentMode(arenaId);
   const { merchantKey, merchantSalt } = getPayuConfig();
   const payuReady = Boolean(merchantKey && merchantSalt);
 
@@ -150,27 +151,43 @@ export default async function CheckoutPage({ searchParams }: Props) {
               </p>
             </div>
 
-            <div className="flex items-start gap-4 p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-red-500/20 bg-red-500/10">
-              <span className="material-symbols-outlined text-red-500 text-xl sm:text-2xl flex-shrink-0">event_busy</span>
-              <div className="space-y-2">
-                <p className="text-[10px] font-black text-red-500 uppercase tracking-[0.15em] sm:tracking-[0.2em] leading-relaxed">
-                  CANCELLATION & REFUND POLICY
-                </p>
-                <p className="text-xs font-medium text-white/60 leading-relaxed">
-                  Cancel up to {cutoffHours} hours before your scheduled session to be eligible for a refund.
-                </p>
-                <p className="text-xs font-medium text-white/60 leading-relaxed">
-                  Refund: {formatRefundPolicyText(refundPolicy, slots.length)} deducted from the refundable amount.
-                </p>
-              </div>
-            </div>
+            {paymentMode === 'online' ? (
+              <>
+                <div className="flex items-start gap-4 p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-red-500/20 bg-red-500/10">
+                  <span className="material-symbols-outlined text-red-500 text-xl sm:text-2xl flex-shrink-0">event_busy</span>
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-black text-red-500 uppercase tracking-[0.15em] sm:tracking-[0.2em] leading-relaxed">
+                      CANCELLATION & REFUND POLICY
+                    </p>
+                    <p className="text-xs font-medium text-white/60 leading-relaxed">
+                      Cancel up to {cutoffHours} hours before your scheduled session to be eligible for a refund.
+                    </p>
+                    <p className="text-xs font-medium text-white/60 leading-relaxed">
+                      Refund: {formatRefundPolicyText(refundPolicy, slots.length)} deducted from the refundable amount.
+                    </p>
+                  </div>
+                </div>
 
-            {isWithinNoRefundWindow && checkoutTotal > 0 && (
-              <div className="flex items-start gap-4 p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-red-500/40 bg-red-500/10">
-                <span className="material-symbols-outlined text-red-500 text-xl sm:text-2xl flex-shrink-0 animate-pulse">warning</span>
-                <p className="text-xs font-black text-red-400 uppercase tracking-widest leading-relaxed">
-                  This booking starts within {cutoffHours} hours. If you cancel or don't show up, you will NOT be eligible for any refund.
-                </p>
+                {isWithinNoRefundWindow && checkoutTotal > 0 && (
+                  <div className="flex items-start gap-4 p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-red-500/40 bg-red-500/10">
+                    <span className="material-symbols-outlined text-red-500 text-xl sm:text-2xl flex-shrink-0 animate-pulse">warning</span>
+                    <p className="text-xs font-black text-red-400 uppercase tracking-widest leading-relaxed">
+                      This booking starts within {cutoffHours} hours. If you cancel or don't show up, you will NOT be eligible for any refund.
+                    </p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="flex items-start gap-4 p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-yellow-500/20 bg-yellow-500/5">
+                <span className="material-symbols-outlined text-yellow-400 text-xl sm:text-2xl flex-shrink-0">event_busy</span>
+                <div className="space-y-2">
+                  <p className="text-[10px] font-black text-yellow-400 uppercase tracking-[0.15em] sm:tracking-[0.2em] leading-relaxed">
+                    CANCELLATION POLICY
+                  </p>
+                  <p className="text-xs font-medium text-white/60 leading-relaxed">
+                    This is a pay-at-venue booking — payment is not collected online. You can cancel from your dashboard, but since no online payment is taken, no refund applies.
+                  </p>
+                </div>
               </div>
             )}
           </div>
@@ -195,6 +212,7 @@ export default async function CheckoutPage({ searchParams }: Props) {
               cutoffHours={cutoffHours}
               refundFeeText={formatRefundPolicyText(refundPolicy, slots.length)}
               isWithinNoRefundWindow={isWithinNoRefundWindow}
+              paymentMode={paymentMode}
             />
           </div>
         </div>

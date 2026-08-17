@@ -197,6 +197,9 @@ export default async function DashboardPage() {
                 updatedAt={firstBooking.updated_at || new Date()}
                 totalAmount={totalAmount}
                 payuMihpayid={firstBooking.payu_mihpayid}
+                refundStatus={(firstBooking as any).refund_status ?? null}
+                paymentMethod={(firstBooking as any).payment_method ?? null}
+                venuePaymentStatus={(firstBooking as any).venue_payment_status ?? null}
                 cutoffHours={cutoffHours}
                 refundFeeMode={refundPolicyConfig.mode}
                 refundFeeValue={refundPolicyConfig.value}

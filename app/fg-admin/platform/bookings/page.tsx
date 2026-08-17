@@ -296,6 +296,7 @@ export default async function AdminBookingsPage({
                           slots={g.slots}
                           paymentStatus={g.payment_status}
                           refundStatus={g.refund_status}
+                          paymentMethod={g.payment_method}
                         />
                       )}
                       {context.role === 'super_admin' && (

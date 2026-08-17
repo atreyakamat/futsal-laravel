@@ -258,10 +258,16 @@ export default async function BookingSuccessPage({ params }: Props) {
                 </div>
                 <div>
                   <p className="font-black text-sm mb-2 text-white uppercase tracking-tight">Cancellation Policy</p>
-                  <p className="text-xs text-white/40 leading-relaxed font-medium">
-                    Cancellations are allowed up to {cutoffHours} hours before your booking.<br/>
-                    Eligible refunds are processed after deducting a {formatRefundPolicyText(refundPolicy, bookings.length)}.
-                  </p>
+                  {isOfflinePayment ? (
+                    <p className="text-xs text-white/40 leading-relaxed font-medium">
+                      This is a pay-at-venue booking. You can cancel it from your dashboard, but since payment was not collected online, no refund applies.
+                    </p>
+                  ) : (
+                    <p className="text-xs text-white/40 leading-relaxed font-medium">
+                      Cancellations are allowed up to {cutoffHours} hours before your booking.<br/>
+                      Eligible refunds are processed after deducting a {formatRefundPolicyText(refundPolicy, bookings.length)}.
+                    </p>
+                  )}
                 </div>
               </li>
             </ul>

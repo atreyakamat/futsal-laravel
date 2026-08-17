@@ -17,12 +17,14 @@ export default function CancelBookingBtn({
   refundTimeline = DEFAULT_REFUND_TIMELINE,
   payuMihpayid,
   refundStatus,
+  paymentMethod,
+  venuePaymentStatus,
   cutoffHours,
   refundFeeMode = 'FIXED',
   refundFeeValue = 300,
-}: { 
-  bookingRef: string; 
-  bookingDateStr: string; 
+}: {
+  bookingRef: string;
+  bookingDateStr: string;
   timeSlots: string[];
   isCancellationRequested: boolean;
   paymentStatus: string;
@@ -33,6 +35,8 @@ export default function CancelBookingBtn({
   refundTimeline?: string;
   payuMihpayid?: string | null;
   refundStatus?: string | null;
+  paymentMethod?: string | null;
+  venuePaymentStatus?: string | null;
   cutoffHours?: number;
   refundFeeMode?: 'FIXED' | 'PERCENTAGE';
   refundFeeValue?: number;
@@ -42,6 +46,10 @@ export default function CancelBookingBtn({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const activeCutoffHours = cutoffHours ?? 3;
+
+  // Pay-at-venue booking with nothing collected yet — cancelling never owes a
+  // refund, so the confirm/success messaging shouldn't promise a fee or payout.
+  const noRefundApplies = paymentMethod === 'offline' && venuePaymentStatus !== 'PAID';
 
   // Evaluate time eligibility for cancellation
   const eligibility = evaluateCancellationEligibility(bookingDateStr, timeSlots, Date.now(), activeCutoffHours);
@@ -133,6 +141,27 @@ export default function CancelBookingBtn({
     );
   }
 
+  // Render No-Refund-Due Panel (pay-at-venue booking, nothing was collected)
+  if (lifecycle.isNotApplicable) {
+    return (
+      <div className="mt-6 w-full p-5 rounded-2xl bg-white/5 border border-white/10 text-white/50 text-xs space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 font-black uppercase tracking-wider text-sm text-white/70">
+            <span className="material-symbols-outlined text-lg">info</span>
+            Cancellation Status
+          </div>
+          <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${lifecycle.badgeClass}`}>
+            {lifecycle.statusText}
+          </span>
+        </div>
+        <p className="text-[11px] font-medium text-white/50">{lifecycle.customerMessage}</p>
+        <div className="text-[11px] text-white/40 pt-2 border-t border-white/10">
+          <span className="text-white/30">Booking Reference:</span> <span className="font-mono text-white/60">{bookingRef}</span>
+        </div>
+      </div>
+    );
+  }
+
   // Render Cancellation Requested Panel (Pending Review / Approved / Processing)
   if (isCancellationRequested) {
     return (
@@ -191,13 +220,18 @@ export default function CancelBookingBtn({
   }
 
   const handleCancel = async () => {
-    const feeDescription = feeMode === 'PERCENTAGE'
-      ? `${feeValue}% cancellation fee (₹${serviceFee})`
-      : `cancellation fee of ₹${feeValue} × ${timeSlots.length} slot${timeSlots.length > 1 ? 's' : ''} (₹${serviceFee})`;
-    if (!confirm(`Request cancellation for Booking ${bookingRef}?\n\nA ${feeDescription} will be deducted. Your expected refund is ₹${calculatedRefund}.\n\nExpected Refund Timeline: ${refundTimeline}`)) {
+    const confirmMessage = noRefundApplies
+      ? `Cancel Booking ${bookingRef}?\n\nThis is a pay-at-venue booking and no payment was collected, so no refund applies.`
+      : (() => {
+          const feeDescription = feeMode === 'PERCENTAGE'
+            ? `${feeValue}% cancellation fee (₹${serviceFee})`
+            : `cancellation fee of ₹${feeValue} × ${timeSlots.length} slot${timeSlots.length > 1 ? 's' : ''} (₹${serviceFee})`;
+          return `Request cancellation for Booking ${bookingRef}?\n\nA ${feeDescription} will be deducted. Your expected refund is ₹${calculatedRefund}.\n\nExpected Refund Timeline: ${refundTimeline}`;
+        })();
+    if (!confirm(confirmMessage)) {
       return;
     }
-    
+
     setLoading(true);
     setErrorMsg(null);
 
@@ -211,7 +245,9 @@ export default function CancelBookingBtn({
       const data = await res.json();
 
       if (data.success) {
-        alert(`Cancellation requested successfully. Expected refund: ₹${data.refundAmount}. Timeline: ${refundTimeline}`);
+        alert(data.refundEligible === false
+          ? 'Booking cancelled. No refund is due for this pay-at-venue booking.'
+          : `Cancellation requested successfully. Expected refund: ₹${data.refundAmount}. Timeline: ${refundTimeline}`);
         router.refresh();
       } else {
         setErrorMsg(data.message || 'Failed to cancel booking');

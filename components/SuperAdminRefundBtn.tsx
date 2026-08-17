@@ -16,6 +16,7 @@ interface SuperAdminRefundBtnProps {
   slots: SlotItem[];          // one entry per DB row (one per slot)
   paymentStatus: string;
   refundStatus?: string | null;
+  paymentMethod?: string | null;
 }
 
 export default function SuperAdminRefundBtn({
@@ -23,7 +24,9 @@ export default function SuperAdminRefundBtn({
   slots,
   paymentStatus,
   refundStatus,
+  paymentMethod,
 }: SuperAdminRefundBtnProps) {
+  const isOfflineBooking = paymentMethod === 'offline';
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState('');
   const [loading, setLoading] = useState(false);
@@ -160,6 +163,11 @@ export default function SuperAdminRefundBtn({
                     Combined Booking · {slots.length} Slots
                   </p>
                 )}
+                {isOfflineBooking && (
+                  <p className="text-[10px] text-yellow-400 font-bold uppercase tracking-widest mt-1">
+                    Pay-at-venue booking
+                  </p>
+                )}
               </div>
               <button onClick={() => setOpen(false)} className="text-white/40 hover:text-white transition-colors">
                 <span className="material-symbols-outlined">close</span>
@@ -247,7 +255,9 @@ export default function SuperAdminRefundBtn({
 
             {/* Warning */}
             <div className="px-4 py-3 rounded-xl border border-orange-500/20 bg-orange-500/5 text-orange-400 text-xs font-bold">
-              ⚠ Confirm Refund processes the payout via PayU; Decline marks the refund rejected with ₹0 paid out. Either way bypasses all time restrictions, requires a reason, and is logged in system audit logs.
+              {isOfflineBooking
+                ? '⚠ This was a pay-at-venue booking — it never went through PayU, so Confirm Refund cannot trigger a PayU payout. The venue must return the payment to the customer manually; use this to record that decision. Decline marks the refund rejected with ₹0 recorded. Either way bypasses all time restrictions, requires a reason, and is logged in system audit logs.'
+                : '⚠ Confirm Refund processes the payout via PayU; Decline marks the refund rejected with ₹0 paid out. Either way bypasses all time restrictions, requires a reason, and is logged in system audit logs.'}
             </div>
 
             {/* Reason */}

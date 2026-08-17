@@ -88,6 +88,17 @@ export async function POST(req: NextRequest) {
     const grossAmount = bookings.reduce((sum: number, b: any) => sum + Number(b.amount), 0);
     const { serviceFee, refundAmount } = calculateRefundAmount(grossAmount, refundPolicyConfig, bookings.length);
 
+    // Offline (pay-at-venue) bookings never went through PayU. If nothing was
+    // ever collected, there is nothing to refund — this cancellation should
+    // resolve immediately (NOT_APPLICABLE) rather than sit in the admin's
+    // refund-review queue implying money is owed. If the venue DID collect
+    // payment, the refund has to happen manually at the venue (outside the
+    // app/PayU), so it still needs admin review — but the messaging should
+    // say so rather than implying an automatic online refund.
+    const isOfflineBooking = firstBooking.payment_method === 'offline';
+    const wasVenuePaymentCollected = isOfflineBooking && firstBooking.venue_payment_status === 'PAID';
+    const noRefundDue = isOfflineBooking && !wasVenuePaymentCollected;
+
     // Cancelling frees the slot immediately (payment_status -> 'cancelled', so
     // it drops out of the active-slot query) — the actual refund still
     // requires a super admin to process it via /api/fg-admin/super-admin/refund,
@@ -99,11 +110,11 @@ export async function POST(req: NextRequest) {
               cancellation_requested = TRUE,
               cancellation_reason = 'User Requested',
               refund_amount = ?,
-              refund_status = 'PENDING_REVIEW',
+              refund_status = ?,
               updated_at = NOW()
         WHERE booking_ref = ? AND user_id = ? AND payment_status = 'confirmed'
         RETURNING id`,
-      [refundAmount, ref, userId]
+      [noRefundDue ? 0 : refundAmount, noRefundDue ? 'NOT_APPLICABLE' : 'PENDING_REVIEW', ref, userId]
     );
 
     if (!updatedRows || updatedRows.length === 0) {
@@ -118,9 +129,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (noRefundDue) {
+      return NextResponse.json({
+        success: true,
+        message: 'Booking cancelled and the slot has been released. This was a pay-at-venue booking and no payment was collected, so no refund is due.',
+        refundEligible: false,
+        grossAmount,
+        serviceFee: 0,
+        refundAmount: 0,
+      });
+    }
+
     return NextResponse.json({
       success: true,
-      message: 'Booking cancelled and the slot has been released. Your refund will be processed by our team shortly.',
+      message: wasVenuePaymentCollected
+        ? 'Booking cancelled and the slot has been released. Since this was paid at the venue, our team will arrange the refund manually.'
+        : 'Booking cancelled and the slot has been released. Your refund will be processed by our team shortly.',
       refundEligible: true,
       grossAmount,
       serviceFee,
