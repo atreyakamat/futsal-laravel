@@ -242,11 +242,23 @@ export class AiSensyProvider implements SmsProvider {
         ? `${appUrl}/api/ticket/${ticketNumber}.pdf?token=${generateTicketDownloadToken(ticketNumber)}`
         : "https://d3jt6ku4g6z5l8.cloudfront.net/FILE/6353da2e153a147b991dd812/4079142_dummy.pdf";
 
+      // The booking-confirmation template name is env-driven so a template
+      // swap (e.g. moving to a new Document-type template with a dynamic
+      // {{1}} URL button) is a config change, not a code deploy. Whether to
+      // send the button's `parameters` is tied to that same env var: the
+      // currently-approved default template's URL button is registered
+      // static (no {{1}}) and rejects a `parameters` array outright, so
+      // only opt into sending one once AISENSY_CAMPAIGN_NAME_BOOKING is
+      // explicitly set to a template that was actually approved with a
+      // dynamic button.
+      const bookingCampaignName = process.env.AISENSY_CAMPAIGN_NAME_BOOKING || 'agnelarena_cofirm';
+      const useDynamicButton = Boolean(process.env.AISENSY_CAMPAIGN_NAME_BOOKING) && !isOtp;
+
       const payload: any = {
         apiKey: this.apiKey,
         campaignName: isOtp
-          ? 'agnel_arena_otp'
-          : 'agnelarena_cofirm',
+          ? (process.env.AISENSY_CAMPAIGN_NAME_OTP || 'agnel_arena_otp')
+          : bookingCampaignName,
         destination: destination,
         userName: this.userName,
         templateParams: templateParams,
@@ -255,13 +267,16 @@ export class AiSensyProvider implements SmsProvider {
           url: pdfUrl,
           filename: ticketNumber ? `ticket-${ticketNumber}.pdf` : "booking_confirmation.pdf"
         },
-        // The approved WhatsApp template's URL button is static (no {{1}}
-        // placeholder) — AiSensy's own reference curl for this exact
-        // campaign ("agnelarena_cofirm") sends `buttons: []`. Redeclaring
-        // the button here at all (even with no `parameters`) was still
-        // getting rejected; a genuinely empty array matches what AiSensy
-        // expects and lets the template's own registered button render.
-        buttons: [],
+        buttons: useDynamicButton
+          ? [
+              {
+                type: "button",
+                sub_type: "url",
+                index: 0,
+                parameters: [{ type: "text", text: ticketNumber || 'N/A' }],
+              },
+            ]
+          : [],
         carouselCards: [],
         location: {},
         attributes: {},
