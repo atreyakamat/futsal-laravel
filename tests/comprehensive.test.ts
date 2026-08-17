@@ -26,11 +26,11 @@ describe('Slot Merging Logic', () => {
 
   it('should calculate duration correctly for merged slots', () => {
     const slots = ['09:00-10:00', '10:00-11:00'];
-    expect(getDurationText(slots)).toBe('2 hrs');
+    expect(getDurationText(slots)).toBe('2 HRS');
   });
 
   it('should handle single slot duration', () => {
-    expect(getDurationText(['09:00-10:00'])).toBe('1 hr');
+    expect(getDurationText(['09:00-10:00'])).toBe('1 HR');
   });
 });
 

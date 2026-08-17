@@ -46,6 +46,9 @@ jobs:
       - name: Generate Prisma client
         run: npm run db:generate
 
+      - name: Apply database migrations
+        run: npx prisma migrate deploy
+
       - name: Build application
         run: npm run build
 
