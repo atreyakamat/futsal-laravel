@@ -120,7 +120,7 @@ export default async function CheckoutPage({ searchParams }: Props) {
 
       <div className="grid lg:grid-cols-12 gap-8 lg:gap-16">
         {/* Checkout Form — Order 1 on mobile, Order 2 on desktop */}
-        <div className="order-1 lg:order-2 lg:col-span-7">
+        <div className="order-1 lg:order-2 lg:col-span-7 space-y-6 sm:space-y-8">
           <div className="glass-card !p-6 sm:!p-10 lg:!p-12">
             <h2 className="text-xl sm:text-2xl font-black uppercase italic mb-8 tracking-tight flex items-center gap-3">
               <span className="material-symbols-outlined text-primary text-2xl">edit_document</span>
@@ -142,6 +142,50 @@ export default async function CheckoutPage({ searchParams }: Props) {
               refundFeeText={formatRefundPolicyText(refundPolicy, slots.length)}
               isWithinNoRefundWindow={isWithinNoRefundWindow}
             />
+          </div>
+
+          {/* Moved here from the Reservation Summary column — with a short
+              summary (e.g. a single slot), that column could end well above
+              this one, leaving these notices below the fold while the pay
+              button (right above, same column) was already visible and
+              clickable. Sitting directly under the form/button puts them in
+              the customer's line of sight right before they commit, on both
+              desktop and mobile, regardless of either column's height. */}
+          <div className="flex flex-col gap-4">
+            {/* No backdrop-blur here (unlike .glass) — a translucent blurred
+                panel stacked under the sticky header mis-composites on
+                mobile Safari during scroll, flashing as a solid color block. */}
+            <div className="flex items-start gap-4 p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-primary/20 bg-primary/10">
+              <span className="material-symbols-outlined text-primary text-xl sm:text-2xl animate-pulse flex-shrink-0">timer</span>
+              <p className="text-[10px] font-black text-primary/80 uppercase tracking-[0.15em] sm:tracking-[0.2em] leading-relaxed">
+                These slots are temporarily locked. Complete the booking within{' '}
+                <span className="text-white underline decoration-primary/50 underline-offset-4">10 minutes</span> to secure your pitch.
+              </p>
+            </div>
+
+            <div className="flex items-start gap-4 p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-red-500/20 bg-red-500/10">
+              <span className="material-symbols-outlined text-red-500 text-xl sm:text-2xl flex-shrink-0">event_busy</span>
+              <div className="space-y-2">
+                <p className="text-[10px] font-black text-red-500 uppercase tracking-[0.15em] sm:tracking-[0.2em] leading-relaxed">
+                  CANCELLATION & REFUND POLICY
+                </p>
+                <p className="text-xs font-medium text-white/60 leading-relaxed">
+                  Cancel up to {cutoffHours} hours before your scheduled session to be eligible for a refund.
+                </p>
+                <p className="text-xs font-medium text-white/60 leading-relaxed">
+                  Refund: {formatRefundPolicyText(refundPolicy, slots.length)} deducted from the refundable amount.
+                </p>
+              </div>
+            </div>
+
+            {isWithinNoRefundWindow && checkoutTotal > 0 && (
+              <div className="flex items-start gap-4 p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-red-500/40 bg-red-500/10">
+                <span className="material-symbols-outlined text-red-500 text-xl sm:text-2xl flex-shrink-0 animate-pulse">warning</span>
+                <p className="text-xs font-black text-red-400 uppercase tracking-widest leading-relaxed">
+                  This booking starts within {cutoffHours} hours. If you cancel or don't show up, you will NOT be eligible for any refund.
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -203,43 +247,6 @@ export default async function CheckoutPage({ searchParams }: Props) {
                 <span className="text-3xl sm:text-5xl font-black text-white italic tracking-tighter break-words max-w-full">₹{checkoutTotal}</span>
               </div>
             </div>
-          </div>
-
-          <div className="flex flex-col gap-4">
-            {/* No backdrop-blur here (unlike .glass) — a translucent blurred
-                panel stacked under the sticky header mis-composites on
-                mobile Safari during scroll, flashing as a solid color block. */}
-            <div className="flex items-start gap-4 p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-primary/20 bg-primary/10">
-              <span className="material-symbols-outlined text-primary text-xl sm:text-2xl animate-pulse flex-shrink-0">timer</span>
-              <p className="text-[10px] font-black text-primary/80 uppercase tracking-[0.15em] sm:tracking-[0.2em] leading-relaxed">
-                These slots are temporarily locked. Complete the booking within{' '}
-                <span className="text-white underline decoration-primary/50 underline-offset-4">10 minutes</span> to secure your pitch.
-              </p>
-            </div>
-            
-            <div className="flex items-start gap-4 p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-red-500/20 bg-red-500/10">
-              <span className="material-symbols-outlined text-red-500 text-xl sm:text-2xl flex-shrink-0">event_busy</span>
-              <div className="space-y-2">
-                <p className="text-[10px] font-black text-red-500 uppercase tracking-[0.15em] sm:tracking-[0.2em] leading-relaxed">
-                  CANCELLATION & REFUND POLICY
-                </p>
-                <p className="text-xs font-medium text-white/60 leading-relaxed">
-                  Cancel up to {cutoffHours} hours before your scheduled session to be eligible for a refund.
-                </p>
-                <p className="text-xs font-medium text-white/60 leading-relaxed">
-                  Refund: {formatRefundPolicyText(refundPolicy, slots.length)} deducted from the refundable amount.
-                </p>
-              </div>
-            </div>
-
-            {isWithinNoRefundWindow && checkoutTotal > 0 && (
-              <div className="flex items-start gap-4 p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-red-500/40 bg-red-500/10">
-                <span className="material-symbols-outlined text-red-500 text-xl sm:text-2xl flex-shrink-0 animate-pulse">warning</span>
-                <p className="text-xs font-black text-red-400 uppercase tracking-widest leading-relaxed">
-                  This booking starts within {cutoffHours} hours. If you cancel or don't show up, you will NOT be eligible for any refund.
-                </p>
-              </div>
-            )}
           </div>
         </div>
       </div>
