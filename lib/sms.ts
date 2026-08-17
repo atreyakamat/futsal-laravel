@@ -277,26 +277,42 @@ export class AiSensyProvider implements SmsProvider {
         // via a Maps text search rather than depending on the arena's own
         // (possibly short-link) gmaps_link field, which wouldn't fit that
         // static-prefix model.
-        buttons: useDynamicButton
+        // agnel_arena_otp's own URL button is registered dynamic (it needs
+        // a {{1}} parameter — the opposite of the booking-confirmation
+        // template's static one) confirmed by AiSensy's rejection:
+        // "Button at index 0 of type Url requires a parameter" when we sent
+        // an empty buttons array. Standard WhatsApp OTP-template pattern:
+        // an "Autofill"/"Copy Code" button whose parameter is the OTP
+        // itself (already in templateParams for the message body too).
+        buttons: isOtp
           ? [
               {
                 type: "button",
                 sub_type: "url",
                 index: 0,
-                parameters: [{ type: "text", text: ticketNumber || 'N/A' }],
+                parameters: [{ type: "text", text: otp }],
               },
-              ...(options?.arenaAddress
-                ? [
-                    {
-                      type: "button",
-                      sub_type: "url",
-                      index: 1,
-                      parameters: [{ type: "text", text: encodeURIComponent(options.arenaAddress) }],
-                    },
-                  ]
-                : []),
             ]
-          : [],
+          : useDynamicButton
+            ? [
+                {
+                  type: "button",
+                  sub_type: "url",
+                  index: 0,
+                  parameters: [{ type: "text", text: ticketNumber || 'N/A' }],
+                },
+                ...(options?.arenaAddress
+                  ? [
+                      {
+                        type: "button",
+                        sub_type: "url",
+                        index: 1,
+                        parameters: [{ type: "text", text: encodeURIComponent(options.arenaAddress) }],
+                      },
+                    ]
+                  : []),
+              ]
+            : [],
         carouselCards: [],
         location: {},
         attributes: {},
