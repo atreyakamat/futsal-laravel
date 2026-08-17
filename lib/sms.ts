@@ -13,7 +13,7 @@ function logToPublic(msg: string) {
 }
 
 export interface SmsProvider {
-  sendSms(to: string, message: string, options?: { appUrl?: string }): Promise<boolean>;
+  sendSms(to: string, message: string, options?: { appUrl?: string; arenaAddress?: string }): Promise<boolean>;
 }
 
 export class MockProvider implements SmsProvider {
@@ -35,7 +35,7 @@ export class TwilioProvider implements SmsProvider {
     this.fromNumber = process.env.TWILIO_FROM_NUMBER ?? '';
   }
 
-  async sendSms(to: string, message: string, options?: { appUrl?: string }): Promise<boolean> {
+  async sendSms(to: string, message: string, options?: { appUrl?: string; arenaAddress?: string }): Promise<boolean> {
     if (!this.accountSid || !this.authToken || !this.fromNumber) {
       console.warn('[TwilioProvider] Missing environment credentials, falling back to mock logging.');
       console.info(`[SMS TWILIO MOCK] To: ${to} | Message: ${message}`);
@@ -83,7 +83,7 @@ export class MSG91Provider implements SmsProvider {
     this.senderId = process.env.MSG91_SENDER_ID ?? '';
   }
 
-  async sendSms(to: string, message: string, options?: { appUrl?: string }): Promise<boolean> {
+  async sendSms(to: string, message: string, options?: { appUrl?: string; arenaAddress?: string }): Promise<boolean> {
     if (!this.authKey) {
       console.warn('[MSG91Provider] Missing environment credentials, falling back to mock logging.');
       console.info(`[SMS MSG91 MOCK] To: ${to} | Message: ${message}`);
@@ -129,7 +129,7 @@ export class GupshupProvider implements SmsProvider {
     this.password = process.env.GUPSHUP_PASSWORD ?? '';
   }
 
-  async sendSms(to: string, message: string, options?: { appUrl?: string }): Promise<boolean> {
+  async sendSms(to: string, message: string, options?: { appUrl?: string; arenaAddress?: string }): Promise<boolean> {
     if (!this.apiKey && !this.userId) {
       console.warn('[GupshupProvider] Missing environment credentials, falling back to mock logging.');
       console.info(`[SMS GUPSHUP MOCK] To: ${to} | Message: ${message}`);
@@ -174,7 +174,7 @@ export class AiSensyProvider implements SmsProvider {
     this.source = process.env.AISENSY_SOURCE ?? 'new-landing-page form';
   }
 
-  async sendSms(to: string, message: string, options?: { appUrl?: string }): Promise<boolean> {
+  async sendSms(to: string, message: string, options?: { appUrl?: string; arenaAddress?: string }): Promise<boolean> {
     if (!this.apiKey) {
       const errMsg = '[AiSensyProvider] Provider Configuration Error: AISENSY_API_KEY is missing from environment.';
       console.error(errMsg);
@@ -267,6 +267,16 @@ export class AiSensyProvider implements SmsProvider {
           url: pdfUrl,
           filename: ticketNumber ? `ticket-${ticketNumber}.pdf` : "booking_confirmation.pdf"
         },
+        // Button 1 ("Verify Booking") carries the ticket number as its
+        // dynamic suffix. Button 2 ("How to Reach Us") is registered with a
+        // static Google Maps search URL prefix
+        // (https://www.google.com/maps/search/?api=1&query={{1}}) and the
+        // arena's address as its dynamic suffix — WhatsApp/Meta only allows
+        // appending a dynamic value onto a fixed, template-registered URL
+        // prefix, not swapping in an arbitrary URL, so this always resolves
+        // via a Maps text search rather than depending on the arena's own
+        // (possibly short-link) gmaps_link field, which wouldn't fit that
+        // static-prefix model.
         buttons: useDynamicButton
           ? [
               {
@@ -275,6 +285,16 @@ export class AiSensyProvider implements SmsProvider {
                 index: 0,
                 parameters: [{ type: "text", text: ticketNumber || 'N/A' }],
               },
+              ...(options?.arenaAddress
+                ? [
+                    {
+                      type: "button",
+                      sub_type: "url",
+                      index: 1,
+                      parameters: [{ type: "text", text: encodeURIComponent(options.arenaAddress) }],
+                    },
+                  ]
+                : []),
             ]
           : [],
         carouselCards: [],

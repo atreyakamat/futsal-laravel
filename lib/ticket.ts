@@ -112,7 +112,7 @@ export async function sendTicketEmail(bookingRef: string, appUrl?: string) {
       const sent = await provider.sendSms(
         firstBooking.customer_mobile,
         `CONFIRMED|${ticket.bookingDate}|${timeRange}|${ticket.ticketNumbers[0] || ticket.bookingRef}|${bookingRef}|${ticket.customerName}`,
-        { appUrl }
+        { appUrl, arenaAddress: ticket.arenaAddress }
       );
       if (!sent) {
         console.error(`[WhatsApp Ticket] Provider reported failure sending ticket to ${firstBooking.customer_mobile}`);
