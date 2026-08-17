@@ -76,7 +76,7 @@ export default async function BookingSuccessPage({ params }: Props) {
           </div>
         </div>
         <div className="flex gap-6 mt-10">
-          <Link href="/" className="btn-primary flex-1 text-center">BOOK AGAIN</Link>
+          <Link href={`/arena/${arena.slug}`} className="btn-primary flex-1 text-center">BOOK AGAIN</Link>
           <Link href="/dashboard" className="btn-secondary flex-1 text-center">MY BOOKINGS</Link>
         </div>
         <div className="mt-6 flex justify-center">
@@ -269,7 +269,7 @@ export default async function BookingSuccessPage({ params }: Props) {
 
           <div className="flex gap-6">
             <Link
-              href="/"
+              href={`/arena/${arena.slug}`}
               className="btn-primary flex-1 text-center"
             >
               BOOK AGAIN
