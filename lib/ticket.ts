@@ -1,9 +1,11 @@
-import { getArenaById, getBookingsByRef } from '@/lib/domain';
+import { getArenaById, getBookingsByRef, queryOne } from '@/lib/domain';
 import { mergeSlots, getDurationText } from '@/lib/slot-merge';
-import { sendEmail, generateBookingConfirmationEmail } from '@/lib/email';
+import { sendEmail, generateBookingConfirmationEmail, type EmailAttachment } from '@/lib/email';
 import { getSmsProvider } from '@/lib/sms';
 import { buildTicketVerificationUrl, generateQrDataUrl } from '@/lib/qr';
 import { generateTicketDownloadToken } from '@/lib/ticket-token';
+import { generateTicketPdfBuffer } from '@/lib/pdf';
+import { generateTaxInvoicePdfBuffer } from '@/lib/gst-pdf';
 
 export type TicketPackage = {
   bookingRef: string;
@@ -139,7 +141,28 @@ export async function sendTicketEmail(bookingRef: string, appUrl?: string) {
       payAtVenue
     );
 
-    const result = await sendEmail({ to: firstBooking.customer_email, subject, html, text });
+    // Attach the ticket (with its own embedded QR + venue address) and, if
+    // one was issued, the GST tax invoice — best-effort, a PDF generation
+    // failure here shouldn't stop the confirmation email itself from going
+    // out with its inline QR.
+    const attachments: EmailAttachment[] = [];
+    try {
+      const ticketPdf = await generateTicketPdfBuffer(bookings, ticket.arenaName, ticket.arenaAddress);
+      attachments.push({ filename: `ticket-${ticket.bookingRef}.pdf`, content: ticketPdf, contentType: 'application/pdf' });
+    } catch (pdfErr) {
+      console.error('[Email] Failed to build ticket PDF attachment:', pdfErr);
+    }
+    try {
+      const invoice = await queryOne<any>(`SELECT * FROM tax_invoices WHERE booking_ref = ? LIMIT 1`, [bookingRef]);
+      if (invoice) {
+        const invoicePdf = await generateTaxInvoicePdfBuffer(invoice);
+        attachments.push({ filename: `${invoice.invoice_no}.pdf`, content: invoicePdf, contentType: 'application/pdf' });
+      }
+    } catch (invoiceErr) {
+      console.error('[Email] Failed to build invoice PDF attachment:', invoiceErr);
+    }
+
+    const result = await sendEmail({ to: firstBooking.customer_email, subject, html, text, attachments });
     return { sent: result.success, mode: 'resend' as const, error: result.error };
   }
 

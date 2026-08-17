@@ -1,4 +1,4 @@
-import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
+import { SESClient, SendEmailCommand, SendRawEmailCommand } from '@aws-sdk/client-ses';
 
 let sesClient: SESClient | null = null;
 
@@ -15,11 +15,74 @@ function getSES() {
   return sesClient;
 }
 
+export interface EmailAttachment {
+  filename: string;
+  content: Buffer;
+  contentType?: string;
+}
+
 interface EmailOptions {
   to: string;
   subject: string;
   html: string;
   text?: string;
+  attachments?: EmailAttachment[];
+}
+
+// SES's plain SendEmailCommand has no attachment support at all — it only
+// accepts a Subject/Html/Text body. Attachments require hand-assembling a
+// MIME message and sending it via SendRawEmailCommand instead.
+function buildRawMimeEmail(opts: {
+  from: string;
+  to: string;
+  subject: string;
+  html: string;
+  text?: string;
+  attachments: EmailAttachment[];
+}): Buffer {
+  const stamp = `${Date.now()}.${Math.random().toString(16).slice(2)}`;
+  const mixedBoundary = `mixed-${stamp}`;
+  const altBoundary = `alt-${stamp}`;
+  const lines: string[] = [];
+
+  lines.push(`From: ${opts.from}`);
+  lines.push(`To: ${opts.to}`);
+  lines.push(`Subject: ${opts.subject}`);
+  lines.push('MIME-Version: 1.0');
+  lines.push(`Content-Type: multipart/mixed; boundary="${mixedBoundary}"`);
+  lines.push('');
+
+  lines.push(`--${mixedBoundary}`);
+  lines.push(`Content-Type: multipart/alternative; boundary="${altBoundary}"`);
+  lines.push('');
+  lines.push(`--${altBoundary}`);
+  lines.push('Content-Type: text/plain; charset="UTF-8"');
+  lines.push('Content-Transfer-Encoding: 7bit');
+  lines.push('');
+  lines.push(opts.text || 'Please view this email in an HTML-compatible client.');
+  lines.push('');
+  lines.push(`--${altBoundary}`);
+  lines.push('Content-Type: text/html; charset="UTF-8"');
+  lines.push('Content-Transfer-Encoding: 7bit');
+  lines.push('');
+  lines.push(opts.html);
+  lines.push('');
+  lines.push(`--${altBoundary}--`);
+  lines.push('');
+
+  for (const att of opts.attachments) {
+    lines.push(`--${mixedBoundary}`);
+    lines.push(`Content-Type: ${att.contentType || 'application/pdf'}; name="${att.filename}"`);
+    lines.push('Content-Transfer-Encoding: base64');
+    lines.push(`Content-Disposition: attachment; filename="${att.filename}"`);
+    lines.push('');
+    lines.push(att.content.toString('base64').replace(/(.{76})/g, '$1\n'));
+    lines.push('');
+  }
+
+  lines.push(`--${mixedBoundary}--`);
+
+  return Buffer.from(lines.join('\r\n'), 'utf-8');
 }
 
 export async function sendEmail(options: EmailOptions): Promise<{ success: boolean; error?: string }> {
@@ -33,6 +96,20 @@ export async function sendEmail(options: EmailOptions): Promise<{ success: boole
   try {
     const ses = getSES();
     if (!ses) throw new Error('SES client not initialized');
+
+    if (options.attachments && options.attachments.length > 0) {
+      const raw = buildRawMimeEmail({
+        from: `AgnelArena <${fromEmail}>`,
+        to: options.to,
+        subject: options.subject,
+        html: options.html,
+        text: options.text,
+        attachments: options.attachments,
+      });
+      await ses.send(new SendRawEmailCommand({ RawMessage: { Data: raw } }));
+      console.info(`[EMAIL] Sent (${options.attachments.length} attachment(s)) to ${options.to}: ${options.subject}`);
+      return { success: true };
+    }
 
     const command = new SendEmailCommand({
       Source: `AgnelArena <${fromEmail}>`,

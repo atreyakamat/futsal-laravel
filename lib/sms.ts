@@ -255,21 +255,13 @@ export class AiSensyProvider implements SmsProvider {
           url: pdfUrl,
           filename: ticketNumber ? `ticket-${ticketNumber}.pdf` : "booking_confirmation.pdf"
         },
-        // The approved WhatsApp template's URL button is registered as
-        // static (no {{1}} placeholder) — AiSensy rejects the send with
-        // "Button at index 0 of type Url does not require parameters" if a
-        // `parameters` array is attached. Sending the button with no
-        // parameters lets the template's own fixed URL render. Getting a
-        // per-ticket dynamic link back would require re-registering the
-        // template on AiSensy/Meta with a dynamic URL button, not a code
-        // change here.
-        buttons: [
-          {
-            type: "button",
-            sub_type: "url",
-            index: 0
-          }
-        ],
+        // The approved WhatsApp template's URL button is static (no {{1}}
+        // placeholder) — AiSensy's own reference curl for this exact
+        // campaign ("agnelarena_cofirm") sends `buttons: []`. Redeclaring
+        // the button here at all (even with no `parameters`) was still
+        // getting rejected; a genuinely empty array matches what AiSensy
+        // expects and lets the template's own registered button render.
+        buttons: [],
         carouselCards: [],
         location: {},
         attributes: {},
