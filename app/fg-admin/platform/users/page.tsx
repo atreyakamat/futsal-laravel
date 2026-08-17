@@ -42,6 +42,9 @@ export default async function AdminUsersPage() {
         <Link href="/fg-admin/platform/super-admin" className="btn-secondary !py-3">
           Manage Managers & Security →
         </Link>
+        <Link href="/fg-admin/platform/arena-admins" className="btn-secondary !py-3">
+          Manage Arena Admins →
+        </Link>
         <Link href="/fg-admin/platform/accountants" className="btn-secondary !py-3">
           Manage Accountants →
         </Link>
