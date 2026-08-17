@@ -231,7 +231,7 @@ export function generateBookingConfirmationEmail(
             <tr><td style="padding: 8px 0; color: #666; font-size: 14px; vertical-align: top;">Arena</td><td style="padding: 8px 0; font-weight: 700; text-align: right;">${arenaRowValue}</td></tr>
             <tr><td style="padding: 8px 0; color: #666; font-size: 14px;">Date</td><td style="padding: 8px 0; font-weight: 700; text-align: right;">${new Date(bookingDate).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</td></tr>
             <tr><td style="padding: 8px 0; color: #666; font-size: 14px;">Time Slots</td><td style="padding: 8px 0; font-weight: 700; text-align: right; color: #0df220;">${mergedSlots}</td></tr>
-            <tr><td style="padding: 8px 0; color: #666; font-size: 14px;">Tickets</td><td style="padding: 8px 0; font-weight: 700; text-align: right;">${ticketNumbers.join(', ')}</td></tr>
+            <tr><td style="padding: 8px 0; color: #666; font-size: 14px;">Slots Booked</td><td style="padding: 8px 0; font-weight: 700; text-align: right;">${ticketNumbers.length}</td></tr>
             <tr><td style="padding: 8px 0; color: #666; font-size: 14px;">${amountRowLabel}</td><td style="padding: 8px 0; font-weight: 700; text-align: right;">₹${totalAmount.toFixed(2)}</td></tr>
           </table>
         </div>
@@ -254,7 +254,7 @@ export function generateBookingConfirmationEmail(
     </body>
     </html>
   `;
-  const text = `Booking Confirmed: ${bookingRef} at ${arenaName} on ${bookingDate} for ${mergedSlots}. Amount: ₹${totalAmount.toFixed(2)}. Tickets: ${ticketNumbers.join(', ')}.`;
+  const text = `Booking Confirmed: ${bookingRef} at ${arenaName} on ${bookingDate} for ${mergedSlots}. Amount: ₹${totalAmount.toFixed(2)}. Slots Booked: ${ticketNumbers.length}.`;
   return { subject, html, text };
 }
 
