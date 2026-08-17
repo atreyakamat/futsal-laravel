@@ -6,7 +6,11 @@ import { useRouter } from 'next/navigation';
 export default function EditArenaForm({ arena }: { arena: any }) {
   const [formData, setFormData] = useState({
     name: arena.name || '',
+    slug: arena.slug || '',
     address: arena.address || '',
+    contact_phone: arena.contact_phone || '',
+    whatsapp_number: arena.whatsapp_number || '',
+    gmaps_link: arena.gmaps_link || '',
     cover_image: arena.cover_image || '',
     logo_url: arena.logo_url || '',
     status: arena.status || 'active',
@@ -59,12 +63,51 @@ export default function EditArenaForm({ arena }: { arena: any }) {
           />
         </div>
         <div className="space-y-3">
+          <label className="label-classic">Slug</label>
+          <input
+            type="text"
+            className="input-field"
+            value={formData.slug}
+            onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+            placeholder="used in the turf's public URL, e.g. /arena/your-slug"
+          />
+        </div>
+        <div className="space-y-3">
           <label className="label-classic">Address</label>
           <input
             type="text"
             className="input-field"
             value={formData.address}
             onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+          />
+        </div>
+        <div className="space-y-3">
+          <label className="label-classic">Google Maps Link</label>
+          <input
+            type="url"
+            className="input-field"
+            value={formData.gmaps_link}
+            onChange={(e) => setFormData({ ...formData, gmaps_link: e.target.value })}
+            placeholder="https://maps.app.goo.gl/..."
+          />
+        </div>
+        <div className="space-y-3">
+          <label className="label-classic">Contact Phone</label>
+          <input
+            type="tel"
+            className="input-field"
+            value={formData.contact_phone}
+            onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
+          />
+        </div>
+        <div className="space-y-3">
+          <label className="label-classic">WhatsApp Number</label>
+          <input
+            type="tel"
+            className="input-field"
+            value={formData.whatsapp_number}
+            onChange={(e) => setFormData({ ...formData, whatsapp_number: e.target.value })}
+            placeholder="+91..."
           />
         </div>
         <div className="space-y-3">

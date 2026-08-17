@@ -76,6 +76,7 @@ export default function SuperAdminDashboardClient() {
   const [arenaContactPhone, setArenaContactPhone] = useState('');
   const [arenaWhatsappNumber, setArenaWhatsappNumber] = useState('');
   const [arenaGmapsLink, setArenaGmapsLink] = useState('');
+  const [arenaStatus, setArenaStatus] = useState<'active' | 'inactive'>('active');
   const [arenaCoverImage, setArenaCoverImage] = useState('');
   const [arenaLogoUrl, setArenaLogoUrl] = useState('');
   const [arenaPaymentMode, setArenaPaymentMode] = useState<'online' | 'offline'>('online');
@@ -304,6 +305,7 @@ export default function SuperAdminDashboardClient() {
           contact_phone: arenaContactPhone,
           whatsapp_number: arenaWhatsappNumber,
           gmaps_link: arenaGmapsLink,
+          status: arenaStatus,
           cover_image: arenaCoverImage,
           logo_url: arenaLogoUrl,
           payment_mode: arenaPaymentMode,
@@ -346,6 +348,7 @@ export default function SuperAdminDashboardClient() {
       setArenaContactPhone((arena as any).contact_phone || '');
       setArenaWhatsappNumber((arena as any).whatsapp_number || '');
       setArenaGmapsLink((arena as any).gmaps_link || '');
+      setArenaStatus(arena.status === 'inactive' ? 'inactive' : 'active');
       setArenaCoverImage((arena as any).cover_image || '');
       setArenaLogoUrl((arena as any).logo_url || '');
       // The arenas list doesn't carry payment_mode/upi_vpa/gst_place_of_supply
@@ -391,6 +394,7 @@ export default function SuperAdminDashboardClient() {
       setArenaContactPhone('');
       setArenaWhatsappNumber('');
       setArenaGmapsLink('');
+      setArenaStatus('active');
       setArenaCoverImage('');
       setArenaLogoUrl('');
       setArenaPaymentMode('online');
@@ -973,6 +977,20 @@ export default function SuperAdminDashboardClient() {
                         />
                         <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-2">
                           Clicking the address on the public page opens this. Leave blank to fall back to a Maps search for the address text.
+                        </p>
+                      </div>
+                      <div>
+                        <label className="label-classic">Status</label>
+                        <select
+                          className="input-field"
+                          value={arenaStatus}
+                          onChange={e => setArenaStatus(e.target.value as 'active' | 'inactive')}
+                        >
+                          <option value="active">Active</option>
+                          <option value="inactive">Inactive</option>
+                        </select>
+                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-2">
+                          Inactive turfs are hidden from the public listing and can't be booked.
                         </p>
                       </div>
                        <div>
