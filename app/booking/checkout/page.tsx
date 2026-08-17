@@ -121,36 +121,10 @@ export default async function CheckoutPage({ searchParams }: Props) {
       <div className="grid lg:grid-cols-12 gap-8 lg:gap-16">
         {/* Checkout Form — Order 1 on mobile, Order 2 on desktop */}
         <div className="order-1 lg:order-2 lg:col-span-7 space-y-6 sm:space-y-8">
-          <div className="glass-card !p-6 sm:!p-10 lg:!p-12">
-            <h2 className="text-xl sm:text-2xl font-black uppercase italic mb-8 tracking-tight flex items-center gap-3">
-              <span className="material-symbols-outlined text-primary text-2xl">edit_document</span>
-              Customer Details
-            </h2>
-
-            <CheckoutForm
-              formAction={`${process.env.NEXT_PUBLIC_APP_URL}/api/bookings/process`}
-              arenaId={arena.id}
-              date={date}
-              slotsJson={slotsJson}
-              csrfToken={csrfToken}
-              paramName={paramName}
-              effectiveMobile={effectiveMobile}
-              paramEmail={paramEmail}
-              checkoutTotal={checkoutTotal}
-              payuReady={payuReady}
-              cutoffHours={cutoffHours}
-              refundFeeText={formatRefundPolicyText(refundPolicy, slots.length)}
-              isWithinNoRefundWindow={isWithinNoRefundWindow}
-            />
-          </div>
-
-          {/* Moved here from the Reservation Summary column — with a short
-              summary (e.g. a single slot), that column could end well above
-              this one, leaving these notices below the fold while the pay
-              button (right above, same column) was already visible and
-              clickable. Sitting directly under the form/button puts them in
-              the customer's line of sight right before they commit, on both
-              desktop and mobile, regardless of either column's height. */}
+          {/* Disclaimers render before the form/pay button now — the
+              customer should read the lock-expiry and refund terms before
+              they commit, not scroll past a "CONFIRM & PAY" button to find
+              them underneath it. */}
           <div className="flex flex-col gap-4">
             {/* No backdrop-blur here (unlike .glass) — a translucent blurred
                 panel stacked under the sticky header mis-composites on
@@ -186,6 +160,29 @@ export default async function CheckoutPage({ searchParams }: Props) {
                 </p>
               </div>
             )}
+          </div>
+
+          <div className="glass-card !p-6 sm:!p-10 lg:!p-12">
+            <h2 className="text-xl sm:text-2xl font-black uppercase italic mb-8 tracking-tight flex items-center gap-3">
+              <span className="material-symbols-outlined text-primary text-2xl">edit_document</span>
+              Customer Details
+            </h2>
+
+            <CheckoutForm
+              formAction={`${process.env.NEXT_PUBLIC_APP_URL}/api/bookings/process`}
+              arenaId={arena.id}
+              date={date}
+              slotsJson={slotsJson}
+              csrfToken={csrfToken}
+              paramName={paramName}
+              effectiveMobile={effectiveMobile}
+              paramEmail={paramEmail}
+              checkoutTotal={checkoutTotal}
+              payuReady={payuReady}
+              cutoffHours={cutoffHours}
+              refundFeeText={formatRefundPolicyText(refundPolicy, slots.length)}
+              isWithinNoRefundWindow={isWithinNoRefundWindow}
+            />
           </div>
         </div>
 

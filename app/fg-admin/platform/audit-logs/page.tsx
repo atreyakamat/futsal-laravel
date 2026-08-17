@@ -1,13 +1,21 @@
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
+import { readAuthUserId } from '@/lib/session';
+import { getAdminContext } from '@/lib/admin';
 import { query } from '@/lib/domain';
 
-export default async function AuditLogsPage() {
-  const cookieStore = await cookies();
-  const sessionId = cookieStore.get('fg_session_id')?.value;
-  const userIdRaw = cookieStore.get('fg_auth_user')?.value;
+export const dynamic = 'force-dynamic';
 
-  if (!sessionId || !userIdRaw) {
+export default async function AuditLogsPage() {
+  // `fg_session_id` is the customer/guest booking session cookie — no admin
+  // login route ever sets it, so requiring it here (alongside the raw,
+  // never-verified `fg_auth_user` cookie) redirected every admin to login,
+  // every time, regardless of whether their session was valid. Replaced
+  // with the same readAuthUserId()/getAdminContext() check used by every
+  // other working admin page (e.g. app/fg-admin/platform/settings/page.tsx).
+  const userId = await readAuthUserId();
+  const context = await getAdminContext(userId);
+
+  if (!context || context.role !== 'super_admin') {
     redirect('/fg-admin/login');
   }
 

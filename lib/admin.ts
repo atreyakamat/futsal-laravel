@@ -681,6 +681,25 @@ export async function resolveApprovalRequest(input: {
       });
     }
 
+    if (request.request_type === 'entry_mode_update') {
+      // Created at app/api/fg-admin/platform/slots/route.ts's `entry_mode`
+      // action, but had no matching branch here — an approved entry-mode
+      // change silently never applied; the request just flipped to
+      // 'approved' without ever calling setArenaEntryMode.
+      const entryModePayload = payload as { mode: EntryMode };
+      if (!request.arena_id) throw new Error('Approval request is missing an arena.');
+      await setArenaEntryMode(request.arena_id, entryModePayload.mode);
+      await createAdminAuditLog({
+        action: 'ENTRY_MODE_UPDATE',
+        requestedBy: request.requested_by,
+        approvedBy: input.decisionBy,
+        arenaId: request.arena_id,
+        fieldChanged: 'Entry Mode',
+        newValue: payload,
+        reason: input.reason
+      });
+    }
+
     if (request.request_type === 'IMAGE_UPDATE' || request.request_type === 'image_update') {
       const imagePayload = payload as { cover_image?: string; logo_url?: string };
       const updates = [];

@@ -47,34 +47,46 @@ async function resolveArenaId(request: NextRequest, userId: number | null) {
 }
 
 export async function GET(request: NextRequest) {
-  const userId = await readAuthUserId();
-  const context = await getAdminContext(userId);
+  try {
+    const userId = await readAuthUserId();
+    const context = await getAdminContext(userId);
 
-  if (!context || !['super_admin', 'arena_admin'].includes(context.role)) {
-    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
+    if (!context || !['super_admin', 'arena_admin'].includes(context.role)) {
+      return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
+    }
+
+    const arenas = context.role === 'super_admin' ? await listArenas() : [];
+    const arenaId = (await resolveArenaId(request, userId)) ?? (context.role === 'super_admin' ? arenas[0]?.id ?? null : null);
+
+    if (!arenaId) {
+      return NextResponse.json({ success: true, arenas, slots: [], entryMode: 'open' });
+    }
+
+    const slots = await getArenaPricing(arenaId);
+    const entryMode = await getArenaEntryMode(arenaId);
+    const holidays = await query<{ id: number; date: string; reason: string | null }>(
+      `SELECT id, date, reason FROM arena_holidays WHERE arena_id = ? ORDER BY date ASC`,
+      [arenaId]
+    );
+    // admin_slot_blocks.booking_date is TEXT, not DATE — Postgres has no
+    // implicit text->date cast, so comparing it directly against
+    // CURRENT_DATE (a date) threw on every single call here, unconditionally,
+    // for every arena. This was the actual root cause of "add slot does
+    // nothing" and "current slots never show": the POST insert succeeded,
+    // but every subsequent GET refresh (including the one POST triggers)
+    // crashed before ever reaching this response.
+    const blockedSlots = await query<{ id: number; booking_date: string; time_slot: string; reason: string | null }>(
+      `SELECT id, booking_date, time_slot, reason FROM admin_slot_blocks
+        WHERE arena_id = ? AND booking_date >= CURRENT_DATE::text
+        ORDER BY booking_date ASC, time_slot ASC`,
+      [arenaId]
+    );
+
+    return NextResponse.json({ success: true, arenas, arenaId, slots, entryMode, holidays, blockedSlots });
+  } catch (err: any) {
+    reportServerError(err, { route: 'fg-admin/platform/slots', action: 'GET' });
+    return NextResponse.json({ success: false, message: 'Failed to load slot data. Please try again.' }, { status: 500 });
   }
-
-  const arenas = context.role === 'super_admin' ? await listArenas() : [];
-  const arenaId = (await resolveArenaId(request, userId)) ?? (context.role === 'super_admin' ? arenas[0]?.id ?? null : null);
-
-  if (!arenaId) {
-    return NextResponse.json({ success: true, arenas, slots: [], entryMode: 'open' });
-  }
-
-  const slots = await getArenaPricing(arenaId);
-  const entryMode = await getArenaEntryMode(arenaId);
-  const holidays = await query<{ id: number; date: string; reason: string | null }>(
-    `SELECT id, date, reason FROM arena_holidays WHERE arena_id = ? ORDER BY date ASC`,
-    [arenaId]
-  );
-  const blockedSlots = await query<{ id: number; booking_date: string; time_slot: string; reason: string | null }>(
-    `SELECT id, booking_date, time_slot, reason FROM admin_slot_blocks
-      WHERE arena_id = ? AND booking_date >= CURRENT_DATE
-      ORDER BY booking_date ASC, time_slot ASC`,
-    [arenaId]
-  );
-
-  return NextResponse.json({ success: true, arenas, arenaId, slots, entryMode, holidays, blockedSlots });
 }
 
 export async function POST(request: Request) {

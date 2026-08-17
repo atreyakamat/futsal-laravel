@@ -64,12 +64,25 @@ export default function SlotManagementClient({ arenaId, isSuperAdmin }: Props) {
   const applyLabel = isSuperAdmin ? 'Apply' : 'Request';
 
   const refresh = useCallback(async () => {
-    const res = await fetch(`/api/fg-admin/platform/slots?arena_id=${arenaId}`);
-    const data = await res.json();
-    if (data.success) {
-      setSlots(data.slots || []);
-      setHolidays(data.holidays || []);
-      setBlocks(data.blockedSlots || []);
+    // A failed fetch/parse here used to disappear as an unhandled promise
+    // rejection (the caller only ever did `refresh().finally(...)`, which
+    // doesn't catch) — an add/edit/delete could succeed server-side while
+    // the "Current Slots" list silently never updated to show it, with no
+    // visible error at all. Now surfaced through the same `error` state
+    // the rest of the UI already reads.
+    try {
+      const res = await fetch(`/api/fg-admin/platform/slots?arena_id=${arenaId}`);
+      const data = await res.json();
+      if (data.success) {
+        setSlots(data.slots || []);
+        setHolidays(data.holidays || []);
+        setBlocks(data.blockedSlots || []);
+        setError('');
+      } else {
+        setError(data.message || 'Failed to load slot data.');
+      }
+    } catch {
+      setError('Failed to load slot data. Please refresh the page.');
     }
     setLoaded(true);
   }, [arenaId]);

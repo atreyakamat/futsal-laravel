@@ -1,176 +1,28 @@
-'use client';
+import { redirect } from 'next/navigation';
+import { readAuthUserId } from '@/lib/session';
+import { getAdminContext } from '@/lib/admin';
+import UnifiedLoginForm from '@/components/UnifiedLoginForm';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import TurnstileWidget from '@/components/TurnstileWidget';
+export const dynamic = 'force-dynamic';
 
-type Role = 'super_admin' | 'arena_admin' | 'security' | 'accountant';
+// Matches the redirect targets UnifiedLoginForm itself uses right after a
+// fresh login — reused here so an already-logged-in admin who navigates
+// back to this page skips straight past the form instead of being asked
+// for credentials again even though their session cookie is still valid.
+const ROLE_REDIRECT: Record<string, string> = {
+  super_admin: '/fg-admin/platform/dashboard',
+  arena_admin: '/fg-admin/arena/dashboard',
+  security: '/fg-admin/security/scan',
+  accountant: '/fg-admin/accountant/dashboard',
+};
 
-export default function UnifiedLogin() {
-  const [activeTab, setActiveTab] = useState<Role>('super_admin');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [turnstileToken, setTurnstileToken] = useState('');
-  const router = useRouter();
-  const turnstileRequired = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
+export default async function AdminLoginPage() {
+  const userId = await readAuthUserId();
+  const context = await getAdminContext(userId);
 
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-
-    let endpoint = '';
-    let redirectPath = '';
-
-    if (activeTab === 'super_admin') {
-      endpoint = '/api/auth/super-admin/login';
-      redirectPath = '/fg-admin/platform/dashboard';
-    } else if (activeTab === 'arena_admin') {
-      endpoint = '/api/auth/arena-admin/login';
-      redirectPath = '/fg-admin/arena/dashboard';
-    } else if (activeTab === 'security') {
-      endpoint = '/api/auth/security/login';
-      redirectPath = '/fg-admin/security/scan';
-    } else if (activeTab === 'accountant') {
-      endpoint = '/api/auth/accountant/login';
-      redirectPath = '/fg-admin/accountant/dashboard';
-    }
-
-    try {
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, turnstileToken }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok && data.success) {
-        router.push(redirectPath);
-      } else {
-        setError(data.message || 'Login failed');
-      }
-    } catch (err) {
-      setError('An error occurred during login');
-    } finally {
-      setLoading(false);
-    }
+  if (context) {
+    redirect(ROLE_REDIRECT[context.role] || '/fg-admin/platform/dashboard');
   }
 
-  return (
-    <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden">
-      {/* Background */}
-      <div className="absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-dark-900/90 mix-blend-multiply" />
-        <div className="absolute inset-0 bg-gradient-to-t from-dark-950 via-dark-900/80 to-transparent" />
-      </div>
-
-      <div className="w-full max-w-md relative z-10">
-        <div className="text-center mb-10">
-          <Link href="/" className="inline-block">
-            <span className="text-3xl font-black uppercase tracking-tighter italic">
-              Agnel<span className="text-primary">Goa</span>
-            </span>
-          </Link>
-          <h1 className="text-xl font-bold uppercase tracking-widest text-white/50 mt-4">
-            Authorized Personnel Only
-          </h1>
-        </div>
-
-        <div className="glass-card">
-          <div className="flex justify-between border-b border-white/10 mb-6">
-            <button
-              onClick={() => { setActiveTab('super_admin'); setError(''); }}
-              className={`pb-4 px-2 text-[10px] font-black tracking-widest uppercase transition-colors ${
-                activeTab === 'super_admin' ? 'text-primary border-b-2 border-primary' : 'text-white/40 hover:text-white/80'
-              }`}
-            >
-              Super Admin
-            </button>
-            <button
-              onClick={() => { setActiveTab('arena_admin'); setError(''); }}
-              className={`pb-4 px-2 text-[10px] font-black tracking-widest uppercase transition-colors ${
-                activeTab === 'arena_admin' ? 'text-primary border-b-2 border-primary' : 'text-white/40 hover:text-white/80'
-              }`}
-            >
-              Arena Admin
-            </button>
-            <button
-              onClick={() => { setActiveTab('security'); setError(''); }}
-              className={`pb-4 px-2 text-[10px] font-black tracking-widest uppercase transition-colors ${
-                activeTab === 'security' ? 'text-primary border-b-2 border-primary' : 'text-white/40 hover:text-white/80'
-              }`}
-            >
-              Security
-            </button>
-            <button
-              onClick={() => { setActiveTab('accountant'); setError(''); }}
-              className={`pb-4 px-2 text-[10px] font-black tracking-widest uppercase transition-colors ${
-                activeTab === 'accountant' ? 'text-primary border-b-2 border-primary' : 'text-white/40 hover:text-white/80'
-              }`}
-            >
-              Accountant
-            </button>
-          </div>
-
-          <form onSubmit={handleLogin} className="space-y-6">
-            {error && (
-              <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-bold uppercase tracking-widest text-center">
-                {error}
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <label className="label-classic">Email Address</label>
-              <input
-                type="email"
-                className="input-field"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="label-classic">Password</label>
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  className="input-field pr-12"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
-                >
-                  <span className="material-symbols-outlined text-xl">
-                    {showPassword ? 'visibility_off' : 'visibility'}
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            {turnstileRequired && (
-              <div className="flex justify-center">
-                <TurnstileWidget onToken={setTurnstileToken} />
-              </div>
-            )}
-
-            <button type="submit" disabled={loading || (turnstileRequired && !turnstileToken)} className="btn-primary w-full py-4 mt-2">
-              {loading ? 'AUTHENTICATING...' : `LOGIN AS ${activeTab.replace('_', ' ').toUpperCase()}`}
-            </button>
-          </form>
-        </div>
-      </div>
-    </div>
-  );
+  return <UnifiedLoginForm />;
 }
