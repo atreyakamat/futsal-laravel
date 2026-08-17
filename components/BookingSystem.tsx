@@ -321,19 +321,26 @@ export default function BookingSystem({
                 Pick a <span className="text-primary text-stroke">Slot</span>
               </h2>
 
-              {/* Grid, not flex — prev/next are fixed "auto" columns that
-                  can never get squeezed out of view; the middle column is
-                  the only one allowed to shrink (min-w-0 + truncate), so
-                  the arrows stay on-screen and clickable no matter how
-                  narrow the viewport or how long the date label gets. This
-                  replaced a flex row where the date button could grow wide
-                  enough to push the next arrow off-screen on mobile. */}
-              <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2 sm:inline-grid sm:w-auto">
+              {/* Sizing (flex-basis/shrink/min-width/overflow) is set via
+                  inline style, not Tailwind utility classes, for this row
+                  specifically — two prior attempts at this (a flex layout,
+                  then a CSS-grid layout) both still shipped with the next
+                  arrow pushed off-screen on real mobile devices despite
+                  looking correct in review, which points at a Tailwind
+                  arbitrary-value/JIT class not surviving the production
+                  build rather than a flex-math error. Inline styles can't
+                  be dropped by any build step, so this removes that
+                  uncertainty entirely: the two arrows are hard-fixed at
+                  their content width and never shrink or grow, and the
+                  date button is the only flexible piece, clamped to
+                  whatever space is left over. */}
+              <div className="flex items-center gap-2" style={{ width: '100%', maxWidth: '100%' }}>
                 <button
                   type="button"
                   onClick={() => changeDate(addDays(date, -1))}
                   disabled={date <= todayStr}
                   className="btn-secondary !p-2.5 !rounded-xl disabled:opacity-20 disabled:cursor-not-allowed disabled:pointer-events-none"
+                  style={{ flex: '0 0 auto' }}
                   aria-label="Previous day"
                 >
                   <span className="material-symbols-outlined text-lg">chevron_left</span>
@@ -348,10 +355,11 @@ export default function BookingSystem({
                 <button
                   type="button"
                   onClick={() => dateInputRef.current?.showPicker?.()}
-                  className="btn-secondary !rounded-xl !py-2.5 !px-3 sm:!px-4 min-w-0 w-full flex items-center justify-center gap-2 text-[11px] sm:text-xs"
+                  className="btn-secondary !rounded-xl !py-2.5 !px-3 sm:!px-4 flex items-center justify-center gap-2 text-[11px] sm:text-xs"
+                  style={{ flex: '1 1 0%', minWidth: 0, overflow: 'hidden' }}
                 >
-                  <span className="material-symbols-outlined text-base shrink-0">calendar_month</span>
-                  <span className="truncate">
+                  <span className="material-symbols-outlined text-base" style={{ flex: '0 0 auto' }}>calendar_month</span>
+                  <span className="truncate" style={{ minWidth: 0, overflow: 'hidden' }}>
                     {new Date(`${date}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
                   </span>
                 </button>
@@ -370,6 +378,7 @@ export default function BookingSystem({
                   type="button"
                   onClick={() => changeDate(addDays(date, 1))}
                   className="btn-secondary !p-2.5 !rounded-xl"
+                  style={{ flex: '0 0 auto' }}
                   aria-label="Next day"
                 >
                   <span className="material-symbols-outlined text-lg">chevron_right</span>
