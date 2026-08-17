@@ -321,66 +321,65 @@ export default function BookingSystem({
                 Pick a <span className="text-primary text-stroke">Slot</span>
               </h2>
 
-              {/* Sizing (flex-basis/shrink/min-width/overflow) is set via
-                  inline style, not Tailwind utility classes, for this row
-                  specifically — two prior attempts at this (a flex layout,
-                  then a CSS-grid layout) both still shipped with the next
-                  arrow pushed off-screen on real mobile devices despite
-                  looking correct in review, which points at a Tailwind
-                  arbitrary-value/JIT class not surviving the production
-                  build rather than a flex-math error. Inline styles can't
-                  be dropped by any build step, so this removes that
-                  uncertainty entirely: the two arrows are hard-fixed at
-                  their content width and never shrink or grow, and the
-                  date button is the only flexible piece, clamped to
-                  whatever space is left over. */}
-              <div className="flex items-center gap-2" style={{ width: '100%', maxWidth: '100%' }}>
+              {/* Two prior attempts at this row (flex-shrink, then CSS grid,
+                  then flex again with inline styles) all still shipped with
+                  the next arrow pushed off-screen on a real device despite
+                  looking correct in every review — every version relied on
+                  one element (the date button) shrinking against two fixed
+                  siblings, and something about that specific shrink
+                  computation wasn't landing on-device. Removing the shrink
+                  requirement entirely instead: the date button gets its own
+                  full-width row (nothing to negotiate width with, so it can
+                  never overflow), and the two arrows sit in a separate row
+                  below, pinned to opposite ends via justify-between — no
+                  element in either row ever needs to shrink relative to a
+                  sibling. */}
+              <button
+                type="button"
+                onClick={() => dateInputRef.current?.showPicker?.()}
+                className="btn-secondary !rounded-xl !py-2.5 !px-4 w-full flex items-center justify-center gap-2 text-xs mb-2"
+              >
+                <span className="material-symbols-outlined text-base">calendar_month</span>
+                <span>
+                  {new Date(`${date}T00:00:00`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
+                </span>
+              </button>
+              {/* A button that opens the native date picker, rather than a
+                  raw <input type="date"> — the raw input lets people type
+                  an arbitrary date and its width/rendering is inconsistent
+                  on mobile. This button fully controls its own layout and
+                  the underlying input is visually hidden, only used to
+                  drive showPicker(). */}
+              <input
+                ref={dateInputRef}
+                type="date"
+                value={date}
+                min={todayStr}
+                onChange={(e) => e.target.value && changeDate(e.target.value)}
+                tabIndex={-1}
+                aria-hidden="true"
+                className="sr-only"
+              />
+
+              <div className="flex items-center justify-between">
                 <button
                   type="button"
                   onClick={() => changeDate(addDays(date, -1))}
                   disabled={date <= todayStr}
-                  className="btn-secondary !p-2.5 !rounded-xl disabled:opacity-20 disabled:cursor-not-allowed disabled:pointer-events-none"
-                  style={{ flex: '0 0 auto' }}
+                  className="btn-secondary !py-2.5 !px-5 !rounded-xl disabled:opacity-20 disabled:cursor-not-allowed disabled:pointer-events-none flex items-center gap-1"
                   aria-label="Previous day"
                 >
                   <span className="material-symbols-outlined text-lg">chevron_left</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest">Prev</span>
                 </button>
-
-                {/* A button that opens the native date picker, rather than a
-                    raw <input type="date"> — the raw input lets people type
-                    an arbitrary date and its width/rendering is inconsistent
-                    on mobile. This button fully controls its own layout and
-                    the underlying input is visually hidden, only used to
-                    drive showPicker(). */}
-                <button
-                  type="button"
-                  onClick={() => dateInputRef.current?.showPicker?.()}
-                  className="btn-secondary !rounded-xl !py-2.5 !px-3 sm:!px-4 flex items-center justify-center gap-2 text-[11px] sm:text-xs"
-                  style={{ flex: '1 1 0%', minWidth: 0, overflow: 'hidden' }}
-                >
-                  <span className="material-symbols-outlined text-base" style={{ flex: '0 0 auto' }}>calendar_month</span>
-                  <span className="truncate" style={{ minWidth: 0, overflow: 'hidden' }}>
-                    {new Date(`${date}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-                  </span>
-                </button>
-                <input
-                  ref={dateInputRef}
-                  type="date"
-                  value={date}
-                  min={todayStr}
-                  onChange={(e) => e.target.value && changeDate(e.target.value)}
-                  tabIndex={-1}
-                  aria-hidden="true"
-                  className="sr-only"
-                />
 
                 <button
                   type="button"
                   onClick={() => changeDate(addDays(date, 1))}
-                  className="btn-secondary !p-2.5 !rounded-xl"
-                  style={{ flex: '0 0 auto' }}
+                  className="btn-secondary !py-2.5 !px-5 !rounded-xl flex items-center gap-1"
                   aria-label="Next day"
                 >
+                  <span className="text-[10px] font-black uppercase tracking-widest">Next</span>
                   <span className="material-symbols-outlined text-lg">chevron_right</span>
                 </button>
               </div>
