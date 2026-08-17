@@ -2,10 +2,12 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { verifySecurityStaffCredentials } from '@/lib/super-admin';
 import { signValue, getCookieOptions } from '@/lib/session';
+import { verifyTurnstileToken } from '@/lib/turnstile';
 
 const bodySchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
+  turnstileToken: z.string().optional(),
 });
 
 export async function POST(request: Request) {
@@ -14,6 +16,14 @@ export async function POST(request: Request) {
     const payload = bodySchema.parse(
       isJson ? await request.json() : Object.fromEntries((await request.formData()).entries())
     );
+
+    const turnstile = await verifyTurnstileToken(payload.turnstileToken, request.headers.get('x-forwarded-for') || undefined);
+    if (!turnstile.success) {
+      return NextResponse.json(
+        { success: false, message: 'Captcha verification failed. Please try again.' },
+        { status: 403 }
+      );
+    }
 
     const securityStaff = await verifySecurityStaffCredentials(payload.email, payload.password);
 

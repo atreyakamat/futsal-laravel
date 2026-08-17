@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import TurnstileWidget from '@/components/TurnstileWidget';
 
 type Role = 'super_admin' | 'arena_admin' | 'security' | 'accountant';
 
@@ -13,7 +14,9 @@ export default function UnifiedLogin() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [turnstileToken, setTurnstileToken] = useState('');
   const router = useRouter();
+  const turnstileRequired = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -41,7 +44,7 @@ export default function UnifiedLogin() {
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, turnstileToken }),
       });
 
       const data = await res.json();
@@ -156,7 +159,13 @@ export default function UnifiedLogin() {
               </div>
             </div>
 
-            <button type="submit" disabled={loading} className="btn-primary w-full py-4 mt-2">
+            {turnstileRequired && (
+              <div className="flex justify-center">
+                <TurnstileWidget onToken={setTurnstileToken} />
+              </div>
+            )}
+
+            <button type="submit" disabled={loading || (turnstileRequired && !turnstileToken)} className="btn-primary w-full py-4 mt-2">
               {loading ? 'AUTHENTICATING...' : `LOGIN AS ${activeTab.replace('_', ' ').toUpperCase()}`}
             </button>
           </form>

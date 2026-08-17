@@ -22,6 +22,11 @@ const SOFT_REQUIRED_ENV_VARS = [
   'RESEND_API_KEY',
   'SMS_PROVIDER',
   'SENTRY_DSN',
+  // Admin-login Turnstile captcha: without these, lib/turnstile.ts fails
+  // open (verification is skipped, not enforced) and the client-side
+  // widget doesn't render at all — see components/TurnstileWidget.tsx.
+  'TURNSTILE_SECRET_KEY',
+  'NEXT_PUBLIC_TURNSTILE_SITE_KEY',
 ];
 
 const PRODUCTION_REQUIRED_VARS = [
@@ -109,12 +114,12 @@ export function getSecurityHeaders() {
     'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
     'Content-Security-Policy': [
       "default-src 'self' https://agnelarenagoa.com https://www.agnelarenagoa.com",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://www.google.com https://www.gstatic.com",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://www.google.com https://www.gstatic.com https://challenges.cloudflare.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: https: blob:",
-      "connect-src 'self' https://api.resend.com https://sentry.io https://*.payu.in https://agnelarenagoa.com https://www.agnelarenagoa.com",
-      "frame-src https://www.google.com https://test.payu.in https://secure.payu.in",
+      "connect-src 'self' https://api.resend.com https://sentry.io https://*.payu.in https://agnelarenagoa.com https://www.agnelarenagoa.com https://challenges.cloudflare.com",
+      "frame-src https://www.google.com https://test.payu.in https://secure.payu.in https://challenges.cloudflare.com",
       "form-action 'self' https://test.payu.in https://secure.payu.in https://*.payu.in https://agnelarenagoa.com https://www.agnelarenagoa.com",
       "base-uri 'self'",
     ].join('; '),
