@@ -240,27 +240,6 @@ export async function updateUserPassword(userId: number, password: string) {
   await query('UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?', [passwordHash, userId]);
 }
 
-export async function setArenaAssignment(userId: number, role: AdminRole, arenaId: number | null) {
-  await query('UPDATE users SET role = ?, updated_at = NOW() WHERE id = ?', [role, userId]);
-
-  if (role === 'manager' || role === 'security') {
-    if (!arenaId) {
-      throw new Error('Arena assignment is required for managers and security staff.');
-    }
-
-    await query(
-      `INSERT INTO arena_managers (user_id, arena_id, role, created_at, updated_at)
-       VALUES (?, ?, ?, NOW(), NOW())
-       ON CONFLICT (user_id)
-       DO UPDATE SET arena_id = EXCLUDED.arena_id, role = EXCLUDED.role, updated_at = NOW()`,
-      [userId, arenaId, role]
-    );
-    return;
-  }
-
-  await query('DELETE FROM arena_managers WHERE user_id = ?', [userId]);
-}
-
 function securityPermissionSettingKey(userId: number) {
   return `security:${userId}:permissions`;
 }
@@ -333,59 +312,6 @@ export async function listArenas() {
     address: string | null;
     status: string;
   }>('SELECT id, name, slug, address, status FROM arenas ORDER BY name ASC');
-}
-
-export async function listUsersWithArena() {
-  return query<{
-    id: number;
-    name: string;
-    email: string;
-    customer_mobile: string | null;
-    role: string;
-    arena_id: number | null;
-    arena_name: string | null;
-    arena_role: string | null;
-    created_at: string;
-  }>(`
-    SELECT u.id, u.name, u.email, u.customer_mobile, u.role, am.arena_id, a.name AS arena_name, am.role AS arena_role, u.created_at
-      FROM users u
-      LEFT JOIN arena_managers am ON am.user_id = u.id
-      LEFT JOIN arenas a ON a.id = am.arena_id
-     ORDER BY u.created_at DESC
-     LIMIT 200
-  `);
-}
-
-export async function createAdminUser(input: {
-  name: string;
-  email: string;
-  mobile?: string | null;
-  password: string;
-  role: Exclude<AdminRole, 'super_admin' | 'customer'>;
-  arenaId?: number | null;
-  securityPermissions?: Partial<SecurityPermissions>;
-}) {
-  const passwordHash = await bcrypt.hash(input.password, 12);
-  const created = await queryOne<{ id: number }>(
-    `INSERT INTO users (name, email, customer_mobile, password, role, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, NOW(), NOW())
-     RETURNING id`,
-    [input.name, input.email, input.mobile ?? null, passwordHash, input.role]
-  );
-
-  if (!created) {
-    throw new Error('Failed to create user.');
-  }
-
-  await setArenaAssignment(created.id, input.role, input.arenaId ?? null);
-
-  if (input.role === 'security') {
-    await setSecurityPermissions(created.id, input.securityPermissions ?? {});
-  } else {
-    await clearSecurityPermissions(created.id);
-  }
-
-  return created.id;
 }
 
 export async function getArenaSetting(arenaId: number, suffix: string) {

@@ -338,6 +338,47 @@ export async function removeAccountant(accountantId: number) {
   await query('UPDATE accountants SET is_active = false WHERE id = ?', [accountantId]);
 }
 
+export interface StaffDirectoryRow {
+  id: number;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  is_active: boolean;
+  created_at: string;
+  role: 'super_admin' | 'manager' | 'arena_admin' | 'security' | 'accountant';
+  arena_id: number | null;
+  arena_name: string | null;
+  phone: string | null;
+}
+
+/**
+ * Every real admin/staff account across all five role tables, for the
+ * read-only staff directory. NOT the `users` table — customer accounts
+ * never belong here, and `users.role` isn't consulted by getAdminContext()
+ * for any of these roles (each has its own dedicated table).
+ */
+export async function listStaffAccounts() {
+  return query<StaffDirectoryRow>(`
+    SELECT sa.id, sa.email, sa.first_name, sa.last_name, sa.is_active, sa.created_at,
+           'super_admin'::text AS role, NULL::int AS arena_id, NULL::text AS arena_name, NULL::text AS phone
+      FROM super_admins sa
+    UNION ALL
+    SELECT aa.id, aa.email, aa.first_name, aa.last_name, aa.is_active, aa.created_at,
+           CASE WHEN aa.arena_id IS NULL THEN 'arena_admin' ELSE 'manager' END,
+           aa.arena_id, a.name, NULL::text
+      FROM arena_admins aa LEFT JOIN arenas a ON a.id = aa.arena_id
+    UNION ALL
+    SELECT s.id, s.email, s.first_name, s.last_name, s.is_active, s.created_at,
+           'security'::text, s.arena_id, a2.name, s.phone
+      FROM security_staff s LEFT JOIN arenas a2 ON a2.id = s.arena_id
+    UNION ALL
+    SELECT ac.id, ac.email, ac.first_name, ac.last_name, ac.is_active, ac.created_at,
+           'accountant'::text, NULL::int, NULL::text, NULL::text
+      FROM accountants ac
+    ORDER BY role, created_at DESC
+  `);
+}
+
 /**
  * Get all arena admins for an arena
  */

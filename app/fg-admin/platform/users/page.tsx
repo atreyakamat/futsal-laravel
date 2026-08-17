@@ -1,8 +1,18 @@
 import { readAuthUserId } from '@/lib/session';
-import { getAdminContext, listArenas, listSecurityPermissions, listUsersWithArena } from '@/lib/admin';
+import { getAdminContext, listSecurityPermissions } from '@/lib/admin';
+import { listStaffAccounts } from '@/lib/super-admin';
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
+
+const ROLE_LABELS: Record<string, string> = {
+  super_admin: 'Super Admin',
+  arena_admin: 'Arena Admin (Platform-Wide)',
+  manager: 'Manager',
+  security: 'Security',
+  accountant: 'Accountant',
+};
 
 export default async function AdminUsersPage() {
   const userId = await readAuthUserId();
@@ -12,9 +22,8 @@ export default async function AdminUsersPage() {
     redirect('/fg-admin/platform/dashboard');
   }
 
-  const [users, arenas, securityPermissions] = await Promise.all([
-    listUsersWithArena(),
-    listArenas(),
+  const [staff, securityPermissions] = await Promise.all([
+    listStaffAccounts(),
     listSecurityPermissions(),
   ]);
 
@@ -22,119 +31,59 @@ export default async function AdminUsersPage() {
     <div className="max-w-7xl mx-auto px-6 py-20">
       <div className="mb-12">
         <h1 className="text-4xl font-black uppercase tracking-tighter italic mb-2">
-          Admin <span className="text-primary text-stroke">Management</span>
+          Staff <span className="text-primary text-stroke">Directory</span>
         </h1>
-        <p className="label-classic !ml-0">Assign arena admins, security staff, and global admins</p>
+        <p className="label-classic !ml-0">
+          Every admin, manager, security, and accountant account across the platform
+        </p>
       </div>
 
-      <form action="/api/fg-admin/platform/users/create" method="POST" className="glass-card space-y-6 mb-8">
-        <h2 className="text-2xl font-black uppercase italic">Create Arena Staff</h2>
-        <div className="grid md:grid-cols-2 gap-6">
-          <input name="name" className="input-field" placeholder="Full name" required />
-          <input name="email" type="email" className="input-field" placeholder="Email address" required />
-          <input name="customer_mobile" className="input-field" placeholder="Mobile number" />
-          <input name="password" type="password" className="input-field" placeholder="Temporary password" required />
-        </div>
-        <div className="grid md:grid-cols-2 gap-6">
-          <select name="role" className="input-field" defaultValue="manager">
-            <option value="manager">manager</option>
-            <option value="arena_admin">arena_admin (platform-wide)</option>
-            <option value="security">security</option>
-          </select>
-          <select name="arena_id" className="input-field" defaultValue={arenas[0]?.id ?? ''}>
-            <option value="">No arena</option>
-            {(arenas || []).map((arena) => (
-              <option key={arena.id} value={arena.id}>{arena.name}</option>
-            ))}
-          </select>
-        </div>
-        <div className="flex flex-wrap gap-6">
-          <label className="inline-flex items-center gap-3 text-xs font-black uppercase tracking-widest">
-            <input type="checkbox" name="can_verify_ticket" defaultChecked className="w-4 h-4 accent-primary" />
-            Security can verify tickets
-          </label>
-          <label className="inline-flex items-center gap-3 text-xs font-black uppercase tracking-widest">
-            <input type="checkbox" name="can_confirm_entry" defaultChecked className="w-4 h-4 accent-primary" />
-            Security can confirm entry
-          </label>
-        </div>
-        <button type="submit" className="btn-primary">Create Staff Account</button>
-      </form>
+      <div className="glass-card !p-8 mb-8 flex flex-wrap gap-4">
+        <Link href="/fg-admin/platform/super-admin" className="btn-secondary !py-3">
+          Manage Managers & Security →
+        </Link>
+        <Link href="/fg-admin/platform/accountants" className="btn-secondary !py-3">
+          Manage Accountants →
+        </Link>
+      </div>
 
-      <div className="grid gap-6">
-        {(users || []).map((user) => (
-          <form
-            key={user.id}
-            action="/api/fg-admin/platform/users/role"
-            method="POST"
-            className="glass-card !p-0 overflow-hidden"
-          >
-            <input type="hidden" name="user_id" value={user.id} />
-            <div className="p-8 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+      <div className="grid gap-4">
+        {(staff || []).map((s) => {
+          const perms = s.role === 'security' ? securityPermissions?.get(s.id) : null;
+          const fullName = [s.first_name, s.last_name].filter(Boolean).join(' ') || s.email;
+          return (
+            <div key={`${s.role}-${s.id}`} className="glass-card !p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="grid md:grid-cols-3 gap-6 flex-1">
                 <div>
                   <span className="label-classic !ml-0 mb-1">Name</span>
-                  <span className="text-xl font-black uppercase italic block">{user.name}</span>
+                  <span className="text-lg font-black uppercase italic block">{fullName}</span>
+                  <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">{s.email}</span>
                 </div>
                 <div>
-                  <span className="label-classic !ml-0 mb-1">Email / Mobile</span>
-                  <span className="text-sm font-black uppercase tracking-tight block">{user.email}</span>
-                  <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">{user.customer_mobile || 'No Mobile'}</span>
+                  <span className="label-classic !ml-0 mb-1">Role</span>
+                  <span className="pill-status">{ROLE_LABELS[s.role] || s.role}</span>
                 </div>
                 <div>
-                  <span className="label-classic !ml-0 mb-1">Current Role</span>
-                  <span className="pill-status">{user.role}</span>
-                  <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest block mt-2">
-                    {user.arena_name ? `Arena: ${user.arena_name}` : 'No arena assigned'}
+                  <span className="label-classic !ml-0 mb-1">Arena</span>
+                  <span className="text-sm font-black text-white uppercase italic block">
+                    {s.arena_name || (s.role === 'manager' || s.role === 'security' ? 'Unassigned' : 'All Turfs')}
                   </span>
+                  {perms && (
+                    <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest block mt-1">
+                      {perms.canVerifyTicket ? 'Verify ✓' : 'Verify ✗'} · {perms.canConfirmEntry ? 'Entry ✓' : 'Entry ✗'}
+                    </span>
+                  )}
                 </div>
               </div>
-
-              <div className="flex flex-col md:flex-row gap-4">
-                <select name="role" defaultValue={user.role} className="input-field !min-h-0 !py-3">
-                  <option value="customer">customer</option>
-                  <option value="manager">manager</option>
-                  <option value="arena_admin">arena_admin (platform-wide)</option>
-                  <option value="security">security</option>
-                  <option value="super_admin">super_admin</option>
-                </select>
-
-                <select name="arena_id" defaultValue={user.arena_id ?? ''} className="input-field !min-h-0 !py-3">
-                  <option value="">No arena</option>
-                  {(arenas || []).map((arena) => (
-                    <option key={arena.id} value={arena.id}>{arena.name}</option>
-                  ))}
-                </select>
-
-                <button type="submit" className="btn-primary">
-                  Save Access
-                </button>
-              </div>
-
-              <div className="w-full lg:w-auto flex flex-wrap gap-4 items-center">
-                <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">Security Rights</span>
-                <label className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
-                  <input
-                    type="checkbox"
-                    name="can_verify_ticket"
-                    defaultChecked={securityPermissions?.get(user.id)?.canVerifyTicket ?? true}
-                    className="w-4 h-4 accent-primary"
-                  />
-                  Verify
-                </label>
-                <label className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
-                  <input
-                    type="checkbox"
-                    name="can_confirm_entry"
-                    defaultChecked={securityPermissions?.get(user.id)?.canConfirmEntry ?? true}
-                    className="w-4 h-4 accent-primary"
-                  />
-                  Confirm Entry
-                </label>
-              </div>
+              <span className={`pill-status shrink-0 ${s.is_active ? 'border-primary/20 text-primary' : 'border-red-500/20 text-red-400'}`}>
+                {s.is_active ? 'Active' : 'Inactive'}
+              </span>
             </div>
-          </form>
-        ))}
+          );
+        })}
+        {(!staff || staff.length === 0) && (
+          <div className="glass-card text-center py-20 text-white/40">No staff accounts found.</div>
+        )}
       </div>
     </div>
   );
