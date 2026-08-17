@@ -151,7 +151,7 @@ export default async function AdminApprovalsPage({ searchParams }: Props) {
   const userId = await readAuthUserId();
   const context = await getAdminContext(userId);
 
-  if (!context || context.role !== 'super_admin') {
+  if (!context || (context.role !== 'super_admin' && context.role !== 'arena_admin')) {
     redirect('/fg-admin/platform/dashboard');
   }
 

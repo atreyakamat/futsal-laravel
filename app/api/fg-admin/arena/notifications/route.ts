@@ -14,7 +14,7 @@ export async function GET() {
     }
 
     const context = await getAdminContext(userId);
-    if (!context || context.role !== 'arena_admin') {
+    if (!context || context.role !== 'manager') {
       return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 });
     }
 
@@ -32,7 +32,7 @@ export async function GET() {
          FROM notifications
         WHERE user_id = ? AND role = ?
      ORDER BY created_at DESC LIMIT 50`,
-      [userId, 'arena_admin']
+      [userId, 'manager']
     );
 
     return NextResponse.json({
@@ -54,7 +54,7 @@ export async function POST() {
     }
 
     const context = await getAdminContext(userId);
-    if (!context || context.role !== 'arena_admin') {
+    if (!context || context.role !== 'manager') {
       return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 });
     }
 
@@ -63,7 +63,7 @@ export async function POST() {
       `UPDATE notifications
          SET is_read = TRUE
        WHERE user_id = ? AND role = ? AND is_read = FALSE`,
-      [userId, 'arena_admin']
+      [userId, 'manager']
     );
 
     return NextResponse.json({

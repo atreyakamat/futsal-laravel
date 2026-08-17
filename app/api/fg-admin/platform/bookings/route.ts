@@ -52,11 +52,13 @@ export async function POST(request: Request) {
   const userId = await readAuthUserId();
   const context = await getAdminContext(userId);
 
-  if (!context || !['super_admin', 'admin', 'arena_admin'].includes(context.role)) {
+  if (!context || !['super_admin', 'admin', 'arena_admin', 'manager'].includes(context.role)) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
   }
 
-  const arenaId = context.role === 'arena_admin'
+  // manager is scoped to their own single arena; everyone else (super_admin,
+  // and the platform-wide arena_admin) picks the arena from the submitted form.
+  const arenaId = context.role === 'manager'
     ? context.arenaId
     : payload.arena_id;
 
@@ -64,7 +66,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, message: 'No arena assigned for this account.' }, { status: 400 });
   }
 
-  if (payload.free_booking && context.role !== 'super_admin') {
+  if (payload.free_booking && context.role !== 'super_admin' && context.role !== 'arena_admin') {
     const requestRecord = await createApprovalRequest({
       arenaId,
       requestedBy: context.id,

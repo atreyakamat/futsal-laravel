@@ -11,7 +11,8 @@ export const dynamic = 'force-dynamic';
 // for credentials again even though their session cookie is still valid.
 const ROLE_REDIRECT: Record<string, string> = {
   super_admin: '/fg-admin/platform/dashboard',
-  arena_admin: '/fg-admin/arena/dashboard',
+  arena_admin: '/fg-admin/platform/dashboard',
+  manager: '/fg-admin/arena/dashboard',
   security: '/fg-admin/security/scan',
   accountant: '/fg-admin/accountant/dashboard',
 };

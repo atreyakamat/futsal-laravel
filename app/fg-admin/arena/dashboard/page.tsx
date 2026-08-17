@@ -15,7 +15,7 @@ export default async function ArenaAdminDashboardPage() {
   const sessionId = sessionIdSigned ? unsignValue(sessionIdSigned) ?? null : null;
   const context = await getAdminContext(userId, sessionId);
 
-  if (!context || context.role !== 'arena_admin' || !context.arenaId) {
+  if (!context || context.role !== 'manager' || !context.arenaId) {
     redirect('/fg-admin/login');
   }
 

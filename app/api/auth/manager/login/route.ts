@@ -10,13 +10,11 @@ const bodySchema = z.object({
   turnstileToken: z.string().optional(),
 });
 
-// Platform-wide arena_admin login — same arena_admins table/credentials
-// lookup as the Manager login (app/api/auth/manager/login), but only
-// accepts a row with arena_id NULL (see
-// prisma/migrations/20260817000000_arena_admin_nullable_arena_id). A
-// Manager account (arena_id set) trying to log in here is rejected with a
-// pointer to the right tab, rather than silently succeeding under the
-// wrong role.
+// Manager login — the per-turf role that used to be called "arena_admin"
+// before arena_admin was widened to a platform-wide role. Same
+// arena_admins table/credentials lookup as the arena_admin login
+// (app/api/auth/arena-admin/login), but only accepts a row with arena_id
+// set (see prisma/migrations/20260817000000_arena_admin_nullable_arena_id).
 export async function POST(request: Request) {
   try {
     const isJson = request.headers.get('content-type')?.includes('application/json');
@@ -32,25 +30,25 @@ export async function POST(request: Request) {
       );
     }
 
-    const admin = await verifyArenaAdminCredentials(payload.email, payload.password);
+    const manager = await verifyArenaAdminCredentials(payload.email, payload.password);
 
-    if (!admin) {
+    if (!manager) {
       return NextResponse.json(
         { success: false, message: 'Invalid email or password' },
         { status: 401 }
       );
     }
 
-    if (!admin.is_active) {
+    if (!manager.is_active) {
       return NextResponse.json(
-        { success: false, message: 'Account is inactive' },
+        { success: false, message: 'Manager account is inactive' },
         { status: 403 }
       );
     }
 
-    if (admin.arena_id !== null) {
+    if (manager.arena_id === null) {
       return NextResponse.json(
-        { success: false, message: 'This account is a Manager account, scoped to one turf. Please use the Manager tab.' },
+        { success: false, message: 'This account is a platform-wide Arena Admin account. Please use the Arena Admin tab.' },
         { status: 403 }
       );
     }
@@ -59,15 +57,17 @@ export async function POST(request: Request) {
       success: true,
       message: 'Login successful',
       data: {
-        id: admin.id,
-        email: admin.email,
-        role: 'arena_admin',
+        id: manager.id,
+        email: manager.email,
+        arena_id: manager.arena_id,
+        role: 'manager',
       },
     });
 
     const cookieOpts = getCookieOptions(60 * 60 * 24 * 7);
-    response.cookies.set('fg_auth_user', await signValue(`${admin.id}`), cookieOpts);
-    response.cookies.set('fg_auth_role', await signValue('arena_admin'), cookieOpts);
+    response.cookies.set('fg_auth_user', await signValue(`${manager.id}`), cookieOpts);
+    response.cookies.set('fg_auth_role', await signValue('manager'), cookieOpts);
+    response.cookies.set('fg_arena_id', await signValue(`${manager.arena_id}`), cookieOpts);
 
     return response;
   } catch (error) {
@@ -78,7 +78,7 @@ export async function POST(request: Request) {
       );
     }
 
-    console.error('Arena admin login error:', error);
+    console.error('Manager login error:', error);
     return NextResponse.json(
       { success: false, message: 'Internal server error' },
       { status: 500 }

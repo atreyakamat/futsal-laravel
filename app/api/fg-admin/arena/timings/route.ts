@@ -13,7 +13,7 @@ export async function GET() {
     }
 
     const context = await getAdminContext(userId);
-    if (!context || context.role !== 'arena_admin') {
+    if (!context || context.role !== 'manager') {
       return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 });
     }
 

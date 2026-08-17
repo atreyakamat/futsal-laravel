@@ -39,7 +39,7 @@ async function resolveArenaId(request: NextRequest, userId: number | null) {
   const context = await getAdminContext(userId);
   if (!context) return null;
 
-  if (context.role === 'super_admin') {
+  if (context.role === 'super_admin' || context.role === 'arena_admin') {
     return queryArenaId;
   }
 
@@ -51,12 +51,12 @@ export async function GET(request: NextRequest) {
     const userId = await readAuthUserId();
     const context = await getAdminContext(userId);
 
-    if (!context || !['super_admin', 'arena_admin'].includes(context.role)) {
+    if (!context || !['super_admin', 'manager', 'arena_admin'].includes(context.role)) {
       return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
     }
 
-    const arenas = context.role === 'super_admin' ? await listArenas() : [];
-    const arenaId = (await resolveArenaId(request, userId)) ?? (context.role === 'super_admin' ? arenas[0]?.id ?? null : null);
+    const arenas = (context.role === 'super_admin' || context.role === 'arena_admin') ? await listArenas() : [];
+    const arenaId = (await resolveArenaId(request, userId)) ?? ((context.role === 'super_admin' || context.role === 'arena_admin') ? arenas[0]?.id ?? null : null);
 
     if (!arenaId) {
       return NextResponse.json({ success: true, arenas, slots: [], entryMode: 'open' });
@@ -98,11 +98,11 @@ export async function POST(request: Request) {
   const userId = await readAuthUserId();
   const context = await getAdminContext(userId);
 
-  if (!context || !['super_admin', 'arena_admin'].includes(context.role)) {
+  if (!context || !['super_admin', 'manager', 'arena_admin'].includes(context.role)) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
   }
 
-  const arenaId = context.role === 'super_admin'
+  const arenaId = (context.role === 'super_admin' || context.role === 'arena_admin')
     ? Number((form as Record<string, string>).arena_id ?? '0') || null
     : context.arenaId;
 
@@ -114,7 +114,7 @@ export async function POST(request: Request) {
     const mode = String((form as Record<string, string>).mode ?? 'open') as 'open' | 'blocked' | 'free';
     const notes = String((form as Record<string, string>).notes ?? '');
 
-    if (context.role === 'super_admin') {
+    if ((context.role === 'super_admin' || context.role === 'arena_admin')) {
       await setArenaEntryMode(arenaId, mode);
       await createAdminAuditLog({
         action: 'entry_mode_changed',
@@ -141,7 +141,7 @@ export async function POST(request: Request) {
     const slots = parseSlotRows(slotsText);
     const notes = String((form as Record<string, string>).notes ?? '');
 
-    if (context.role === 'super_admin') {
+    if ((context.role === 'super_admin' || context.role === 'arena_admin')) {
       await replaceArenaPricing(arenaId, slots);
       await createAdminAuditLog({
         action: 'slot_template_replaced',
@@ -165,7 +165,7 @@ export async function POST(request: Request) {
     const logoUrl = String((form as Record<string, string>).logo_url ?? '');
     const notes = String((form as Record<string, string>).notes ?? 'Update arena images');
 
-    if (context.role === 'super_admin') {
+    if ((context.role === 'super_admin' || context.role === 'arena_admin')) {
       const updates = [];
       const values = [];
       if (coverImage) { updates.push('cover_image = ?'); values.push(coverImage); }
@@ -202,7 +202,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: 'Time slot, start and end times are required.' }, { status: 400 });
     }
 
-    if (context.role === 'super_admin') {
+    if ((context.role === 'super_admin' || context.role === 'arena_admin')) {
       await query(
         `INSERT INTO slot_timings (arena_id, time_slot, start_time, end_time, created_at, updated_at)
          VALUES (?, ?, ?, ?, NOW(), NOW())`,
@@ -236,7 +236,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: 'A valid time slot and price are required.' }, { status: 400 });
     }
 
-    if (context.role === 'super_admin') {
+    if ((context.role === 'super_admin' || context.role === 'arena_admin')) {
       await query(
         `INSERT INTO pricings (arena_id, time_slot, price, day_of_week, created_at, updated_at)
          VALUES (?, ?, ?, ?, NOW(), NOW())`,
@@ -270,7 +270,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: 'A valid slot and price are required.' }, { status: 400 });
     }
 
-    if (context.role === 'super_admin') {
+    if ((context.role === 'super_admin' || context.role === 'arena_admin')) {
       await query(
         `UPDATE pricings SET price = ?, day_of_week = ?, updated_at = NOW() WHERE id = ? AND arena_id = ?`,
         [price, dayOfWeek, slotId, arenaId]
@@ -300,7 +300,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: 'A valid slot is required.' }, { status: 400 });
     }
 
-    if (context.role === 'super_admin') {
+    if ((context.role === 'super_admin' || context.role === 'arena_admin')) {
       await query(`DELETE FROM pricings WHERE id = ? AND arena_id = ?`, [slotId, arenaId]);
       await createAdminAuditLog({
         action: 'slot_deleted',
@@ -328,7 +328,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: 'A date is required.' }, { status: 400 });
     }
 
-    if (context.role === 'super_admin') {
+    if ((context.role === 'super_admin' || context.role === 'arena_admin')) {
       await query(
         `INSERT INTO arena_holidays (arena_id, date, reason, created_by, created_at)
          VALUES (?, ?, ?, ?, NOW())
@@ -360,7 +360,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: 'A valid holiday is required.' }, { status: 400 });
     }
 
-    if (context.role === 'super_admin') {
+    if ((context.role === 'super_admin' || context.role === 'arena_admin')) {
       await query(`DELETE FROM arena_holidays WHERE id = ? AND arena_id = ?`, [holidayId, arenaId]);
       await createAdminAuditLog({
         action: 'holiday_deleted',
@@ -388,7 +388,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: 'A date and time slot are required.' }, { status: 400 });
     }
 
-    if (context.role === 'super_admin') {
+    if ((context.role === 'super_admin' || context.role === 'arena_admin')) {
       await query(
         `INSERT INTO admin_slot_blocks (super_admin_id, arena_id, booking_date, time_slot, reason, status, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, 'confirmed', NOW(), NOW())`,
@@ -422,7 +422,7 @@ export async function POST(request: Request) {
     // admin owns it (super_admin globally, arena_admin for their own
     // arena) — unlike creating one, unblocking doesn't need approval since
     // it only ever removes a restriction, never adds one.
-    if (context.role === 'super_admin') {
+    if ((context.role === 'super_admin' || context.role === 'arena_admin')) {
       await query(`DELETE FROM admin_slot_blocks WHERE id = ? AND arena_id = ?`, [blockId, arenaId]);
     } else {
       const block = await queryOne<{ id: number }>(

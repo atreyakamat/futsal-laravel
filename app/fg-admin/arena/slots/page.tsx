@@ -11,7 +11,7 @@ export default async function ArenaAdminSlotsPage() {
   const role = await readAuthRole();
   const context = await getAdminContext(userId);
 
-  if (!context || role !== 'arena_admin' || !context.arenaId) {
+  if (!context || role !== 'manager' || !context.arenaId) {
     redirect('/fg-admin/login');
   }
 

@@ -251,9 +251,15 @@ model SuperAdmin {
   @@map("super_admins")
 }
 
+// Doubles as two roles, disambiguated by arena_id at read time (see
+// lib/admin.ts's getAdminContext): a row with arena_id set is a "Manager"
+// (per-turf, scoped to exactly that arena); a row with arena_id NULL is the
+// platform-wide "arena_admin" role (one tier below super_admin, spans every
+// turf). See prisma/migrations/20260817000000_arena_admin_nullable_arena_id
+// for why this is one table rather than two.
 model ArenaAdmin {
   id            Int       @id @default(autoincrement())
-  arena_id      Int
+  arena_id      Int?
   email         String    @unique
   password_hash String
   first_name    String?

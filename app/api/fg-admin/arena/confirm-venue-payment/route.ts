@@ -3,7 +3,8 @@
  *
  * Marks an offline (pay-at-venue) booking as paid once staff have collected
  * the UPI payment on the day of the slot. Callable by the arena's own
- * arena_admin (scoped to their arena) or any super_admin.
+ * manager (scoped to their arena), or by any super_admin/arena_admin
+ * (platform-wide, any arena).
  */
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -24,7 +25,8 @@ export async function POST(request: Request) {
     const userId = await readAuthUserId();
     const context = await getAdminContext(userId);
 
-    if (!context || (context.role !== 'arena_admin' && context.role !== 'super_admin')) {
+    const allowedRoles = ['manager', 'super_admin', 'arena_admin'];
+    if (!context || !allowedRoles.includes(context.role)) {
       return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
     }
 
@@ -44,9 +46,9 @@ export async function POST(request: Request) {
 
     const booking = bookings[0];
 
-    // Arena admins may only confirm payments for their own arena's bookings —
-    // super_admin may confirm for any arena.
-    if (context.role === 'arena_admin' && booking.arena_id !== context.arenaId) {
+    // Managers may only confirm payments for their own arena's bookings —
+    // super_admin/arena_admin (platform-wide) may confirm for any arena.
+    if (context.role === 'manager' && booking.arena_id !== context.arenaId) {
       return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 });
     }
 

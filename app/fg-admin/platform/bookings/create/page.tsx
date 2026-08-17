@@ -7,12 +7,14 @@ export default async function AdminBookingCreatePage() {
   const userId = await readAuthUserId();
   const context = await getAdminContext(userId);
 
-  if (!context || !['super_admin', 'admin', 'arena_admin'].includes(context.role)) {
+  if (!context || !['super_admin', 'admin', 'arena_admin', 'manager'].includes(context.role)) {
     redirect('/fg-admin/platform/bookings');
   }
 
-  const arenas = context.role === 'arena_admin' ? [] : await listArenas();
-  const scopedArenaId = context.role === 'arena_admin' ? context.arenaId : null;
+  // manager is scoped to their own single arena; everyone else (super_admin,
+  // and the platform-wide arena_admin) picks from every arena.
+  const arenas = context.role === 'manager' ? [] : await listArenas();
+  const scopedArenaId = context.role === 'manager' ? context.arenaId : null;
   const scopedArena = scopedArenaId ? await getArenaById(scopedArenaId) : null;
 
   return (
@@ -28,7 +30,7 @@ export default async function AdminBookingCreatePage() {
         <div className="grid md:grid-cols-2 gap-6">
           <div className="space-y-2">
             <label className="label-classic">Arena</label>
-            {context.role !== 'arena_admin' ? (
+            {context.role !== 'manager' ? (
               <select name="arena_id" className="input-field" defaultValue={arenas[0]?.id ?? ''}>
                 {arenas.map((arena) => (
                   <option key={arena.id} value={arena.id}>{arena.name}</option>

@@ -20,16 +20,16 @@ export default async function AdminSlotsPage({ searchParams }: Props) {
   const userId = await readAuthUserId();
   const context = await getAdminContext(userId);
 
-  if (!context || !['super_admin', 'arena_admin'].includes(context.role)) {
+  if (!context || !['super_admin', 'arena_admin', 'manager'].includes(context.role)) {
     redirect('/fg-admin/platform/dashboard');
   }
 
   const params = await searchParams;
-  const selectedArenaId = context.role === 'super_admin'
+  const selectedArenaId = (context.role === 'super_admin' || context.role === 'arena_admin')
     ? Number(typeof params.arena_id === 'string' ? params.arena_id : '') || null
     : context.arenaId;
 
-  const arenas = context.role === 'super_admin' ? await listArenas() : [];
+  const arenas = (context.role === 'super_admin' || context.role === 'arena_admin') ? await listArenas() : [];
   const arenaId = selectedArenaId ?? (arenas[0]?.id ?? null);
   const arena = arenaId ? await getArenaById(arenaId) : null;
   const entryMode = arenaId ? await getArenaEntryMode(arenaId) : 'open';
@@ -52,13 +52,13 @@ export default async function AdminSlotsPage({ searchParams }: Props) {
         <p className="label-classic !ml-0">Super admins can apply changes, arena admins submit approval requests</p>
       </div>
 
-      {context.role === 'super_admin' && (arenas?.length || 0) > 0 && (
+      {(context.role === 'super_admin' || context.role === 'arena_admin') && (arenas?.length || 0) > 0 && (
         <ArenaPickerForm arenas={arenas} selectedArenaId={arenaId} />
       )}
 
       {arenaId ? (
         <>
-          {context.role === 'super_admin' && (
+          {(context.role === 'super_admin' || context.role === 'arena_admin') && (
             <div className="flex justify-end">
               <Link href="/fg-admin/platform/approvals" className="text-primary text-[10px] font-bold uppercase tracking-widest">
                 Review approvals →
@@ -66,7 +66,7 @@ export default async function AdminSlotsPage({ searchParams }: Props) {
             </div>
           )}
 
-          <SlotManagementClient arenaId={arenaId} isSuperAdmin={context.role === 'super_admin'} />
+          <SlotManagementClient arenaId={arenaId} isSuperAdmin={(context.role === 'super_admin' || context.role === 'arena_admin')} />
 
           <form action="/api/fg-admin/platform/slots" method="POST" className="glass-card space-y-6 max-w-xl">
             <input type="hidden" name="action" value="entry_mode" />
@@ -80,7 +80,7 @@ export default async function AdminSlotsPage({ searchParams }: Props) {
             </select>
             <textarea name="notes" rows={4} className="input-field" placeholder="Notes" />
             <button className="btn-primary" type="submit">
-              {context.role === 'super_admin' ? 'Apply Mode' : 'Request Mode Change'}
+              {(context.role === 'super_admin' || context.role === 'arena_admin') ? 'Apply Mode' : 'Request Mode Change'}
             </button>
           </form>
         </>
@@ -130,7 +130,7 @@ export default async function AdminSlotsPage({ searchParams }: Props) {
             </div>
             <textarea name="notes" rows={2} className="input-field" placeholder="Notes" />
             <button className="btn-primary" type="submit">
-              {context.role === 'super_admin' ? 'Add Timing' : 'Request Timing'}
+              {(context.role === 'super_admin' || context.role === 'arena_admin') ? 'Add Timing' : 'Request Timing'}
             </button>
           </form>
 

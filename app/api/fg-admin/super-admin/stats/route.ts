@@ -21,7 +21,7 @@ export async function GET(request: Request) {
          (SELECT COUNT(*) FROM bookings WHERE payment_status = 'confirmed') as total_bookings,
          (SELECT COALESCE(SUM(amount), 0) FROM bookings WHERE payment_status = 'confirmed') as total_revenue,
          (SELECT COUNT(DISTINCT customer_mobile) FROM bookings WHERE payment_status = 'confirmed') as total_customers,
-        (SELECT COUNT(*) FROM users WHERE role = 'arena_admin') as total_arena_admins,
+        (SELECT COUNT(*) FROM users WHERE role IN ('manager', 'arena_admin')) as total_arena_admins,
         (SELECT COUNT(*) FROM users WHERE role = 'security') as total_security_staff
     `);
 

@@ -52,7 +52,7 @@ export async function POST(request: Request) {
   const sessionId = getWritableSessionId(request);
   const authUserId = await readAuthUserId();
   const authRole = await readAuthRole();
-  const isStaffRole = authRole === 'super_admin' || authRole === 'arena_admin' || authRole === 'security';
+  const isStaffRole = authRole === 'super_admin' || authRole === 'arena_admin' || authRole === 'manager' || authRole === 'security';
 
   // Checkout requires a verified session (mobile/email OTP) — this used to
   // fall back to creating a brand-new `users` row from whatever
@@ -88,7 +88,7 @@ export async function POST(request: Request) {
       customerName: payload.customer_name,
       customerMobile: payload.customer_mobile,
       customerEmail: payload.customer_email ?? null,
-      userId: (authRole === 'super_admin' || authRole === 'arena_admin' || authRole === 'security') ? null : authUserId,
+      userId: isStaffRole ? null : authUserId,
       sessionId,
       freeBooking: entryMode === 'free',
       offlinePayment,
@@ -141,7 +141,7 @@ export async function POST(request: Request) {
   // booking should stay recognized on their next visit instead of being
   // asked to OTP-login again.
   const cookieOpts = getCookieOptions(PLAYER_AUTH_MAX_AGE);
-  if (result.userId && authRole !== 'super_admin' && authRole !== 'arena_admin' && authRole !== 'security') {
+  if (result.userId && !isStaffRole) {
     response.cookies.set(AUTH_COOKIE, await signValue(String(result.userId)), cookieOpts);
     response.cookies.delete('fg_guest_identifier');
   }

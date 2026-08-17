@@ -54,12 +54,15 @@ export default async function AdminBookingsPage({
   const userId = await readAuthUserId();
   const context = await getAdminContext(userId);
 
-  if (!context || !['super_admin', 'arena_admin'].includes(context.role)) {
+  if (!context || !['super_admin', 'arena_admin', 'manager'].includes(context.role)) {
     redirect('/fg-admin/login');
   }
 
   const resolvedSearchParams = await searchParams;
-  const selectedArenaId = context.role === 'super_admin' ? resolvedSearchParams.arena_id : undefined;
+  // manager is scoped to their own arena below (via context.arenaId);
+  // super_admin and the platform-wide arena_admin can filter by any arena
+  // via the arena_id search param.
+  const selectedArenaId = context.role !== 'manager' ? resolvedSearchParams.arena_id : undefined;
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const showAllDates = resolvedSearchParams.date === 'all';

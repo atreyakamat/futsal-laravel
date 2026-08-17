@@ -23,8 +23,11 @@ export default async function Home() {
     authCtaHref = '/fg-admin/platform/super-admin';
     authCtaLabel = 'Super Admin';
   } else if (role === 'arena_admin') {
-    authCtaHref = '/fg-admin/arena/dashboard';
+    authCtaHref = '/fg-admin/platform/dashboard';
     authCtaLabel = 'Arena Admin';
+  } else if (role === 'manager') {
+    authCtaHref = '/fg-admin/arena/dashboard';
+    authCtaLabel = 'Manager';
   } else if (role === 'security') {
     authCtaHref = '/fg-admin/security/scan';
     authCtaLabel = 'Verify Tickets';

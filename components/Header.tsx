@@ -37,9 +37,11 @@ export default function Header({ userId, role, arenaId, userName }: HeaderProps)
 
   // Render Admin Header
   if (isAdminPath) {
-    const dashboardLink = role === 'super_admin' 
+    const dashboardLink = role === 'super_admin'
       ? '/fg-admin/platform/super-admin'
       : role === 'arena_admin'
+      ? '/fg-admin/platform/dashboard'
+      : role === 'manager'
       ? '/fg-admin/arena/dashboard'
       : role === 'security'
       ? '/fg-admin/security/scan'
@@ -91,7 +93,7 @@ export default function Header({ userId, role, arenaId, userName }: HeaderProps)
                   </Link>
                 </>
               )}
-              {role === 'arena_admin' && (
+              {role === 'manager' && (
                 <>
                   <Link href="/fg-admin/arena/dashboard" className={`text-xs font-black uppercase tracking-widest hover:text-primary transition-colors ${pathname.endsWith('/dashboard') ? 'text-primary' : 'text-white/60'}`}>
                     Dashboard

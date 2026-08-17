@@ -53,8 +53,8 @@ export async function POST(request: Request) {
     // Log audit action
     await logAuditAction(
       superAdminId,
-      'CREATE_ARENA_ADMIN',
-      'arena_admin',
+      'CREATE_MANAGER',
+      'manager',
       result.admin.id,
       { email: result.admin.email, arena_id: payload.arena_id },
       request.headers.get('x-forwarded-for') || 'unknown',
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: 'Arena admin created successfully',
+      message: 'Manager created successfully',
       data: {
         admin: result.admin,
         credentials: result.credential,

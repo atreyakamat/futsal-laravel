@@ -8,14 +8,14 @@ export default async function ArenaNotificationsPage() {
   const userId = await readAuthUserId();
   const context = await getAdminContext(userId);
 
-  if (!context || context.role !== 'arena_admin' || !userId) {
+  if (!context || context.role !== 'manager' || !userId) {
     return redirect('/fg-admin/login');
   }
 
-  const notifications = await getNotifications(userId, 'arena_admin');
+  const notifications = await getNotifications(userId, 'manager');
 
   if (notifications.some((n) => !n.is_read)) {
-    await markNotificationsRead(userId, 'arena_admin');
+    await markNotificationsRead(userId, 'manager');
   }
 
   return (

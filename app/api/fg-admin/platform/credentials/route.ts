@@ -68,9 +68,9 @@ export async function POST(request: Request) {
   }
 
   if (payload.security_passcode) {
-    const canManageSecurityPasscode = context.role === 'super_admin' || context.role === 'arena_admin';
+    const canManageSecurityPasscode = context.role === 'super_admin' || context.role === 'manager';
     if (!canManageSecurityPasscode) {
-      return NextResponse.json({ success: false, message: 'Only super admins and arena admins can update arena security passcodes.' }, { status: 403 });
+      return NextResponse.json({ success: false, message: 'Only super admins and managers can update arena security passcodes.' }, { status: 403 });
     }
 
     const arenaId = context.role === 'super_admin'

@@ -10,7 +10,7 @@ export default async function AdminDashboardPage() {
   const adminRole = context?.role ?? null;
   const arenaId = context?.arenaId ?? null;
 
-  if (!context || !['super_admin', 'arena_admin', 'security'].includes(context.role)) {
+  if (!context || !['super_admin', 'arena_admin', 'manager', 'security'].includes(context.role)) {
     redirect('/fg-admin/login');
   }
 
@@ -18,19 +18,27 @@ export default async function AdminDashboardPage() {
     redirect('/fg-admin/platform/super-admin');
   }
 
-  // Fetch stats - scoped to arena if not super_admin
+  // arena_admin (platform-wide, one tier below super_admin) sees unscoped
+  // stats across every turf, same as super_admin would — only manager
+  // (per-turf) and security get their single arena's numbers. The fuller
+  // SuperAdminDashboardClient stays super_admin-exclusive for now (it has
+  // refund/GST/account-management controls embedded inline throughout
+  // rather than in cleanly separable sections); arena_admin gets this
+  // simpler dashboard with turf/slot/booking management access instead.
+  const isUnscoped = adminRole === 'super_admin' || adminRole === 'arena_admin';
+
   const stats = await Promise.all([
     query<{ count: number }>(
-      `SELECT COUNT(*) as count FROM arenas WHERE status = ? ${adminRole === 'super_admin' ? '' : 'AND id = ?'}`,
-      adminRole === 'super_admin' ? ['active'] : ['active', arenaId]
+      `SELECT COUNT(*) as count FROM arenas WHERE status = ? ${isUnscoped ? '' : 'AND id = ?'}`,
+      isUnscoped ? ['active'] : ['active', arenaId]
     ),
     query<{ count: number }>(
-      `SELECT COUNT(*) as count FROM bookings WHERE payment_status = ? ${adminRole === 'super_admin' ? '' : 'AND arena_id = ?'}`,
-      adminRole === 'super_admin' ? ['confirmed'] : ['confirmed', arenaId]
+      `SELECT COUNT(*) as count FROM bookings WHERE payment_status = ? ${isUnscoped ? '' : 'AND arena_id = ?'}`,
+      isUnscoped ? ['confirmed'] : ['confirmed', arenaId]
     ),
     query<{ count: number }>(
-      `SELECT COUNT(*) as count FROM users WHERE role = ? ${adminRole === 'super_admin' ? '' : 'AND id IN (SELECT user_id FROM bookings WHERE arena_id = ?)'}`,
-      adminRole === 'super_admin' ? ['customer'] : ['customer', arenaId]
+      `SELECT COUNT(*) as count FROM users WHERE role = ? ${isUnscoped ? '' : 'AND id IN (SELECT user_id FROM bookings WHERE arena_id = ?)'}`,
+      isUnscoped ? ['customer'] : ['customer', arenaId]
     ),
   ]);
 
@@ -119,6 +127,11 @@ export default async function AdminDashboardPage() {
         </h2>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Arena create/edit still uses the stricter readSuperAdminId()
+              helper (lib/session.ts), not getAdminContext -- widening that
+              centrally would also touch refund/GST/settings/account-mgmt
+              routes that must stay super_admin-exclusive. Turf CRUD for
+              arena_admin is a known follow-up, not done in this pass. */}
           {adminRole === 'super_admin' && (
             <Link
               href="/fg-admin/platform/arenas/create"
@@ -185,7 +198,7 @@ export default async function AdminDashboardPage() {
             </Link>
           )}
 
-          {(adminRole === 'super_admin' || adminRole === 'arena_admin') && (
+          {(isUnscoped || adminRole === 'manager') && (
             <Link
               href="/fg-admin/platform/bookings/create"
               className="glass-card !p-8 group hover:border-primary/50 transition-all"
@@ -199,7 +212,7 @@ export default async function AdminDashboardPage() {
             </Link>
           )}
 
-          {(adminRole === 'super_admin' || adminRole === 'arena_admin') && (
+          {(isUnscoped || adminRole === 'manager') && (
             <Link
               href="/fg-admin/platform/slots"
               className="glass-card !p-8 group hover:border-primary/50 transition-all"
@@ -227,7 +240,7 @@ export default async function AdminDashboardPage() {
             </Link>
           )}
 
-          {adminRole === 'super_admin' && (
+          {isUnscoped && (
             <Link
               href="/fg-admin/platform/approvals"
               className="glass-card !p-8 group hover:border-primary/50 transition-all"

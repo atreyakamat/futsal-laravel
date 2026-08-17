@@ -76,7 +76,9 @@ export async function updateSuperAdminPassword(id: number, newPassword: string) 
 }
 
 /**
- * Create an arena admin for a specific arena
+ * Create a Manager for a specific arena (the per-turf role — this is the
+ * role that used to be called "arena_admin" before arena_admin was widened
+ * to a platform-wide role; see prisma/migrations/20260817000000_arena_admin_nullable_arena_id).
  */
 export async function createArenaAdmin(
   arenaId: number,
@@ -106,7 +108,7 @@ export async function createArenaAdmin(
   // Insert into unified users table
   const userResult = await query(
     'INSERT INTO users (name, email, password, role, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW()) RETURNING id',
-    [name, email, hashedPassword, 'arena_admin']
+    [name, email, hashedPassword, 'manager']
   );
 
   const userId = (userResult && (userResult as any)?.length > 0) ? (userResult as any)[0].id : null;
@@ -115,7 +117,7 @@ export async function createArenaAdmin(
   // Assign to arena in arena_managers
   await query(
     'INSERT INTO arena_managers (user_id, arena_id, role, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())',
-    [userId, arenaId, 'arena_admin']
+    [userId, arenaId, 'manager']
   );
 
   // Maintain legacy arena_admins table for compatibility with super admin module if needed
@@ -129,12 +131,67 @@ export async function createArenaAdmin(
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
     await query(
       'INSERT INTO admin_credentials (admin_id, admin_type, credential_token, is_used, expires_at, created_at) VALUES (?, ?, ?, false, ?, NOW())',
-      [userId, 'arena_admin', tempPassword, expiresAt]
+      [userId, 'manager', tempPassword, expiresAt]
     );
   }
 
   return {
     admin: { id: userId, arena_id: arenaId, email, name },
+    credential: usingTypedPassword
+      ? { email, tempPassword: null, message: 'Admin can log in immediately with the password you set.' }
+      : { email, tempPassword, message: 'Share these credentials with the admin. They must change password on first login.' },
+  };
+}
+
+/**
+ * Create a platform-wide arena_admin (spans every turf, one tier below
+ * super_admin) — same arena_admins table as createArenaAdmin/Manager
+ * above, but with arena_id left NULL, and no arena_managers row (that
+ * table is exclusively for single-arena-scoped roles).
+ */
+export async function createPlatformArenaAdmin(
+  name: string,
+  email: string,
+  phone?: string,
+  createdById?: number,
+  password?: string
+) {
+  const existingUser = await queryOne<{ id: number }>(
+    'SELECT id FROM users WHERE email = ?',
+    [email]
+  );
+
+  if (existingUser) {
+    throw new Error('User with this email already exists');
+  }
+
+  const usingTypedPassword = Boolean(password);
+  const tempPassword = usingTypedPassword ? null : Math.random().toString(36).slice(-8) + 'A1!';
+  const hashedPassword = await bcrypt.hash((usingTypedPassword ? password : tempPassword) as string, 10);
+
+  const userResult = await query(
+    'INSERT INTO users (name, email, password, role, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW()) RETURNING id',
+    [name, email, hashedPassword, 'arena_admin']
+  );
+
+  const userId = (userResult && (userResult as any)?.length > 0) ? (userResult as any)[0].id : null;
+  if (!userId) throw new Error('Failed to create user record');
+
+  await query(
+    'INSERT INTO arena_admins (id, arena_id, email, password_hash, first_name, last_name, is_active, created_by, created_at, updated_at) VALUES (?, NULL, ?, ?, ?, ?, true, ?, NOW(), NOW())',
+    [userId, email, hashedPassword, name.split(' ')[0], name.split(' ')[1] || '', createdById || 1]
+  );
+
+  if (!usingTypedPassword) {
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    await query(
+      'INSERT INTO admin_credentials (admin_id, admin_type, credential_token, is_used, expires_at, created_at) VALUES (?, ?, ?, false, ?, NOW())',
+      [userId, 'arena_admin', tempPassword, expiresAt]
+    );
+  }
+
+  return {
+    admin: { id: userId, email, name },
     credential: usingTypedPassword
       ? { email, tempPassword: null, message: 'Admin can log in immediately with the password you set.' }
       : { email, tempPassword, message: 'Share these credentials with the admin. They must change password on first login.' },
@@ -292,6 +349,16 @@ export async function getArenaAdmins(arenaId: number) {
 }
 
 /**
+ * Get all platform-wide arena_admin accounts (arena_id IS NULL — see
+ * createPlatformArenaAdmin above).
+ */
+export async function getPlatformArenaAdmins() {
+  return query<{ id: number; email: string; first_name: string | null; last_name: string | null; is_active: boolean; created_at: string; last_login: string | null }>(
+    'SELECT id, email, first_name, last_name, is_active, created_at, last_login FROM arena_admins WHERE arena_id IS NULL ORDER BY created_at DESC'
+  );
+}
+
+/**
  * Get all security staff for an arena
  */
 export async function getSecurityStaff(arenaId: number) {
@@ -305,12 +372,31 @@ export async function getSecurityStaff(arenaId: number) {
  * Remove an arena admin
  */
 export async function removeArenaAdmin(arenaId: number, adminId: number) {
-  const admin = await queryOne<{ id: number; arena_id: number }>(
+  const admin = await queryOne<{ id: number; arena_id: number | null }>(
     'SELECT id, arena_id FROM arena_admins WHERE id = ?',
     [adminId]
   );
 
   if (!admin || admin.arena_id !== arenaId) {
+    throw new Error('Arena admin not found');
+  }
+
+  await query(
+    'UPDATE arena_admins SET is_active = false, updated_at = NOW() WHERE id = ?',
+    [adminId]
+  );
+
+  return { id: adminId, is_active: false };
+}
+
+/** Deactivate a platform-wide arena_admin (arena_id IS NULL). */
+export async function removePlatformArenaAdmin(adminId: number) {
+  const admin = await queryOne<{ id: number; arena_id: number | null }>(
+    'SELECT id, arena_id FROM arena_admins WHERE id = ?',
+    [adminId]
+  );
+
+  if (!admin || admin.arena_id !== null) {
     throw new Error('Arena admin not found');
   }
 
@@ -507,7 +593,10 @@ export async function getSystemAuditLogs(limit: number = 100) {
  * Verify arena admin credentials
  */
 export async function verifyArenaAdminCredentials(email: string, password: string) {
-  const admin = await queryOne<{ id: number; email: string; password_hash: string; is_active: boolean; arena_id: number }>(
+  // arena_id is nullable now — the caller determines whether this is a
+  // Manager (arena_id set) or the platform-wide arena_admin (arena_id
+  // NULL) from the returned row. See lib/admin.ts's getAdminContext.
+  const admin = await queryOne<{ id: number; email: string; password_hash: string; is_active: boolean; arena_id: number | null }>(
     'SELECT id, email, password_hash, is_active, arena_id FROM arena_admins WHERE email = ?',
     [email]
   );

@@ -1,0 +1,16 @@
+-- Role split: "arena_admin" is being widened from a single-turf role into
+-- a platform-wide role (one tier below super_admin), and "Manager" becomes
+-- the new name for exactly the single-turf-scoped responsibilities
+-- arena_admin used to have.
+--
+-- Rather than renaming this table and standing up a second one (which would
+-- also require reconciling the generic users/arena_managers mirror table
+-- that lib/super-admin.ts's createArenaAdmin() dual-writes into, plus the
+-- currently-unreachable OTP admin-login path that reads users.role
+-- directly), this reuses the existing arena_admins table for both roles:
+--   - arena_id IS NOT NULL  -> Manager (per-turf; every existing row keeps
+--     working completely unchanged, zero data movement)
+--   - arena_id IS NULL      -> the new platform-wide arena_admin
+-- Application code (lib/admin.ts's getAdminContext) resolves which of the
+-- two a given row represents at read time.
+ALTER TABLE arena_admins ALTER COLUMN arena_id DROP NOT NULL;

@@ -38,7 +38,7 @@ export default function ProfileMenu({ userId, role, arenaId, userName }: Profile
 
   if (!userId) return null;
 
-  const isAdmin = role === 'super_admin' || role === 'arena_admin' || role === 'security';
+  const isAdmin = role === 'super_admin' || role === 'arena_admin' || role === 'manager' || role === 'security';
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -49,7 +49,7 @@ export default function ProfileMenu({ userId, role, arenaId, userName }: Profile
         aria-haspopup="true"
       >
         <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-black text-sm uppercase">
-          {userName ? userName.slice(0, 2) : (role === 'super_admin' ? 'SA' : role === 'arena_admin' ? 'AA' : role === 'security' ? 'SC' : 'US')}
+          {userName ? userName.slice(0, 2) : (role === 'super_admin' ? 'SA' : role === 'arena_admin' ? 'AA' : role === 'manager' ? 'MG' : role === 'security' ? 'SC' : 'US')}
         </div>
         <span className="hidden sm:block text-xs font-black uppercase tracking-widest text-white/80 truncate max-w-[100px]">
           {userName || role?.replace('_', ' ')}
@@ -128,7 +128,7 @@ export default function ProfileMenu({ userId, role, arenaId, userName }: Profile
               </>
             )}
 
-            {role === 'arena_admin' && (
+            {role === 'manager' && (
               <>
                 <Link
                   href="/fg-admin/arena/dashboard"
@@ -161,6 +161,35 @@ export default function ProfileMenu({ userId, role, arenaId, userName }: Profile
                 >
                   <span className="material-symbols-outlined text-white/60 text-lg">settings</span>
                   Settings
+                </Link>
+              </>
+            )}
+
+            {role === 'arena_admin' && (
+              <>
+                <Link
+                  href="/fg-admin/platform/dashboard"
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-white/80 hover:bg-white/[0.04] hover:text-primary transition-colors"
+                  onClick={() => setOpen(false)}
+                >
+                  <span className="material-symbols-outlined text-primary text-lg">dashboard</span>
+                  Dashboard
+                </Link>
+                <Link
+                  href="/fg-admin/platform/slots"
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-white/80 hover:bg-white/[0.04] hover:text-primary transition-colors"
+                  onClick={() => setOpen(false)}
+                >
+                  <span className="material-symbols-outlined text-white/60 text-lg">schedule</span>
+                  Slots & Pricing
+                </Link>
+                <Link
+                  href="/fg-admin/platform/approvals"
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-white/80 hover:bg-white/[0.04] hover:text-primary transition-colors"
+                  onClick={() => setOpen(false)}
+                >
+                  <span className="material-symbols-outlined text-white/60 text-lg">fact_check</span>
+                  Approvals
                 </Link>
               </>
             )}

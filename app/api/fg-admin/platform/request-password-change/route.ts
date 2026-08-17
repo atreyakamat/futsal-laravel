@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     const userId = await readAuthUserId();
     const context = await getAdminContext(userId);
 
-    if (!context || !['arena_admin', 'security'].includes(context.role)) {
+    if (!context || !['manager', 'security'].includes(context.role)) {
       return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
     }
 

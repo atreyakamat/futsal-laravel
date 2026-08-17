@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import TurnstileWidget from '@/components/TurnstileWidget';
 
-type Role = 'super_admin' | 'arena_admin' | 'security' | 'accountant';
+type Role = 'super_admin' | 'arena_admin' | 'manager' | 'security' | 'accountant';
 
 export default function UnifiedLoginForm() {
   const [activeTab, setActiveTab] = useState<Role>('super_admin');
@@ -31,6 +31,9 @@ export default function UnifiedLoginForm() {
       redirectPath = '/fg-admin/platform/dashboard';
     } else if (activeTab === 'arena_admin') {
       endpoint = '/api/auth/arena-admin/login';
+      redirectPath = '/fg-admin/platform/dashboard';
+    } else if (activeTab === 'manager') {
+      endpoint = '/api/auth/manager/login';
       redirectPath = '/fg-admin/arena/dashboard';
     } else if (activeTab === 'security') {
       endpoint = '/api/auth/security/login';
@@ -82,10 +85,10 @@ export default function UnifiedLoginForm() {
         </div>
 
         <div className="glass-card">
-          <div className="flex justify-between border-b border-white/10 mb-6">
+          <div className="flex flex-wrap gap-x-4 gap-y-2 border-b border-white/10 mb-6">
             <button
               onClick={() => { setActiveTab('super_admin'); setError(''); }}
-              className={`pb-4 px-2 text-[10px] font-black tracking-widest uppercase transition-colors ${
+              className={`pb-4 px-1 text-[10px] font-black tracking-widest uppercase transition-colors ${
                 activeTab === 'super_admin' ? 'text-primary border-b-2 border-primary' : 'text-white/40 hover:text-white/80'
               }`}
             >
@@ -93,15 +96,23 @@ export default function UnifiedLoginForm() {
             </button>
             <button
               onClick={() => { setActiveTab('arena_admin'); setError(''); }}
-              className={`pb-4 px-2 text-[10px] font-black tracking-widest uppercase transition-colors ${
+              className={`pb-4 px-1 text-[10px] font-black tracking-widest uppercase transition-colors ${
                 activeTab === 'arena_admin' ? 'text-primary border-b-2 border-primary' : 'text-white/40 hover:text-white/80'
               }`}
             >
               Arena Admin
             </button>
             <button
+              onClick={() => { setActiveTab('manager'); setError(''); }}
+              className={`pb-4 px-1 text-[10px] font-black tracking-widest uppercase transition-colors ${
+                activeTab === 'manager' ? 'text-primary border-b-2 border-primary' : 'text-white/40 hover:text-white/80'
+              }`}
+            >
+              Manager
+            </button>
+            <button
               onClick={() => { setActiveTab('security'); setError(''); }}
-              className={`pb-4 px-2 text-[10px] font-black tracking-widest uppercase transition-colors ${
+              className={`pb-4 px-1 text-[10px] font-black tracking-widest uppercase transition-colors ${
                 activeTab === 'security' ? 'text-primary border-b-2 border-primary' : 'text-white/40 hover:text-white/80'
               }`}
             >
@@ -109,7 +120,7 @@ export default function UnifiedLoginForm() {
             </button>
             <button
               onClick={() => { setActiveTab('accountant'); setError(''); }}
-              className={`pb-4 px-2 text-[10px] font-black tracking-widest uppercase transition-colors ${
+              className={`pb-4 px-1 text-[10px] font-black tracking-widest uppercase transition-colors ${
                 activeTab === 'accountant' ? 'text-primary border-b-2 border-primary' : 'text-white/40 hover:text-white/80'
               }`}
             >

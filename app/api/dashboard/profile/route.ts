@@ -145,7 +145,9 @@ export async function PUT(request: Request) {
       [payload.name, newEmail, payload.customer_mobile, userId]
     );
 
-    if (currentUser.role === 'arena_admin') {
+    if (currentUser.role === 'manager' || currentUser.role === 'arena_admin') {
+      // Manager (per-turf) and arena_admin (platform-wide) are both rows in
+      // the same arena_admins table.
       const names = payload.name.split(' ');
       await query(
         'UPDATE arena_admins SET email = ?, first_name = ?, last_name = ?, updated_at = NOW() WHERE id = ? OR LOWER(email) = ?',

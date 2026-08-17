@@ -35,8 +35,8 @@ export async function DELETE(
     // Log audit action
     await logAuditAction(
       superAdminId,
-      'DELETE_ARENA_ADMIN',
-      'arena_admin',
+      'DELETE_MANAGER',
+      'manager',
       result.id,
       { is_active: false },
       request.headers.get('x-forwarded-for') || 'unknown',
@@ -45,7 +45,7 @@ export async function DELETE(
 
     return NextResponse.json({
       success: true,
-      message: 'Arena admin removed successfully',
+      message: 'Manager removed successfully',
       data: result,
     });
   } catch (error) {
@@ -134,7 +134,7 @@ export async function PUT(
 
       if (legacyUpdates.length > 0) {
         legacyValues.push(adminId);
-        if (user.role === 'arena_admin') {
+        if (user.role === 'manager' || user.role === 'arena_admin') {
           await query(`UPDATE arena_admins SET ${legacyUpdates.join(', ')}, updated_at = NOW() WHERE id = ?`, legacyValues);
         } else if (user.role === 'security') {
           await query(`UPDATE security_staff SET ${legacyUpdates.join(', ')}, updated_at = NOW() WHERE id = ?`, legacyValues);

@@ -36,8 +36,9 @@ export default async function AdminUsersPage() {
           <input name="password" type="password" className="input-field" placeholder="Temporary password" required />
         </div>
         <div className="grid md:grid-cols-2 gap-6">
-          <select name="role" className="input-field" defaultValue="arena_admin">
-            <option value="arena_admin">arena_admin</option>
+          <select name="role" className="input-field" defaultValue="manager">
+            <option value="manager">manager</option>
+            <option value="arena_admin">arena_admin (platform-wide)</option>
             <option value="security">security</option>
           </select>
           <select name="arena_id" className="input-field" defaultValue={arenas[0]?.id ?? ''}>
@@ -92,7 +93,8 @@ export default async function AdminUsersPage() {
               <div className="flex flex-col md:flex-row gap-4">
                 <select name="role" defaultValue={user.role} className="input-field !min-h-0 !py-3">
                   <option value="customer">customer</option>
-                  <option value="arena_admin">arena_admin</option>
+                  <option value="manager">manager</option>
+                  <option value="arena_admin">arena_admin (platform-wide)</option>
                   <option value="security">security</option>
                   <option value="super_admin">super_admin</option>
                 </select>

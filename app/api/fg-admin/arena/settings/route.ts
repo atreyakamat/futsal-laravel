@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     const role = await unsignValue(cookieStore.get('fg_auth_role')?.value ?? null);
     const arenaId = await unsignValue(cookieStore.get('fg_arena_id')?.value ?? null);
 
-    if (!userId || role !== 'arena_admin' || !arenaId) {
+    if (!userId || role !== 'manager' || !arenaId) {
       return NextResponse.json(
         { success: false, message: 'Unauthorized' },
         { status: 401 }
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
         arena_id: admin.arena_id,
         first_name: admin.first_name,
         last_name: admin.last_name,
-        role: 'arena_admin',
+        role: 'manager',
       },
     });
   } catch (error) {
@@ -62,7 +62,7 @@ export async function PUT(request: NextRequest) {
     const userId = await unsignValue(cookieStore.get('fg_auth_user')?.value ?? null);
     const role = await unsignValue(cookieStore.get('fg_auth_role')?.value ?? null);
 
-    if (!userId || role !== 'arena_admin') {
+    if (!userId || role !== 'manager') {
       return NextResponse.json(
         { success: false, message: 'Unauthorized' },
         { status: 401 }

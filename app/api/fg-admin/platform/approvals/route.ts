@@ -14,12 +14,12 @@ export async function GET(request: Request) {
   const userId = await readAuthUserId();
   const context = await getAdminContext(userId);
 
-  if (!context || context.role !== 'super_admin') {
+  if (!context || (context.role !== 'super_admin' && context.role !== 'arena_admin')) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
   }
 
   const requests = await listApprovalRequests({
-    arenaId: context.role === 'super_admin' ? null : context.arenaId,
+    arenaId: null,
   });
 
   return NextResponse.json({ success: true, requests });
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   const userId = await readAuthUserId();
   const context = await getAdminContext(userId);
 
-  if (!context || !['super_admin', 'admin', 'arena_admin'].includes(context.role)) {
+  if (!context || !['super_admin', 'admin', 'manager', 'arena_admin'].includes(context.role)) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
   }
 

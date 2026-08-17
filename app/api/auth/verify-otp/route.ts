@@ -68,13 +68,14 @@ export async function POST(request: Request) {
   await removeOtp(cleanIdentifier);
 
   const roleRedirect = user?.role === 'super_admin' ? '/fg-admin/platform/super-admin'
-    : user?.role === 'arena_admin' ? '/fg-admin/arena/dashboard'
+    : user?.role === 'arena_admin' ? '/fg-admin/platform/super-admin'
+    : user?.role === 'manager' ? '/fg-admin/arena/dashboard'
     : user?.role === 'security' ? '/fg-admin/security/scan'
     : '/dashboard';
   // `next` (e.g. back to checkout with the original slot selection) only
   // applies to a genuine customer login — a staff role logging in via OTP
   // always lands on their own dashboard regardless of what `next` was set to.
-  const isStaffRole = user?.role === 'super_admin' || user?.role === 'arena_admin' || user?.role === 'security';
+  const isStaffRole = user?.role === 'super_admin' || user?.role === 'arena_admin' || user?.role === 'manager' || user?.role === 'security';
   const redirectUrl = (!isStaffRole && safeNextPath(payload.next)) || roleRedirect;
 
   const response = NextResponse.json({ success: true, userExists: Boolean(user), redirect: redirectUrl });

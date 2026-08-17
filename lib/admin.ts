@@ -6,7 +6,10 @@ import { sendTicketEmail } from '@/lib/ticket';
 import { readAuthRole, getCookieValueFromRequest, unsignValue } from '@/lib/session';
 import { sendEmail, generateApprovalNotificationEmail } from '@/lib/email';
 
-export type AdminRole = 'super_admin' | 'admin' | 'arena_admin' | 'security' | 'accountant' | 'customer';
+// 'arena_admin' is platform-wide (one tier below super_admin, spans every
+// turf); 'manager' is its per-turf counterpart — both are rows in the same
+// arena_admins table, disambiguated by arena_id (see getAdminContext).
+export type AdminRole = 'super_admin' | 'admin' | 'arena_admin' | 'manager' | 'security' | 'accountant' | 'customer';
 export type EntryMode = 'open' | 'blocked' | 'free';
 export type PaymentMode = 'online' | 'offline';
 export type ApprovalRequestType = 'slot_template_update' | 'entry_mode_update' | 'admin_free_booking' | 'timing_update' | 'image_update';
@@ -32,7 +35,7 @@ export type AdminContext = {
 };
 
 export function isAdminRole(role: string | null | undefined): role is AdminRole {
-  return ['super_admin', 'arena_admin', 'security', 'accountant'].includes(String(role));
+  return ['super_admin', 'arena_admin', 'manager', 'security', 'accountant'].includes(String(role));
 }
 
 export async function getAdminContext(userId: number | null, sessionId?: string | null): Promise<AdminContext | null> {
@@ -76,29 +79,57 @@ export async function getAdminContext(userId: number | null, sessionId?: string 
     }
   }
 
-  // 2. Check Arena Admin / Security Staff specifically if role cookie suggests it
-  if (roleCookie === 'arena_admin') {
-    const arenaAdmin = await queryOne<{
+  // 2. Manager — per-turf row in arena_admins (arena_id set). This is the
+  // role that used to be called "arena_admin" before the role split; every
+  // existing account/login is unaffected, just resolved under the new name.
+  if (roleCookie === 'manager') {
+    const manager = await queryOne<{
       id: number;
       email: string;
-      arena_id: number;
+      arena_id: number | null;
       first_name: string | null;
       last_name: string | null;
       is_active: boolean;
     }>(
-      'SELECT id, email, arena_id, first_name, last_name, is_active FROM arena_admins WHERE id = ? LIMIT 1',
+      'SELECT id, email, arena_id, first_name, last_name, is_active FROM arena_admins WHERE id = ? AND arena_id IS NOT NULL LIMIT 1',
       [userId]
     );
 
-    if (arenaAdmin && arenaAdmin.is_active) {
+    if (manager && manager.is_active) {
       return {
-        id: arenaAdmin.id,
-        name: [arenaAdmin.first_name, arenaAdmin.last_name].filter(Boolean).join(' ') || arenaAdmin.email,
-        email: arenaAdmin.email,
+        id: manager.id,
+        name: [manager.first_name, manager.last_name].filter(Boolean).join(' ') || manager.email,
+        email: manager.email,
+        role: 'manager',
+        customer_mobile: null,
+        arenaId: manager.arena_id,
+        arenaRole: 'manager',
+      };
+    }
+  }
+
+  // 3. arena_admin — the new platform-wide role, same table, arena_id NULL.
+  if (roleCookie === 'arena_admin') {
+    const platformAdmin = await queryOne<{
+      id: number;
+      email: string;
+      first_name: string | null;
+      last_name: string | null;
+      is_active: boolean;
+    }>(
+      'SELECT id, email, first_name, last_name, is_active FROM arena_admins WHERE id = ? AND arena_id IS NULL LIMIT 1',
+      [userId]
+    );
+
+    if (platformAdmin && platformAdmin.is_active) {
+      return {
+        id: platformAdmin.id,
+        name: [platformAdmin.first_name, platformAdmin.last_name].filter(Boolean).join(' ') || platformAdmin.email,
+        email: platformAdmin.email,
         role: 'arena_admin',
         customer_mobile: null,
-        arenaId: arenaAdmin.arena_id,
-        arenaRole: 'arena_admin',
+        arenaId: null,
+        arenaRole: null,
       };
     }
   }
@@ -195,7 +226,7 @@ export async function isSuperAdmin(userId: number | null) {
 
 export async function isArenaScopedAdmin(userId: number | null) {
   const role = await getUserRole(userId);
-  return role === 'arena_admin' || role === 'security';
+  return role === 'manager' || role === 'security';
 }
 
 export async function getManagedArenaId(userId: number | null) {
@@ -211,9 +242,9 @@ export async function updateUserPassword(userId: number, password: string) {
 export async function setArenaAssignment(userId: number, role: AdminRole, arenaId: number | null) {
   await query('UPDATE users SET role = ?, updated_at = NOW() WHERE id = ?', [role, userId]);
 
-  if (role === 'arena_admin' || role === 'security') {
+  if (role === 'manager' || role === 'security') {
     if (!arenaId) {
-      throw new Error('Arena assignment is required for arena admins and security staff.');
+      throw new Error('Arena assignment is required for managers and security staff.');
     }
 
     await query(
@@ -543,7 +574,7 @@ export async function createAdminAuditLog(input: {
 
 export async function sendNotification(input: {
   userId: number;
-  role: 'super_admin' | 'arena_admin';
+  role: 'super_admin' | 'arena_admin' | 'manager';
   title: string;
   message: string;
   requestType?: string | null;
@@ -731,8 +762,9 @@ export async function resolveApprovalRequest(input: {
         if (finalHash) {
           // Update in users table
           await query('UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?', [finalHash, passwordPayload.userId]);
-          // Also update legacy tables if needed
-          if (passwordPayload.role === 'arena_admin') {
+          // Also update legacy tables if needed — manager and arena_admin
+          // are both rows in the same arena_admins table.
+          if (passwordPayload.role === 'manager' || passwordPayload.role === 'arena_admin') {
             await query('UPDATE arena_admins SET password_hash = ?, updated_at = NOW() WHERE id = ?', [finalHash, passwordPayload.userId]);
           } else if (passwordPayload.role === 'security') {
             await query('UPDATE security_staff SET password_hash = ?, updated_at = NOW() WHERE id = ?', [finalHash, passwordPayload.userId]);
@@ -909,7 +941,7 @@ export async function resolveApprovalRequest(input: {
   if (request.requested_by) {
     await sendNotification({
       userId: request.requested_by,
-      role: 'arena_admin',
+      role: 'manager',
       title: `Request ${input.decision.toUpperCase()}`,
       message: `Your ${request.request_type} request has been ${input.decision}.${input.reason ? ' Reason: ' + input.reason : ''}`,
       requestType: request.request_type,

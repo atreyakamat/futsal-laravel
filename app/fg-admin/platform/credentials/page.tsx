@@ -28,7 +28,7 @@ export default async function AdminCredentialsPage() {
         <button className="btn-primary" type="submit">Update Password</button>
       </form>
 
-      {(context.role === 'super_admin' || context.role === 'arena_admin') && (
+      {(context.role === 'super_admin' || context.role === 'manager') && (
         <form action="/api/fg-admin/platform/credentials" method="POST" className="glass-card space-y-6">
           <h2 className="text-2xl font-black uppercase italic">Security Passcode</h2>
           {context.role === 'super_admin' && arenas?.length > 0 && (

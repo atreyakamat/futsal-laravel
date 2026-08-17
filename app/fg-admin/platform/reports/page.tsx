@@ -20,11 +20,13 @@ export default async function AdminReportsPage({ searchParams }: Props) {
   }
 
   const context = await getAdminContext(userId);
-  if (!context || !['super_admin', 'arena_admin'].includes(context.role)) {
+  if (!context || !['super_admin', 'arena_admin', 'manager'].includes(context.role)) {
     redirect('/fg-admin/platform/dashboard');
   }
 
-  const arenaId = context.role === 'super_admin' ? null : context.arenaId;
+  // super_admin and the platform-wide arena_admin see unscoped (all-turf)
+  // reports; manager is scoped to their own single arena.
+  const arenaId = (context.role === 'super_admin' || context.role === 'arena_admin') ? null : context.arenaId;
 
   const params = await searchParams;
   const period = typeof params.period === 'string' ? params.period : 'monthly';

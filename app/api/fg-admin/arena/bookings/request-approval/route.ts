@@ -15,7 +15,7 @@ async function readArenaAdminContext() {
   const cookieStore = await cookies();
   const role = await unsignValue(cookieStore.get('fg_auth_role')?.value ?? null);
   
-  if (role !== 'arena_admin') {
+  if (role !== 'manager') {
     return null;
   }
 
@@ -101,7 +101,11 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
 
-    const whereClause = ['arena_admin_id = ?'];
+    // 'requested_by' is the real column on approval_requests (see
+    // lib/admin.ts's createApprovalRequest) -- this previously referenced
+    // a column that doesn't exist at all ('arena_admin_id'), which would
+    // have thrown a SQL error on every call to this GET handler.
+    const whereClause = ['requested_by = ?'];
     const params: Array<string | number> = [context.adminId];
 
     if (status) {

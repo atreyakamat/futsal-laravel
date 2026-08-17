@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     const userId = await readAuthUserId();
     const role = await readAuthRole();
 
-    if (!userId || role !== 'arena_admin') {
+    if (!userId || role !== 'manager') {
       return NextResponse.json({ success: false, message: 'Unauthorized — Arena Admin only' }, { status: 401 });
     }
 
