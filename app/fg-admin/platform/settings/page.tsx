@@ -2,6 +2,7 @@ import { readAuthUserId } from '@/lib/session';
 import { query } from '@/lib/domain';
 import { getAdminContext } from '@/lib/admin';
 import { redirect } from 'next/navigation';
+import ChangeSuperAdminEmailForm from '@/components/ChangeSuperAdminEmailForm';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,6 +34,8 @@ export default async function AdminSettingsPage() {
       </div>
 
       <div className="glass-card !p-0 overflow-hidden">
+        <ChangeSuperAdminEmailForm currentName={context.name} currentEmail={context.email} />
+
         <form action="/api/fg-admin/platform/credentials" method="POST" className="p-8 border-b border-white/5 space-y-4">
           <h2 className="text-2xl font-black uppercase italic">Super Admin Password</h2>
           <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest">
