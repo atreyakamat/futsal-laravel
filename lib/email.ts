@@ -185,12 +185,25 @@ export function generateBookingConfirmationEmail(
   totalAmount: number,
   ticketNumbers: string[],
   qrCodeUrl: string,
-  payAtVenue: boolean = false
+  payAtVenue: boolean = false,
+  ticketDownloadUrl?: string,
+  invoiceDownloadUrl?: string
 ): { subject: string; html: string; text: string } {
   const subject = `Booking Confirmed: ${bookingRef} - ${arenaName}`;
   const mergedSlots = timeSlots.join(', ');
   const arenaRowValue = arenaAddress ? `${arenaName}<br><span style="font-weight: 400; color: #999; font-size: 12px;">${arenaAddress}</span>` : arenaName;
   const amountRowLabel = payAtVenue ? 'Amount Due At Venue' : 'Amount Paid';
+  // Attachments can be stripped by some mail gateways/size limits — these
+  // hosted download links are the fallback so the ticket/invoice are
+  // reachable even if the attached PDFs never arrive.
+  const downloadButton = (label: string, url: string) =>
+    `<a href="${url}" style="display: inline-block; background: #0df220; color: #050505; font-weight: 900; font-size: 13px; text-decoration: none; padding: 12px 20px; border-radius: 8px; margin: 6px;">${label}</a>`;
+  const downloadButtonsHtml = (ticketDownloadUrl || invoiceDownloadUrl)
+    ? `<div style="text-align: center; margin: 20px 0;">
+         ${ticketDownloadUrl ? downloadButton('Download Ticket (PDF)', ticketDownloadUrl) : ''}
+         ${invoiceDownloadUrl ? downloadButton('Download Invoice (PDF)', invoiceDownloadUrl) : ''}
+       </div>`
+    : '';
   const payAtVenueNotice = payAtVenue
     ? `<div style="background: #fff8e1; border: 1px solid #ffd54f; border-radius: 8px; padding: 16px; margin: 20px 0; color: #7a5c00; font-size: 14px;">
          <strong>Pay at the venue:</strong> Your slot is reserved. Please pay ₹${totalAmount.toFixed(2)} at the venue via UPI before or when you arrive, and show your ticket to staff to confirm payment.
@@ -232,6 +245,8 @@ export function generateBookingConfirmationEmail(
         <div style="background: #fff8e1; border: 1px solid #ffd54f; border-radius: 8px; padding: 16px; margin: 20px 0;">
           <p style="margin: 0; color: #5d4037; font-size: 14px;"><strong>Important:</strong> Arrive 10 minutes before your slot. Present this QR code to security staff for entry.</p>
         </div>
+
+        ${downloadButtonsHtml}
 
         <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 20px 0;">
         <p style="color: #999; font-size: 12px; text-align: center;">AgnelArena - Premium Turf Booking in Goa</p>

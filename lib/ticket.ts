@@ -124,8 +124,21 @@ export async function sendTicketEmail(bookingRef: string, appUrl?: string) {
 
   // 2. Send Email Notification
   if (firstBooking.customer_email) {
+    const baseUrl = (appUrl || process.env.NEXT_PUBLIC_APP_URL || 'https://agnelarenagoa.com').replace(/\/$/, '');
     const qrUrl = getTicketQrEmailUrl(ticket.ticketNumbers[0] ?? ticket.bookingRef, appUrl);
     const totalAmount = bookings.reduce((sum, b) => sum + Number(b.amount), 0);
+
+    const downloadToken = generateTicketDownloadToken(ticket.bookingRef);
+    const ticketDownloadUrl = `${baseUrl}/api/bookings/download?ref=${encodeURIComponent(ticket.bookingRef)}&token=${downloadToken}`;
+
+    // Both the attached PDFs and these hosted-link buttons are built from
+    // the same invoice row/lookup — attachments can be stripped by some
+    // mail gateways or size limits, so the links are a fallback that still
+    // works even if the attachment never arrives.
+    const invoice = await queryOne<any>(`SELECT * FROM tax_invoices WHERE booking_ref = ? LIMIT 1`, [bookingRef]);
+    const invoiceDownloadUrl = invoice
+      ? `${baseUrl}/api/invoice/${encodeURIComponent(ticket.bookingRef)}?token=${downloadToken}`
+      : undefined;
 
     const payAtVenue = firstBooking.payment_method === 'offline' && firstBooking.venue_payment_status !== 'PAID';
     const { subject, html, text } = generateBookingConfirmationEmail(
@@ -138,13 +151,15 @@ export async function sendTicketEmail(bookingRef: string, appUrl?: string) {
       totalAmount,
       ticket.ticketNumbers,
       qrUrl,
-      payAtVenue
+      payAtVenue,
+      ticketDownloadUrl,
+      invoiceDownloadUrl
     );
 
     // Attach the ticket (with its own embedded QR + venue address) and, if
     // one was issued, the GST tax invoice — best-effort, a PDF generation
     // failure here shouldn't stop the confirmation email itself from going
-    // out with its inline QR.
+    // out with its inline QR and download-link buttons.
     const attachments: EmailAttachment[] = [];
     try {
       const ticketPdf = await generateTicketPdfBuffer(bookings, ticket.arenaName, ticket.arenaAddress);
@@ -153,7 +168,6 @@ export async function sendTicketEmail(bookingRef: string, appUrl?: string) {
       console.error('[Email] Failed to build ticket PDF attachment:', pdfErr);
     }
     try {
-      const invoice = await queryOne<any>(`SELECT * FROM tax_invoices WHERE booking_ref = ? LIMIT 1`, [bookingRef]);
       if (invoice) {
         const invoicePdf = await generateTaxInvoicePdfBuffer(invoice);
         attachments.push({ filename: `${invoice.invoice_no}.pdf`, content: invoicePdf, contentType: 'application/pdf' });
