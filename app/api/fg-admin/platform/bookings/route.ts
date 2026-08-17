@@ -14,6 +14,9 @@ const bodySchema = z.object({
   customer_mobile: z.string().min(5).max(15),
   customer_email: z.string().email().nullable().optional(),
   free_booking: z.boolean().optional().default(false),
+  // Discounted (but non-zero) price per slot — e.g. a manager offering
+  // ₹300 instead of the normal ₹500. Distinct from free_booking (₹0).
+  discounted_price_per_slot: z.coerce.number().nonnegative().optional(),
   notes: z.string().max(500).optional().nullable(),
 });
 
@@ -46,6 +49,7 @@ export async function POST(request: Request) {
     customer_mobile: normalizePhoneNumber(String(payloadObject.customer_mobile)),
     customer_email: payloadObject.customer_email ? String(payloadObject.customer_email) : null,
     free_booking: String(payloadObject.free_booking ?? 'false') === 'true' || payloadObject.free_booking === 'on' || payloadObject.free_booking === '1',
+    discounted_price_per_slot: payloadObject.discounted_price_per_slot ? Number(payloadObject.discounted_price_per_slot) : undefined,
     notes: payloadObject.notes ? String(payloadObject.notes) : null,
   });
 
@@ -66,7 +70,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, message: 'No arena assigned for this account.' }, { status: 400 });
   }
 
-  if (payload.free_booking && context.role !== 'super_admin' && context.role !== 'arena_admin') {
+  const isDiscounted = payload.discounted_price_per_slot !== undefined;
+  const needsApproval = (payload.free_booking || isDiscounted) && context.role !== 'super_admin' && context.role !== 'arena_admin';
+
+  if (needsApproval) {
     const requestRecord = await createApprovalRequest({
       arenaId,
       requestedBy: context.id,
@@ -78,7 +85,9 @@ export async function POST(request: Request) {
         customerName: payload.customer_name,
         customerMobile: payload.customer_mobile,
         customerEmail: payload.customer_email ?? null,
-        freeBooking: true,
+        // Discount takes priority when both happen to be present; a request
+        // is either free or discounted, not both.
+        discountedSlotPrice: isDiscounted ? payload.discounted_price_per_slot : undefined,
         requestedByRole: context.role,
       },
       notes: payload.notes ?? null,
@@ -105,16 +114,20 @@ export async function POST(request: Request) {
     userId: null,
     sessionId: `admin-${context.id}-${Date.now()}`,
     freeBooking: payload.free_booking,
+    discountedSlotPrice: payload.discounted_price_per_slot,
   });
 
-  if (payload.free_booking) {
+  // Free and discounted bookings both skip the payment gateway — the admin
+  // applying them is the "payment" (an offline decision), not the customer
+  // paying online, so this always goes straight to the success page.
+  if (payload.free_booking || isDiscounted) {
     const proto = request.headers.get('x-forwarded-proto') || 'http';
     const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'localhost:3000';
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `${proto}://${host}`;
     await sendTicketEmail(booking.bookingRef, baseUrl);
   }
 
-  const redirectTarget = payload.free_booking
+  const redirectTarget = (payload.free_booking || isDiscounted)
     ? `/booking/success/${booking.bookingRef}`
     : `/payment/checkout/${booking.bookingRef}`;
 

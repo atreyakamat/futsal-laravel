@@ -382,6 +382,10 @@ export async function createBookingBatch(params: {
   sessionId: string;
   freeBooking?: boolean;
   offlinePayment?: boolean;
+  // Manager-requested discount, applied per-slot (e.g. a discounted-price
+  // approval request resolving) — takes priority over the normal pricing
+  // lookup for every slot in this batch, same as freeBooking forcing 0.
+  discountedSlotPrice?: number;
 }) {
   await expirePendingBookings();
   const bookingRef = `REF-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
@@ -463,7 +467,11 @@ export async function createBookingBatch(params: {
     }
 
     for (const slot of params.slots) {
-      const slotPrice = params.freeBooking ? 0 : (priceBySlot.get(slot) ?? 500);
+      const slotPrice = params.freeBooking
+        ? 0
+        : params.discountedSlotPrice !== undefined
+          ? params.discountedSlotPrice
+          : (priceBySlot.get(slot) ?? 500);
 
       const [bookedRows] = await connection.execute(
         `SELECT id FROM bookings

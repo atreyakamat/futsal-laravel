@@ -415,3 +415,60 @@ export function generateApprovalNotificationEmail(
   const text = `Your ${requestType} request for ${arenaName} has been ${statusText}.${reason ? ` Reason: ${reason}` : ''}`;
   return { subject, html, text };
 }
+
+/**
+ * Sent to every super_admin and platform arena_admin the moment a new
+ * approval request is created — lets them act straight from the inbox via
+ * the signed one-click links (lib/approval-token.ts), no login required,
+ * as well as offering the normal logged-in approvals dashboard as a
+ * fallback.
+ */
+export function generatePendingApprovalEmail(params: {
+  requestType: string;
+  arenaName: string;
+  requestedByName: string;
+  summary: string;
+  notes?: string | null;
+  approveUrl: string;
+  declineUrl: string;
+  dashboardUrl: string;
+}): { subject: string; html: string; text: string } {
+  const { requestType, arenaName, requestedByName, summary, notes, approveUrl, declineUrl, dashboardUrl } = params;
+  const subject = `Approval Needed: ${requestType.replace(/_/g, ' ')} at ${arenaName}`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: #ffb300; padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+        <h1 style="color: #050505; margin: 0; font-size: 28px; font-weight: 900;">AGNEL<span style="color: #050505;">ARENA</span></h1>
+        <p style="color: #050505; margin: 10px 0 0; font-size: 14px;">Approval Needed</p>
+      </div>
+      <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e5e5; border-top: none; border-radius: 0 0 12px 12px;">
+        <h2 style="color: #1a1a1a; margin-top: 0;">${requestedByName} is requesting approval</h2>
+        <p><strong>${requestType.replace(/_/g, ' ')}</strong> at <strong>${arenaName}</strong>.</p>
+
+        <div style="background: #f5f5f5; border-radius: 8px; padding: 16px; margin: 20px 0;">
+          <p style="margin: 0; color: #333; white-space: pre-line;">${summary}</p>
+          ${notes ? `<p style="margin: 12px 0 0; color: #666;"><strong>Notes:</strong> ${notes}</p>` : ''}
+        </div>
+
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${approveUrl}" style="display: inline-block; background: #0df220; color: #050505; font-weight: 900; font-size: 14px; text-decoration: none; padding: 14px 28px; border-radius: 8px; margin: 0 8px 12px;">APPROVE</a>
+          <a href="${declineUrl}" style="display: inline-block; background: #ef4444; color: #ffffff; font-weight: 900; font-size: 14px; text-decoration: none; padding: 14px 28px; border-radius: 8px; margin: 0 8px 12px;">DECLINE</a>
+        </div>
+        <p style="color: #999; font-size: 12px; text-align: center;">These links work without logging in and expire in 48 hours. Prefer to review first? <a href="${dashboardUrl}" style="color: #0d9f1a;">Open the approvals dashboard</a>.</p>
+
+        <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 20px 0;">
+        <p style="color: #999; font-size: 12px; text-align: center;">AgnelArena - Platform Administration</p>
+      </div>
+    </body>
+    </html>
+  `;
+  const text = `${requestedByName} is requesting approval for ${requestType.replace(/_/g, ' ')} at ${arenaName}.\n${summary}${notes ? `\nNotes: ${notes}` : ''}\n\nApprove: ${approveUrl}\nDecline: ${declineUrl}\nDashboard: ${dashboardUrl}`;
+  return { subject, html, text };
+}

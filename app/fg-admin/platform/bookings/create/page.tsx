@@ -72,8 +72,16 @@ export default async function AdminBookingCreatePage() {
 
         <label className="inline-flex items-center gap-3 text-xs font-black uppercase tracking-widest">
           <input type="checkbox" name="free_booking" value="true" className="w-4 h-4 accent-primary" />
-          Free booking (requires super admin approval if not created by super admin)
+          Free booking (managers need super admin/arena admin approval)
         </label>
+
+        <div className="space-y-2">
+          <label className="label-classic">Discounted Price Per Slot (₹)</label>
+          <input name="discounted_price_per_slot" type="number" min="0" step="1" className="input-field" placeholder="Leave blank for normal price" />
+          <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest">
+            Optional — a reduced (but non-zero) price. Ignored if Free Booking is checked. Managers need approval; super admin/arena admin apply immediately.
+          </p>
+        </div>
 
         <div className="space-y-2">
           <label className="label-classic">Notes</label>

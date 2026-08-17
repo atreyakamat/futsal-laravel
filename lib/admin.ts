@@ -4,7 +4,8 @@ import type { NextRequest } from 'next/server';
 import { query, queryOne, transaction, getSetting, createBookingBatch } from '@/lib/domain';
 import { sendTicketEmail } from '@/lib/ticket';
 import { readAuthRole, getCookieValueFromRequest, unsignValue } from '@/lib/session';
-import { sendEmail, generateApprovalNotificationEmail } from '@/lib/email';
+import { sendEmail, generateApprovalNotificationEmail, generatePendingApprovalEmail } from '@/lib/email';
+import { generateApprovalActionToken } from '@/lib/approval-token';
 
 // 'arena_admin' is platform-wide (one tier below super_admin, spans every
 // turf); 'manager' is its per-turf counterpart — both are rows in the same
@@ -465,6 +466,30 @@ export async function replaceArenaPricing(arenaId: number, slots: SlotPricingInp
   });
 }
 
+// Best-effort, human-readable one-liner for the approval email — not every
+// request_type's payload shape is covered explicitly, so unrecognized ones
+// still get something readable via the generic fallback rather than a blank
+// summary.
+function summarizeApprovalPayload(requestType: string, payload: Record<string, unknown>): string {
+  const p = payload as Record<string, any>;
+  if (requestType === 'FREE_BOOKING_REQUEST' || requestType === 'admin_free_booking') {
+    const slots = Array.isArray(p.slots) ? p.slots.join(', ') : '';
+    const kind = typeof p.discountedSlotPrice === 'number' ? `Discounted booking (₹${p.discountedSlotPrice}/slot)` : 'Free booking';
+    return `${kind} for ${p.customerName || 'a customer'} on ${p.bookingDate || '?'} — ${slots}`;
+  }
+  if (requestType === 'BLOCK_SLOT_REQUEST') {
+    const slots = Array.isArray(p.slots) ? p.slots.join(', ') : '';
+    return `Block slot(s) on ${p.bookingDate || '?'} — ${slots}`;
+  }
+  if (requestType === 'slot_add' || requestType === 'slot_edit' || requestType === 'slot_delete') {
+    return `${requestType.replace('slot_', 'Slot ')}: ${p.time_slot || ''} ${p.price !== undefined ? `— ₹${p.price}` : ''}`.trim();
+  }
+  if (requestType === 'holiday_add' || requestType === 'holiday_delete') {
+    return `${requestType === 'holiday_add' ? 'Add' : 'Remove'} holiday: ${p.date || ''}`;
+  }
+  return `Request type: ${requestType.replace(/_/g, ' ')}`;
+}
+
 export async function createApprovalRequest(input: {
   arenaId: number;
   requestedBy: number;
@@ -480,8 +505,23 @@ export async function createApprovalRequest(input: {
     [null, input.requestType, input.arenaId, input.requestedBy, JSON.stringify(input.payload), input.notes ?? null]
   );
 
-  const superAdmin = await queryOne<{ id: number }>('SELECT id FROM super_admins LIMIT 1');
-  if (superAdmin && request) {
+  if (!request) return request;
+
+  // Recipients: every active super_admin (global) plus every active
+  // platform-wide arena_admin (arena_id IS NULL — see
+  // prisma/migrations/20260817000000_arena_admin_nullable_arena_id). Both
+  // can review/approve from the dashboard or the email links below.
+  const [superAdmins, platformArenaAdmins, arena, requester] = await Promise.all([
+    query<{ id: number; email: string; first_name: string | null }>('SELECT id, email, first_name FROM super_admins WHERE is_active = true'),
+    query<{ id: number; email: string; first_name: string | null }>('SELECT id, email, first_name FROM arena_admins WHERE arena_id IS NULL AND is_active = true'),
+    queryOne<{ name: string }>('SELECT name FROM arenas WHERE id = ? LIMIT 1', [input.arenaId]),
+    queryOne<{ name: string | null; first_name: string | null; last_name: string | null }>(
+      'SELECT name, NULL as first_name, NULL as last_name FROM users WHERE id = ? UNION SELECT NULL, first_name, last_name FROM arena_admins WHERE id = ? LIMIT 1',
+      [input.requestedBy, input.requestedBy]
+    ),
+  ]);
+
+  for (const superAdmin of superAdmins) {
     await sendNotification({
       userId: superAdmin.id,
       role: 'super_admin',
@@ -491,6 +531,49 @@ export async function createApprovalRequest(input: {
       arenaId: input.arenaId,
       status: 'pending'
     });
+  }
+  for (const admin of platformArenaAdmins) {
+    await sendNotification({
+      userId: admin.id,
+      role: 'arena_admin',
+      title: 'New Approval Request',
+      message: `A new ${input.requestType} request has been created.`,
+      requestType: input.requestType,
+      arenaId: input.arenaId,
+      status: 'pending'
+    });
+  }
+
+  const recipients = [...superAdmins, ...platformArenaAdmins].filter((r) => r.email);
+  if (recipients.length > 0) {
+    const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://agnelarenagoa.com').replace(/\/$/, '');
+    const requestedByName = requester?.name || [requester?.first_name, requester?.last_name].filter(Boolean).join(' ') || 'A team member';
+    const summary = summarizeApprovalPayload(input.requestType, input.payload);
+
+    for (const recipient of recipients) {
+      // Each recipient gets their own token pair, embedding their id, so
+      // whichever one actually clicks is the one recorded as decisionBy —
+      // see lib/approval-token.ts.
+      const approveToken = generateApprovalActionToken(request.id, 'approve', recipient.id);
+      const declineToken = generateApprovalActionToken(request.id, 'decline', recipient.id);
+
+      const { subject, html, text } = generatePendingApprovalEmail({
+        requestType: input.requestType,
+        arenaName: arena?.name || 'Unknown Arena',
+        requestedByName,
+        summary,
+        notes: input.notes,
+        approveUrl: `${baseUrl}/api/approvals/action?token=${approveToken}`,
+        declineUrl: `${baseUrl}/api/approvals/action?token=${declineToken}`,
+        dashboardUrl: `${baseUrl}/fg-admin/platform/approvals`,
+      });
+
+      try {
+        await sendEmail({ to: recipient.email, subject, html, text });
+      } catch (err) {
+        console.error(`[Approvals] Failed to send pending-approval email to ${recipient.email}:`, err);
+      }
+    }
   }
 
   return request;
@@ -789,6 +872,11 @@ export async function resolveApprovalRequest(input: {
       const slots = Array.isArray(payload.slots) ? (payload.slots as string[]) : [];
       if (!arenaId || !bookingDate || slots.length === 0) throw new Error('Missing booking details.');
 
+      // A manager's request can be either fully free, or a discounted
+      // (but non-zero) price per slot — discountedSlotPrice being present
+      // takes priority; otherwise this is the original always-free path.
+      const discountedSlotPrice = typeof payload.discountedSlotPrice === 'number' ? payload.discountedSlotPrice : undefined;
+
       const booking = await createBookingBatch({
         arenaId,
         bookingDate,
@@ -798,16 +886,17 @@ export async function resolveApprovalRequest(input: {
         customerEmail: payload.customerEmail ? String(payload.customerEmail) : null,
         userId: null,
         sessionId: `approval-${request.id}`,
-        freeBooking: true,
+        freeBooking: discountedSlotPrice === undefined,
+        discountedSlotPrice,
       });
       await sendTicketEmail(booking.bookingRef);
 
       await createAdminAuditLog({
-        action: 'FREE_BOOKING_REQUEST',
+        action: discountedSlotPrice !== undefined ? 'DISCOUNTED_BOOKING_REQUEST' : 'FREE_BOOKING_REQUEST',
         requestedBy: request.requested_by,
         approvedBy: input.decisionBy,
         arenaId,
-        fieldChanged: 'Free Booking',
+        fieldChanged: discountedSlotPrice !== undefined ? 'Discounted Booking' : 'Free Booking',
         newValue: payload,
         reason: input.reason
       });
