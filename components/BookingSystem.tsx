@@ -309,7 +309,7 @@ export default function BookingSystem({
         </div>
       )}
 
-      <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 pb-24 lg:pb-0">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 pb-24 lg:pb-0">
         <div className="lg:col-span-8 space-y-10 lg:space-y-12">
           {/* Slot Grid — dates as columns, times as rows */}
           <div>
