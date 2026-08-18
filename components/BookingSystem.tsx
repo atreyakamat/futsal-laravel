@@ -465,18 +465,18 @@ export default function BookingSystem({
                             onClick={() => toggleSlotForDate(date, slot)}
                             className={`w-full py-3.5 px-4 rounded-xl border text-xs font-black transition-all flex items-center justify-between ${
                               isBookedOrBlocked
-                                ? 'opacity-30 grayscale cursor-not-allowed bg-white/[0.02] border-white/5 text-white/30'
+                                ? 'cursor-not-allowed bg-red-500/[0.04] border-red-500/10 text-red-400/50'
                                 : isLocked
-                                  ? 'opacity-40 cursor-not-allowed border-white/5 text-white/30'
+                                  ? 'cursor-not-allowed bg-amber-500/[0.04] border-amber-500/10 text-amber-400/50'
                                   : isSelected
                                     ? 'border-primary bg-primary/10 text-primary shadow-[0_0_15px_rgba(13,242,32,0.15)]'
-                                    : 'bg-white/[0.02] border-white/5 hover:border-primary/50 text-white/70'
+                                    : 'bg-primary/5 border-primary/20 hover:border-primary/50 hover:bg-primary/10 text-primary/90'
                             }`}
                           >
                             <span className="uppercase italic">{slot.time_slot}</span>
                             <span className="flex items-center gap-1.5">
                               {isSelected && <span className="material-symbols-outlined text-base">check_circle</span>}
-                              {isBookedOrBlocked ? 'Booked' : isLocked ? 'Locked' : `₹${slot.price}`}
+                              {isBookedOrBlocked ? 'Booked' : isLocked ? 'Locked' : `Available · ₹${slot.price}`}
                             </span>
                           </button>
                         );
@@ -552,12 +552,12 @@ export default function BookingSystem({
                                     onClick={() => toggleSlotForDate(d, slot)}
                                     className={`w-full py-2.5 px-2 rounded-xl border text-[11px] font-black transition-all ${
                                       isBookedOrBlocked
-                                        ? 'opacity-30 grayscale cursor-not-allowed bg-white/[0.02] border-white/5 text-white/30'
+                                        ? 'cursor-not-allowed bg-red-500/[0.04] border-red-500/10 text-red-400/50'
                                         : isLocked
-                                          ? 'opacity-40 cursor-not-allowed border-white/5 text-white/30'
+                                          ? 'cursor-not-allowed bg-amber-500/[0.04] border-amber-500/10 text-amber-400/50'
                                           : isSelected
                                             ? 'border-primary bg-primary/10 text-primary shadow-[0_0_15px_rgba(13,242,32,0.15)]'
-                                            : 'bg-white/[0.02] border-white/5 hover:border-primary/50 hover:bg-white/[0.04] text-white/70'
+                                            : 'bg-primary/5 border-primary/20 hover:border-primary/50 hover:bg-primary/10 text-primary/90'
                                     }`}
                                   >
                                     {isSelected ? (
