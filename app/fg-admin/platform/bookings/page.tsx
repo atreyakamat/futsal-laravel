@@ -290,7 +290,7 @@ export default async function AdminBookingsPage({
                         paymentMethod={g.payment_method}
                         venuePaymentStatus={g.venue_payment_status}
                       />
-                      {context.role === 'super_admin' && (
+                      {['super_admin', 'arena_admin'].includes(context.role) && (
                         <SuperAdminRefundBtn
                           bookingRef={g.booking_ref}
                           slots={g.slots}
@@ -299,7 +299,7 @@ export default async function AdminBookingsPage({
                           paymentMethod={g.payment_method}
                         />
                       )}
-                      {context.role === 'super_admin' && (
+                      {['super_admin', 'arena_admin'].includes(context.role) && (
                         <CheckRefundStatusBtn bookingRef={g.booking_ref} refundStatus={g.refund_status} />
                       )}
                       <Link

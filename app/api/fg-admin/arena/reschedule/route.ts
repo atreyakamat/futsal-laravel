@@ -118,13 +118,16 @@ export async function POST(req: NextRequest) {
       console.error('[Reschedule Audit Error]', auditErr);
     }
 
-    // 6. Notify Customer via SMS/WhatsApp
+    // 6. Notify Customer via SMS/WhatsApp — same RESCHEDULED| protocol and
+    // field order as the customer self-service reschedule (lib/ticket.ts's
+    // sendRescheduleTicketEmail / lib/sms.ts's AiSensyProvider), so both
+    // reschedule paths render through the one agnelarena_reschedule template.
     if (firstBooking.customer_mobile) {
       try {
         const sms = getSmsProvider();
         await sms.sendSms(
           firstBooking.customer_mobile,
-          `RESCHEDULED|${payload.newDate}|${payload.newSlot}|${firstBooking.ticket_number || payload.ref}|${payload.ref}|${firstBooking.customer_name}`
+          `RESCHEDULED|${oldDate}|${oldSlot}|${payload.newDate}|${payload.newSlot}|${firstBooking.ticket_number || payload.ref}|${firstBooking.customer_name}`
         );
       } catch (notifyErr) {
         console.error('[Reschedule Notification Error]', notifyErr);

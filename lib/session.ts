@@ -146,3 +146,17 @@ export async function readSuperAdminId() {
   }
   return await readAuthUserId();
 }
+
+/**
+ * Force-refunds are one of the few areas explicitly widened to the
+ * platform-wide arena_admin role alongside super_admin — everything else
+ * readSuperAdminId() gates (GST, settings, account management, arena
+ * create/edit) deliberately stays super_admin-only.
+ */
+export async function readSuperAdminOrArenaAdminId() {
+  const role = await readAuthRole();
+  if (role !== 'super_admin' && role !== 'arena_admin') {
+    return null;
+  }
+  return await readAuthUserId();
+}

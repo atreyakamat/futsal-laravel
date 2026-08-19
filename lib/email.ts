@@ -258,6 +258,84 @@ export function generateBookingConfirmationEmail(
   return { subject, html, text };
 }
 
+export function generateRescheduleConfirmationEmail(
+  newBookingRef: string,
+  oldBookingRef: string,
+  arenaName: string,
+  arenaAddress: string,
+  oldDate: string,
+  oldSlots: string[],
+  newDate: string,
+  newSlots: string[],
+  customerName: string,
+  newTotalAmount: number,
+  ticketNumbers: string[],
+  qrCodeUrl: string,
+  ticketDownloadUrl?: string
+): { subject: string; html: string; text: string } {
+  const subject = `Booking Rescheduled: ${newBookingRef} - ${arenaName}`;
+  const oldMergedSlots = oldSlots.join(', ');
+  const newMergedSlots = newSlots.join(', ');
+  const arenaRowValue = arenaAddress ? `${arenaName}<br><span style="font-weight: 400; color: #999; font-size: 12px;">${arenaAddress}</span>` : arenaName;
+  const formatDate = (d: string) => new Date(d).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+  const downloadButtonHtml = ticketDownloadUrl
+    ? `<div style="text-align: center; margin: 20px 0;">
+         <a href="${ticketDownloadUrl}" style="display: inline-block; background: #0df220; color: #050505; font-weight: 900; font-size: 13px; text-decoration: none; padding: 12px 20px; border-radius: 8px; margin: 6px;">Download New Ticket (PDF)</a>
+       </div>`
+    : '';
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: #0df220; padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+        <h1 style="color: #050505; margin: 0; font-size: 28px; font-weight: 900;">AGNEL<span style="color: #050505;">ARENA</span></h1>
+        <p style="color: #050505; margin: 10px 0 0; font-size: 14px;">Booking Rescheduled!</p>
+      </div>
+      <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e5e5; border-top: none; border-radius: 0 0 12px 12px;">
+        <h2 style="color: #1a1a1a; margin-top: 0;">Hi ${customerName},</h2>
+        <p>Your booking <strong>${oldBookingRef}</strong> has been moved to a new slot. Your old ticket(s) are no longer valid — the QR code below is your new ticket.</p>
+
+        <div style="background: #f5f5f5; border-radius: 8px; padding: 20px; margin: 20px 0;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr><td style="padding: 8px 0; color: #666; font-size: 14px;">New Booking Reference</td><td style="padding: 8px 0; font-weight: 700; text-align: right;">${newBookingRef}</td></tr>
+            <tr><td style="padding: 8px 0; color: #666; font-size: 14px; vertical-align: top;">Arena</td><td style="padding: 8px 0; font-weight: 700; text-align: right;">${arenaRowValue}</td></tr>
+            <tr><td style="padding: 8px 0; color: #999; font-size: 13px; text-decoration: line-through;">Previous Date</td><td style="padding: 8px 0; font-weight: 700; text-align: right; color: #999; text-decoration: line-through;">${formatDate(oldDate)}, ${oldMergedSlots}</td></tr>
+            <tr><td style="padding: 8px 0; color: #666; font-size: 14px;">New Date</td><td style="padding: 8px 0; font-weight: 700; text-align: right; color: #0df220;">${formatDate(newDate)}</td></tr>
+            <tr><td style="padding: 8px 0; color: #666; font-size: 14px;">New Time Slots</td><td style="padding: 8px 0; font-weight: 700; text-align: right; color: #0df220;">${newMergedSlots}</td></tr>
+            <tr><td style="padding: 8px 0; color: #666; font-size: 14px;">Slots Booked</td><td style="padding: 8px 0; font-weight: 700; text-align: right;">${ticketNumbers.length}</td></tr>
+            <tr><td style="padding: 8px 0; color: #666; font-size: 14px;">Amount</td><td style="padding: 8px 0; font-weight: 700; text-align: right;">₹${newTotalAmount.toFixed(2)}</td></tr>
+          </table>
+        </div>
+
+        <div style="background: #fff8e1; border: 1px solid #ffd54f; border-radius: 8px; padding: 16px; margin: 20px 0; color: #7a5c00; font-size: 14px;">
+          <strong>This booking has now used its one free reschedule</strong> and cannot be rescheduled again. No refund is issued for rescheduling or cancellation.
+        </div>
+
+        <div style="text-align: center; margin: 30px 0;">
+          <img src="${qrCodeUrl}" alt="QR Code Ticket" style="width: 150px; height: 150px; border: 4px solid #0df220; border-radius: 12px; background: white; padding: 8px;">
+          <p style="color: #666; font-size: 12px; margin-top: 10px;">Show this QR code at the arena for entry</p>
+        </div>
+
+        <div style="background: #fff8e1; border: 1px solid #ffd54f; border-radius: 8px; padding: 16px; margin: 20px 0;">
+          <p style="margin: 0; color: #5d4037; font-size: 14px;"><strong>Important:</strong> Arrive 10 minutes before your slot. Present this QR code to security staff for entry.</p>
+        </div>
+
+        ${downloadButtonHtml}
+
+        <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 20px 0;">
+        <p style="color: #999; font-size: 12px; text-align: center;">AgnelArena - Premium Turf Booking in Goa</p>
+      </div>
+    </body>
+    </html>
+  `;
+  const text = `Booking Rescheduled: ${oldBookingRef} moved to ${newBookingRef} at ${arenaName}. New slot: ${formatDate(newDate)}, ${newMergedSlots}. Amount: ₹${newTotalAmount.toFixed(2)}. No refund is issued for rescheduling or cancellation, and this booking cannot be rescheduled again.`;
+  return { subject, html, text };
+}
+
 export function generateRefundCompletedEmail(
   bookingRef: string,
   arenaName: string,

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { query, queryOne } from '@/lib/db';
 import { logAuditAction } from '@/lib/super-admin';
 import { readSuperAdminId } from '@/lib/session';
-import { getArenaPaymentMode, setArenaPaymentMode, getArenaUpiVpa, setArenaUpiVpa, getArenaPlaceOfSupply, setArenaPlaceOfSupply } from '@/lib/admin';
+import { getArenaPaymentMode, setArenaPaymentMode, getArenaUpiVpa, setArenaUpiVpa, getArenaPlaceOfSupply, setArenaPlaceOfSupply, getCustomerRefundEnabled, setCustomerRefundEnabled } from '@/lib/admin';
 
 const updateSchema = z.object({
   name: z.string().min(1).max(255).optional(),
@@ -20,6 +20,7 @@ const updateSchema = z.object({
   payment_mode: z.enum(['online', 'offline']).optional(),
   upi_vpa: z.string().max(100).optional().or(z.literal('')),
   gst_place_of_supply: z.string().max(100).optional().or(z.literal('')),
+  customer_refund_enabled: z.boolean().optional(),
 });
 
 export async function GET(
@@ -52,10 +53,11 @@ export async function GET(
     const paymentMode = await getArenaPaymentMode(arena.id);
     const upiVpa = await getArenaUpiVpa(arena.id);
     const gstPlaceOfSupply = await getArenaPlaceOfSupply(arena.id);
+    const customerRefundEnabled = await getCustomerRefundEnabled(arena.id);
 
     return NextResponse.json({
       success: true,
-      data: { ...arena, payment_mode: paymentMode, upi_vpa: upiVpa, gst_place_of_supply: gstPlaceOfSupply },
+      data: { ...arena, payment_mode: paymentMode, upi_vpa: upiVpa, gst_place_of_supply: gstPlaceOfSupply, customer_refund_enabled: customerRefundEnabled },
     });
   } catch (error) {
     console.error('Fetch arena error:', error);
@@ -174,6 +176,9 @@ export async function PUT(
     }
     if (payload.gst_place_of_supply !== undefined) {
       await setArenaPlaceOfSupply(Number(params.id), payload.gst_place_of_supply || null);
+    }
+    if (payload.customer_refund_enabled !== undefined) {
+      await setCustomerRefundEnabled(Number(params.id), payload.customer_refund_enabled);
     }
 
     // Log audit action

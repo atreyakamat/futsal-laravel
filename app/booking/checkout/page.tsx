@@ -2,9 +2,9 @@ import { getArenaById, getArenaPricingForDate, queryOne, query, getRefundPolicyC
 import { readGuestIdentifier, readAuthUserId } from '@/lib/session';
 import { mergeSlots, getDurationText } from '@/lib/slot-merge';
 import { getPayuConfig } from '@/lib/payment';
-import { getArenaEntryMode, getArenaPaymentMode } from '@/lib/admin';
+import { getArenaEntryMode, getArenaPaymentMode, getCustomerRefundEnabled } from '@/lib/admin';
 import { getOrCreateCsrfToken } from '@/lib/csrf';
-import { evaluateCancellationEligibility, DEFAULT_CANCEL_CUTOFF_HOURS } from '@/lib/refund-policy';
+import { evaluateCancellationEligibility, DEFAULT_CANCEL_CUTOFF_HOURS, RESCHEDULE_CUTOFF_HOURS, RESCHEDULE_MAX_WINDOW_DAYS } from '@/lib/refund-policy';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import CheckoutForm from '@/components/CheckoutForm';
@@ -89,6 +89,7 @@ export default async function CheckoutPage({ searchParams }: Props) {
 
   const checkoutTotal = entryMode === 'free' ? 0 : total;
   const paymentMode = await getArenaPaymentMode(arenaId);
+  const refundsEnabled = await getCustomerRefundEnabled(arenaId);
   const { merchantKey, merchantSalt } = getPayuConfig();
   const payuReady = Boolean(merchantKey && merchantSalt);
 
@@ -151,7 +152,22 @@ export default async function CheckoutPage({ searchParams }: Props) {
               </p>
             </div>
 
-            {paymentMode === 'online' ? (
+            {!refundsEnabled ? (
+              <div className="flex items-start gap-4 p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-red-500/30 bg-red-500/10">
+                <span className="material-symbols-outlined text-red-500 text-xl sm:text-2xl flex-shrink-0">event_busy</span>
+                <div className="space-y-2">
+                  <p className="text-[10px] font-black text-red-500 uppercase tracking-[0.15em] sm:tracking-[0.2em] leading-relaxed">
+                    NO REFUNDS — RESCHEDULE ONLY
+                  </p>
+                  <p className="text-xs font-medium text-white/70 leading-relaxed">
+                    Cancellations are not refunded under any circumstances. You may instead reschedule this booking once, to a slot priced the same or less, up to {RESCHEDULE_CUTOFF_HOURS} hours before your session and within {RESCHEDULE_MAX_WINDOW_DAYS} days.
+                  </p>
+                  <p className="text-xs font-medium text-white/60 leading-relaxed">
+                    Cancellation (with no refund) remains open until {cutoffHours} hours before your session.
+                  </p>
+                </div>
+              </div>
+            ) : paymentMode === 'online' ? (
               <>
                 <div className="flex items-start gap-4 p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-red-500/20 bg-red-500/10">
                   <span className="material-symbols-outlined text-red-500 text-xl sm:text-2xl flex-shrink-0">event_busy</span>
@@ -213,6 +229,7 @@ export default async function CheckoutPage({ searchParams }: Props) {
               refundFeeText={formatRefundPolicyText(refundPolicy, slots.length)}
               isWithinNoRefundWindow={isWithinNoRefundWindow}
               paymentMode={paymentMode}
+              refundsEnabled={refundsEnabled}
             />
           </div>
         </div>

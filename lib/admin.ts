@@ -368,6 +368,24 @@ export async function setArenaUpiVpa(arenaId: number, vpa: string | null) {
   await setArenaSetting(arenaId, 'upi_vpa', vpa);
 }
 
+/**
+ * Default policy is no self-service customer refunds — cancelling forfeits
+ * the amount paid, and rescheduling is the offered remedy instead (see
+ * lib/refund-policy.ts's RESCHEDULE_* constants, lib/domain.ts's
+ * rescheduleBooking). This per-arena flag is a forward-looking off switch:
+ * turning it on for a specific arena restores the old payment-mode-aware
+ * refund-eligible cancellation flow for that arena only. Force-refunds by
+ * super_admin/arena_admin remain available regardless of this setting.
+ */
+export async function getCustomerRefundEnabled(arenaId: number): Promise<boolean> {
+  const setting = await getArenaSetting(arenaId, 'customer_refund_enabled');
+  return setting?.value === 'true';
+}
+
+export async function setCustomerRefundEnabled(arenaId: number, enabled: boolean) {
+  await setArenaSetting(arenaId, 'customer_refund_enabled', enabled ? 'true' : 'false');
+}
+
 /** GST "place of supply" — the state where the turf is physically located. */
 export async function getArenaPlaceOfSupply(arenaId: number): Promise<string | null> {
   const setting = await getArenaSetting(arenaId, 'gst_place_of_supply');

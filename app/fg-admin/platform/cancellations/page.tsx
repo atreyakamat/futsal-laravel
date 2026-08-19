@@ -37,8 +37,11 @@ interface CancellationGroup {
 
 /**
  * Every cancellation sits here (refund_status = 'PENDING_REVIEW') until a
- * super admin either processes the refund (as-calculated or with a custom
- * override amount) or declines it outright — see SuperAdminRefundBtn.
+ * super admin or platform-wide arena admin either processes the refund
+ * (as-calculated or with a custom override amount) or declines it outright
+ * — see SuperAdminRefundBtn. With no-refund now the default self-service
+ * policy (see app/api/bookings/cancel/route.ts), this queue is mostly for
+ * arenas that opted back into customer refunds.
  * The slot itself is already freed the moment the customer cancelled
  * (app/api/bookings/cancel/route.ts); this queue only governs the payout
  * decision, not the cancellation itself.
@@ -47,7 +50,7 @@ export default async function CancellationsQueuePage() {
   const userId = await readAuthUserId();
   const context = await getAdminContext(userId);
 
-  if (!context || context.role !== 'super_admin') {
+  if (!context || !['super_admin', 'arena_admin'].includes(context.role)) {
     redirect('/fg-admin/platform/dashboard');
   }
 

@@ -18,6 +18,7 @@ interface CheckoutFormProps {
   refundFeeText: string;
   isWithinNoRefundWindow: boolean;
   paymentMode: 'online' | 'offline';
+  refundsEnabled: boolean;
 }
 
 export default function CheckoutForm({
@@ -35,6 +36,7 @@ export default function CheckoutForm({
   refundFeeText,
   isWithinNoRefundWindow,
   paymentMode,
+  refundsEnabled,
 }: CheckoutFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const [showPolicyModal, setShowPolicyModal] = useState(false);
@@ -152,7 +154,9 @@ export default function CheckoutForm({
           <div className="glass-card !p-8 sm:!p-10 max-w-lg w-full space-y-6 my-8">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-black uppercase tracking-tighter italic">
-                {paymentMode === 'online' ? (
+                {!refundsEnabled ? (
+                  <>No <span className="text-primary">Refunds</span></>
+                ) : paymentMode === 'online' ? (
                   <>Cancellation & <span className="text-primary">Refund Policy</span></>
                 ) : (
                   <>Cancellation <span className="text-primary">Policy</span></>
@@ -163,7 +167,13 @@ export default function CheckoutForm({
               </button>
             </div>
 
-            {paymentMode === 'online' ? (
+            {!refundsEnabled ? (
+              <div className="space-y-3 text-sm text-white/70">
+                <p>Cancellations are <strong className="text-white">not refunded</strong> under any circumstances.</p>
+                <p>You may instead reschedule this booking once, to a slot priced the same or less, up to 24 hours before your session and within 30 days.</p>
+                <p>Cancellation (with no refund) remains open until <strong className="text-white">{cutoffHours} hours</strong> before your session.</p>
+              </div>
+            ) : paymentMode === 'online' ? (
               <div className="space-y-3 text-sm text-white/70">
                 <p>Cancel up to <strong className="text-white">{cutoffHours} hours</strong> before your scheduled session to be eligible for a refund.</p>
                 <p>Eligible refunds are processed after deducting a <strong className="text-white">{refundFeeText}</strong>.</p>
@@ -175,7 +185,7 @@ export default function CheckoutForm({
               </div>
             )}
 
-            {paymentMode === 'online' && isWithinNoRefundWindow && checkoutTotal > 0 && (
+            {refundsEnabled && paymentMode === 'online' && isWithinNoRefundWindow && checkoutTotal > 0 && (
               <div className="px-4 py-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400 text-xs font-black uppercase tracking-widest flex items-start gap-3">
                 <span className="material-symbols-outlined text-lg shrink-0 animate-pulse">warning</span>
                 This booking starts within {cutoffHours} hours. If you cancel or don't show up, you will NOT be eligible for any refund.
@@ -190,9 +200,11 @@ export default function CheckoutForm({
                 className="mt-1 w-4 h-4 accent-primary shrink-0"
               />
               <span className="text-sm font-bold text-white">
-                {paymentMode === 'online'
-                  ? `I Agree to the Cancellation & Refund Policy${isWithinNoRefundWindow && checkoutTotal > 0 ? ', including the no-refund window above' : ''}.`
-                  : 'I Agree to the Cancellation Policy.'}
+                {!refundsEnabled
+                  ? 'I Agree that no refunds are issued for cancellations, and rescheduling (once, ≥24h before, within 30 days) is the only alternative.'
+                  : paymentMode === 'online'
+                    ? `I Agree to the Cancellation & Refund Policy${isWithinNoRefundWindow && checkoutTotal > 0 ? ', including the no-refund window above' : ''}.`
+                    : 'I Agree to the Cancellation Policy.'}
               </span>
             </label>
 

@@ -2,7 +2,8 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { query as dbQuery, queryOne, transaction } from '@/lib/db';
 import type { ArenaSummary, BookingRow, BookingGroup, BookingSlotItem, PricingRow, SlotLockRow } from '@/lib/types';
-import { getBookingTimeRange } from '@/lib/refund-policy';
+import { getBookingTimeRange, evaluateRescheduleEligibility, getMaxRescheduleDate, RESCHEDULE_MAX_WINDOW_DAYS } from '@/lib/refund-policy';
+import { mergeSlots } from '@/lib/slot-merge';
 
 // Export query for use in other modules
 export const query = dbQuery;
@@ -571,6 +572,175 @@ export async function cancelBookingGroup(bookingRef: string, reason: string, ref
     [refundAmount, reason, bookingRef]
   );
   return true;
+}
+
+export type RescheduleResult =
+  | {
+      success: true;
+      oldBookingRef: string;
+      newBookingRef: string;
+      newTicketNumbers: string[];
+      newDate: string;
+      newSlots: string[];
+      newTotal: number;
+    }
+  | { success: false; code: string; message: string };
+
+/**
+ * Moves a confirmed booking to a new slot instead of refunding it — see
+ * evaluateRescheduleEligibility (lib/refund-policy.ts) for the eligibility
+ * rules (24h cutoff, once-only, 30-day window) enforced here. The old
+ * booking rows are marked cancelled/NOT_APPLICABLE (no refund — this is a
+ * move, not a cancellation-with-payout) and linked via
+ * rescheduled_to_ref/rescheduled_from_ref to a brand-new booking_ref with
+ * fresh ticket_number(s), so old QR codes/tickets stop working and the
+ * customer gets a genuinely new ticket to present at the gate.
+ */
+export async function rescheduleBooking(params: {
+  bookingRef: string;
+  userId: number;
+  newDate: string;
+  newSlots: string[];
+}): Promise<RescheduleResult> {
+  await ensureSchemaColumns();
+  await expirePendingBookings();
+
+  const oldRows = await dbQuery<BookingRow>(
+    `SELECT * FROM bookings WHERE booking_ref = ? AND user_id = ? ORDER BY time_slot ASC`,
+    [params.bookingRef, params.userId]
+  );
+  if (!oldRows || oldRows.length === 0) {
+    return { success: false, code: 'NOT_FOUND', message: 'Booking not found.' };
+  }
+
+  const firstOld = oldRows[0];
+  const oldSlots = oldRows.map((r) => r.time_slot);
+  const eligibility = evaluateRescheduleEligibility(
+    firstOld.booking_date,
+    oldSlots,
+    Date.now(),
+    Boolean(firstOld.reschedule_used),
+    firstOld.payment_status
+  );
+  if (!eligibility.allowed) {
+    return { success: false, code: eligibility.code, message: eligibility.message };
+  }
+
+  if (params.newSlots.length !== oldSlots.length) {
+    return {
+      success: false,
+      code: 'SLOT_COUNT_MISMATCH',
+      message: `Pick exactly ${oldSlots.length} slot${oldSlots.length > 1 ? 's' : ''} to match your original booking.`,
+    };
+  }
+  if (mergeSlots(params.newSlots).length !== 1) {
+    return { success: false, code: 'NOT_CONTIGUOUS', message: 'The new slots must be contiguous (back-to-back) on the same date.' };
+  }
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const maxDate = getMaxRescheduleDate(firstOld.booking_date);
+  if (params.newDate < todayStr) {
+    return { success: false, code: 'PAST_DATE', message: 'Cannot reschedule to a past date.' };
+  }
+  if (params.newDate > maxDate) {
+    return {
+      success: false,
+      code: 'OUTSIDE_WINDOW',
+      message: `The new date must be within ${RESCHEDULE_MAX_WINDOW_DAYS} days of your original booking date (by ${maxDate}).`,
+    };
+  }
+
+  const oldTotal = oldRows.reduce((sum, r) => sum + Number(r.amount), 0);
+  const newPricing = await getArenaPricingForDate(firstOld.arena_id, params.newDate);
+  const priceBySlot = new Map(newPricing.map((row) => [row.time_slot, Number(row.price)]));
+  const newTotal = params.newSlots.reduce((sum, slot) => sum + (priceBySlot.get(slot) ?? 500), 0);
+  if (newTotal > oldTotal) {
+    return {
+      success: false,
+      code: 'PRICE_TOO_HIGH',
+      message: `The new slots total ₹${newTotal}, which is more than your original ₹${oldTotal}. Pick slots priced at or below your original total.`,
+    };
+  }
+
+  const newBookingRef = `REF-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+  const newTicketNumbers: string[] = [];
+
+  try {
+    await transaction(async (connection) => {
+      for (const slot of params.newSlots) {
+        const [bookedRows] = await connection.execute(
+          `SELECT id FROM bookings
+            WHERE arena_id = ?
+              AND booking_date = ?
+              AND time_slot = ?
+              AND payment_status IN ('pending', 'confirmed')
+            LIMIT 1 FOR UPDATE`,
+          [firstOld.arena_id, params.newDate, slot]
+        );
+        if ((bookedRows as any[])?.length > 0) {
+          throw new Error(`SLOT_TAKEN:${slot}`);
+        }
+
+        const ticketNumber = `TKT-${new Date().toISOString().slice(2, 10).replaceAll('-', '')}-${crypto.randomUUID().slice(0, 4).toUpperCase()}`;
+        newTicketNumbers.push(ticketNumber);
+
+        await connection.execute(
+          `INSERT INTO bookings (
+            ticket_number, booking_ref, arena_id, user_id, booking_date, time_slot,
+            customer_name, customer_mobile, customer_email, amount, payment_status,
+            payment_method, notes, checked_in, is_free_booking, venue_payment_status,
+            rescheduled_from_ref, reschedule_used, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, NULL, FALSE, ?, ?, ?, TRUE, NOW(), NOW())`,
+          [
+            ticketNumber,
+            newBookingRef,
+            firstOld.arena_id,
+            params.userId,
+            params.newDate,
+            slot,
+            firstOld.customer_name,
+            firstOld.customer_mobile,
+            firstOld.customer_email,
+            priceBySlot.get(slot) ?? 500,
+            firstOld.payment_method,
+            firstOld.is_free_booking,
+            firstOld.venue_payment_status,
+            params.bookingRef,
+          ]
+        );
+      }
+
+      await connection.execute(
+        `UPDATE bookings
+            SET payment_status = 'cancelled',
+                cancellation_requested = FALSE,
+                cancellation_reason = 'Rescheduled',
+                refund_status = 'NOT_APPLICABLE',
+                refund_amount = 0,
+                reschedule_used = TRUE,
+                rescheduled_to_ref = ?,
+                updated_at = NOW()
+          WHERE booking_ref = ?`,
+        [newBookingRef, params.bookingRef]
+      );
+    });
+  } catch (err: any) {
+    const msg = String(err?.message || '');
+    if (msg.startsWith('SLOT_TAKEN:')) {
+      return { success: false, code: 'SLOT_TAKEN', message: `Slot ${msg.split(':')[1]} was just booked by someone else. Please pick different slots.` };
+    }
+    throw err;
+  }
+
+  return {
+    success: true,
+    oldBookingRef: params.bookingRef,
+    newBookingRef,
+    newTicketNumbers,
+    newDate: params.newDate,
+    newSlots: params.newSlots,
+    newTotal,
+  };
 }
 
 export async function getSetting(key: string) {

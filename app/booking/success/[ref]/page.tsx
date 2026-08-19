@@ -1,6 +1,6 @@
 import { getBookingsByRef, getArenaById, getRefundPolicyConfig, formatRefundPolicyText, query } from '@/lib/domain';
-import { DEFAULT_CANCEL_CUTOFF_HOURS } from '@/lib/refund-policy';
-import { getArenaUpiVpa } from '@/lib/admin';
+import { DEFAULT_CANCEL_CUTOFF_HOURS, RESCHEDULE_CUTOFF_HOURS, RESCHEDULE_MAX_WINDOW_DAYS } from '@/lib/refund-policy';
+import { getArenaUpiVpa, getCustomerRefundEnabled } from '@/lib/admin';
 import { mergeSlots, getDurationText } from '@/lib/slot-merge';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
@@ -104,6 +104,7 @@ export default async function BookingSuccessPage({ params }: Props) {
 
   const isOfflinePayment = firstBooking.payment_method === 'offline';
   const venuePaid = firstBooking.venue_payment_status === 'PAID';
+  const refundsEnabled = await getCustomerRefundEnabled(arena.id);
   let upiQrUrl: string | null = null;
   if (isOfflinePayment && !venuePaid) {
     const upiVpa = await getArenaUpiVpa(arena.id);
@@ -258,7 +259,11 @@ export default async function BookingSuccessPage({ params }: Props) {
                 </div>
                 <div>
                   <p className="font-black text-sm mb-2 text-white uppercase tracking-tight">Cancellation Policy</p>
-                  {isOfflinePayment ? (
+                  {!refundsEnabled ? (
+                    <p className="text-xs text-white/40 leading-relaxed font-medium">
+                      No refunds are issued for cancellations. You may reschedule this booking once — to a slot priced the same or less — up to {RESCHEDULE_CUTOFF_HOURS} hours before your session and within {RESCHEDULE_MAX_WINDOW_DAYS} days. Cancellation (no refund) remains open until {cutoffHours} hours before your session.
+                    </p>
+                  ) : isOfflinePayment ? (
                     <p className="text-xs text-white/40 leading-relaxed font-medium">
                       This is a pay-at-venue booking. You can cancel it from your dashboard, but since payment was not collected online, no refund applies.
                     </p>

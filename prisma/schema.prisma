@@ -138,6 +138,9 @@ model Booking {
   venue_payment_reference    String?
   venue_payment_collected_by Int?
   venue_payment_collected_at DateTime?
+  rescheduled_from_ref   String?
+  rescheduled_to_ref     String?
+  reschedule_used        Boolean   @default(false)
   created_at             DateTime  @default(now())
   updated_at             DateTime  @updatedAt
 
@@ -146,6 +149,7 @@ model Booking {
   @@index([user_id])
   @@index([arena_id])
   @@index([payment_status])
+  @@index([rescheduled_from_ref])
   @@map("bookings")
 }
 

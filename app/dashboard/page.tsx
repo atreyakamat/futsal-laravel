@@ -1,4 +1,5 @@
 import { getBookingsForUser, getArenaById, query, getRefundPolicyConfig } from '@/lib/domain';
+import { getCustomerRefundEnabled } from '@/lib/admin';
 import { readAuthUserId } from '@/lib/session';
 import { mergeSlots, getDurationText } from '@/lib/slot-merge';
 import Link from 'next/link';
@@ -54,12 +55,14 @@ export default async function DashboardPage() {
     groups[ref].push(b);
   }
 
-  // Pre-fetch arena names
+  // Pre-fetch arena names and per-arena customer-refund-enabled flag
   const arenaCache: Record<number, { name: string }> = {};
+  const refundsEnabledByArena: Record<number, boolean> = {};
   for (const b of allBookings) {
     if (!arenaCache[b.arena_id]) {
       const arena = await getArenaById(b.arena_id);
       if (arena) arenaCache[b.arena_id] = arena;
+      refundsEnabledByArena[b.arena_id] = await getCustomerRefundEnabled(b.arena_id);
     }
   }
 
@@ -203,6 +206,8 @@ export default async function DashboardPage() {
                 cutoffHours={cutoffHours}
                 refundFeeMode={refundPolicyConfig.mode}
                 refundFeeValue={refundPolicyConfig.value}
+                refundsEnabled={refundsEnabledByArena[firstBooking.arena_id] ?? false}
+                rescheduleUsed={Boolean((firstBooking as any).reschedule_used)}
               />
             </div>
           </div>

@@ -18,6 +18,13 @@ export const REFUND_SERVICE_FEE_PCT = 5; // percentage deducted from eligible re
 export const DEFAULT_CANCEL_CUTOFF_HOURS = 3; // default fallback if setting not configured
 export const DEFAULT_REFUND_TIMELINE = "Expected within 5–7 business days.";
 
+// Rescheduling replaces refunds as the default self-service remedy: a fixed
+// 24h cutoff (not the admin-configurable cancellation cutoff — cancellation
+// stays open closer to the slot, rescheduling does not), one use per
+// booking, and the new date must land within 30 days of the original.
+export const RESCHEDULE_CUTOFF_HOURS = 24;
+export const RESCHEDULE_MAX_WINDOW_DAYS = 30;
+
 export interface CancellationEligibility {
   allowed: boolean;
   code: 'ELIGIBLE' | 'PAST_BOOKING' | 'LATE_CANCELLATION' | 'ALREADY_REQUESTED' | 'NOT_CONFIRMED' | 'INVALID_TIME';
@@ -337,4 +344,59 @@ export function isCancellationAllowed(bookingDateStr: string, slotStart: string,
     allowed: evalResult.allowed,
     msUntilBooking: evalResult.msUntilStart,
   };
+}
+
+export interface RescheduleEligibility {
+  allowed: boolean;
+  code: 'ELIGIBLE' | 'PAST_BOOKING' | 'TOO_CLOSE_TO_START' | 'ALREADY_RESCHEDULED' | 'NOT_CONFIRMED';
+  message: string;
+}
+
+/**
+ * Whether a confirmed booking can still be *rescheduled* (as opposed to
+ * cancelled) — a fixed 24h cutoff, independent of the arena's configurable
+ * cancellation cutoff, and blocked outright once already used once.
+ */
+export function evaluateRescheduleEligibility(
+  bookingDateStr: string,
+  timeSlots: string[],
+  now: number = Date.now(),
+  alreadyRescheduled: boolean = false,
+  paymentStatus: string = 'confirmed'
+): RescheduleEligibility {
+  if (alreadyRescheduled) {
+    return { allowed: false, code: 'ALREADY_RESCHEDULED', message: 'This booking has already been rescheduled once and cannot be rescheduled again.' };
+  }
+  if (paymentStatus !== 'confirmed') {
+    return { allowed: false, code: 'NOT_CONFIRMED', message: 'Only confirmed bookings can be rescheduled.' };
+  }
+
+  const { bookingStart, bookingEnd } = getBookingTimeRange(bookingDateStr, timeSlots);
+  const msUntilStart = bookingStart.getTime() - now;
+
+  if (now >= bookingEnd.getTime()) {
+    return { allowed: false, code: 'PAST_BOOKING', message: 'Cannot reschedule a past or completed booking.' };
+  }
+
+  if (msUntilStart < RESCHEDULE_CUTOFF_HOURS * 60 * 60 * 1000) {
+    return {
+      allowed: false,
+      code: 'TOO_CLOSE_TO_START',
+      message: `Rescheduling is only allowed at least ${RESCHEDULE_CUTOFF_HOURS} hours before the game starts. You can still cancel (no refund).`,
+    };
+  }
+
+  return { allowed: true, code: 'ELIGIBLE', message: 'Rescheduling is eligible.' };
+}
+
+/**
+ * Latest date (inclusive, "YYYY-MM-DD") a booking may be moved to — original
+ * date + RESCHEDULE_MAX_WINDOW_DAYS. Pure UTC date-string arithmetic
+ * (parses/formats as UTC) so it's never off by one for a caller in any
+ * timezone, same reasoning as the client-side addDays in BookingSystem.tsx.
+ */
+export function getMaxRescheduleDate(bookingDateStr: string): string {
+  const d = new Date(`${bookingDateStr}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + RESCHEDULE_MAX_WINDOW_DAYS);
+  return d.toISOString().slice(0, 10);
 }

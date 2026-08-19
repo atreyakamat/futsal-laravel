@@ -2,12 +2,13 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { evaluateCancellationEligibility, calculateRefundAmount, computeRefundLifecycleStatus, DEFAULT_REFUND_TIMELINE } from '@/lib/refund-policy';
+import Link from 'next/link';
+import { evaluateCancellationEligibility, evaluateRescheduleEligibility, calculateRefundAmount, computeRefundLifecycleStatus, DEFAULT_REFUND_TIMELINE } from '@/lib/refund-policy';
 
-export default function CancelBookingBtn({ 
-  bookingRef, 
-  bookingDateStr, 
-  timeSlots, 
+export default function CancelBookingBtn({
+  bookingRef,
+  bookingDateStr,
+  timeSlots,
   isCancellationRequested,
   paymentStatus,
   refundAmount,
@@ -22,6 +23,8 @@ export default function CancelBookingBtn({
   cutoffHours,
   refundFeeMode = 'FIXED',
   refundFeeValue = 300,
+  refundsEnabled = false,
+  rescheduleUsed = false,
 }: {
   bookingRef: string;
   bookingDateStr: string;
@@ -40,6 +43,8 @@ export default function CancelBookingBtn({
   cutoffHours?: number;
   refundFeeMode?: 'FIXED' | 'PERCENTAGE';
   refundFeeValue?: number;
+  refundsEnabled?: boolean;
+  rescheduleUsed?: boolean;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -47,9 +52,14 @@ export default function CancelBookingBtn({
 
   const activeCutoffHours = cutoffHours ?? 3;
 
-  // Pay-at-venue booking with nothing collected yet — cancelling never owes a
-  // refund, so the confirm/success messaging shouldn't promise a fee or payout.
-  const noRefundApplies = paymentMethod === 'offline' && venuePaymentStatus !== 'PAID';
+  // Default policy: no self-service refunds at all (see
+  // app/api/bookings/cancel/route.ts) — refundsEnabled is a per-arena
+  // forward-looking opt-in. A pay-at-venue booking with nothing collected
+  // never owed a refund either way.
+  const noRefundApplies = !refundsEnabled || (paymentMethod === 'offline' && venuePaymentStatus !== 'PAID');
+
+  const rescheduleEligibility = evaluateRescheduleEligibility(bookingDateStr, timeSlots, Date.now(), rescheduleUsed, paymentStatus);
+  const canReschedule = paymentStatus === 'confirmed' && !isCancellationRequested && rescheduleEligibility.allowed;
 
   // Evaluate time eligibility for cancellation
   const eligibility = evaluateCancellationEligibility(bookingDateStr, timeSlots, Date.now(), activeCutoffHours);
@@ -221,7 +231,9 @@ export default function CancelBookingBtn({
 
   const handleCancel = async () => {
     const confirmMessage = noRefundApplies
-      ? `Cancel Booking ${bookingRef}?\n\nThis is a pay-at-venue booking and no payment was collected, so no refund applies.`
+      ? (refundsEnabled
+          ? `Cancel Booking ${bookingRef}?\n\nThis is a pay-at-venue booking and no payment was collected, so no refund applies.`
+          : `Cancel Booking ${bookingRef}?\n\nNo refund is issued for cancellations.${canReschedule ? ' Consider rescheduling instead — you can still move this booking to a new slot at no cost.' : ''}`)
       : (() => {
           const feeDescription = feeMode === 'PERCENTAGE'
             ? `${feeValue}% cancellation fee (₹${serviceFee})`
@@ -245,9 +257,9 @@ export default function CancelBookingBtn({
       const data = await res.json();
 
       if (data.success) {
-        alert(data.refundEligible === false
-          ? 'Booking cancelled. No refund is due for this pay-at-venue booking.'
-          : `Cancellation requested successfully. Expected refund: ₹${data.refundAmount}. Timeline: ${refundTimeline}`);
+        alert(data.message || (data.refundEligible === false
+          ? 'Booking cancelled. No refund is due.'
+          : `Cancellation requested successfully. Expected refund: ₹${data.refundAmount}. Timeline: ${refundTimeline}`));
         router.refresh();
       } else {
         setErrorMsg(data.message || 'Failed to cancel booking');
@@ -262,16 +274,25 @@ export default function CancelBookingBtn({
   };
 
   return (
-    <div className="mt-4 w-full md:w-auto">
+    <div className="mt-4 w-full md:w-auto flex flex-col md:items-end gap-2">
       {errorMsg && (
         <p className="text-[10px] text-red-400 font-bold mb-2 uppercase tracking-wider">{errorMsg}</p>
       )}
-      <button 
+      {canReschedule && (
+        <Link
+          href={`/dashboard/reschedule/${bookingRef}`}
+          className="w-full md:w-auto px-4 py-3 bg-primary/10 hover:bg-primary/20 border border-primary/30 text-primary font-bold rounded-xl text-xs uppercase tracking-widest transition-colors flex items-center justify-center gap-2"
+        >
+          Reschedule Booking
+          <span className="material-symbols-outlined text-base">event_repeat</span>
+        </Link>
+      )}
+      <button
         onClick={handleCancel}
         disabled={loading}
         className="w-full md:w-auto px-4 py-3 bg-white/5 hover:bg-red-500/10 hover:text-red-500 border border-white/10 hover:border-red-500/30 text-white/70 font-bold rounded-xl text-xs uppercase tracking-widest transition-colors flex items-center justify-center gap-2"
       >
-        {loading ? 'Processing...' : 'Request Cancellation'}
+        {loading ? 'Processing...' : noRefundApplies ? 'Cancel (No Refund)' : 'Request Cancellation'}
         <span className="material-symbols-outlined text-base">cancel</span>
       </button>
     </div>

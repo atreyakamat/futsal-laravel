@@ -1,6 +1,6 @@
 import { getArenaById, getBookingsByRef, queryOne } from '@/lib/domain';
 import { mergeSlots, getDurationText } from '@/lib/slot-merge';
-import { sendEmail, generateBookingConfirmationEmail, type EmailAttachment } from '@/lib/email';
+import { sendEmail, generateBookingConfirmationEmail, generateRescheduleConfirmationEmail, type EmailAttachment } from '@/lib/email';
 import { getSmsProvider } from '@/lib/sms';
 import { buildTicketVerificationUrl, generateQrDataUrl } from '@/lib/qr';
 import { generateTicketDownloadToken } from '@/lib/ticket-token';
@@ -177,6 +177,87 @@ export async function sendTicketEmail(bookingRef: string, appUrl?: string) {
     }
 
     const result = await sendEmail({ to: firstBooking.customer_email, subject, html, text, attachments });
+    return { sent: result.success, mode: 'resend' as const, error: result.error };
+  }
+
+  return { sent: true };
+}
+
+/**
+ * Sends the reissued ticket for a rescheduled booking — the new
+ * booking_ref's ticket via WhatsApp + email, referencing the old ref so the
+ * customer sees exactly what moved. Old ticket(s)/QR stop working the
+ * moment lib/domain.ts's rescheduleBooking() runs (old rows flip to
+ * payment_status='cancelled'), so this reissue is the only valid ticket
+ * from that point on.
+ */
+export async function sendRescheduleTicketEmail(oldBookingRef: string, newBookingRef: string, appUrl?: string) {
+  const [oldBookings, newTicket, newBookings] = await Promise.all([
+    getBookingsByRef(oldBookingRef),
+    getTicketPackage(newBookingRef),
+    getBookingsByRef(newBookingRef),
+  ]);
+
+  const oldFirstBooking = oldBookings?.[0];
+  const newFirstBooking = newBookings?.[0];
+  if (!oldFirstBooking || !newTicket || !newFirstBooking) {
+    return { sent: false, reason: 'Ticket not found' as const };
+  }
+
+  const oldSlots = mergeSlots(oldBookings.map((b) => b.time_slot));
+  const newSlots = mergeSlots(newTicket.slots);
+
+  // 1. WhatsApp
+  if (newFirstBooking.customer_mobile) {
+    const provider = getSmsProvider();
+    try {
+      const sent = await provider.sendSms(
+        newFirstBooking.customer_mobile,
+        `RESCHEDULED|${oldFirstBooking.booking_date}|${oldSlots.join(', ')}|${newTicket.bookingDate}|${newSlots.join(', ')}|${newTicket.ticketNumbers[0] || newBookingRef}|${newTicket.customerName}`,
+        { appUrl, arenaAddress: newTicket.arenaAddress }
+      );
+      if (!sent) {
+        console.error(`[WhatsApp Reschedule] Provider reported failure sending to ${newFirstBooking.customer_mobile}`);
+      }
+    } catch (smsErr) {
+      console.error('[WhatsApp Reschedule] Failed to send via WhatsApp:', smsErr);
+    }
+  }
+
+  // 2. Email
+  if (newFirstBooking.customer_email) {
+    const baseUrl = (appUrl || process.env.NEXT_PUBLIC_APP_URL || 'https://agnelarenagoa.com').replace(/\/$/, '');
+    const qrUrl = getTicketQrEmailUrl(newTicket.ticketNumbers[0] ?? newBookingRef, appUrl);
+    const newTotal = newBookings.reduce((sum, b) => sum + Number(b.amount), 0);
+
+    const downloadToken = generateTicketDownloadToken(newTicket.bookingRef);
+    const ticketDownloadUrl = `${baseUrl}/api/bookings/download?ref=${encodeURIComponent(newTicket.bookingRef)}&token=${downloadToken}`;
+
+    const { subject, html, text } = generateRescheduleConfirmationEmail(
+      newBookingRef,
+      oldBookingRef,
+      newTicket.arenaName,
+      newTicket.arenaAddress,
+      oldFirstBooking.booking_date,
+      oldSlots,
+      newTicket.bookingDate,
+      newSlots,
+      newTicket.customerName,
+      newTotal,
+      newTicket.ticketNumbers,
+      qrUrl,
+      ticketDownloadUrl
+    );
+
+    const attachments: EmailAttachment[] = [];
+    try {
+      const ticketPdf = await generateTicketPdfBuffer(newBookings, newTicket.arenaName, newTicket.arenaAddress);
+      attachments.push({ filename: `ticket-${newBookingRef}.pdf`, content: ticketPdf, contentType: 'application/pdf' });
+    } catch (pdfErr) {
+      console.error('[Email] Failed to build reschedule ticket PDF attachment:', pdfErr);
+    }
+
+    const result = await sendEmail({ to: newFirstBooking.customer_email, subject, html, text, attachments });
     return { sent: result.success, mode: 'resend' as const, error: result.error };
   }
 

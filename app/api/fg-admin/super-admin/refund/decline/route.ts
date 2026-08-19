@@ -1,7 +1,7 @@
 /**
  * POST /api/fg-admin/super-admin/refund/decline
  *
- * Super Admin ONLY — declines a refund for a cancelled booking. The
+ * Super Admin or platform-wide Arena Admin — declines a refund for a cancelled booking. The
  * cancellation itself already stands (the slot was freed the moment the
  * customer requested it — see app/api/bookings/cancel/route.ts); this only
  * decides that no money goes back. No PayU call, no Credit Note (nothing
@@ -13,7 +13,7 @@
  * won't act on it again.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { readSuperAdminId } from '@/lib/session';
+import { readSuperAdminOrArenaAdminId } from '@/lib/session';
 import { query } from '@/lib/domain';
 import { logAuditAction } from '@/lib/super-admin';
 import { reportServerError } from '@/lib/error-log';
@@ -26,9 +26,9 @@ const schema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    const superAdminId = await readSuperAdminId();
+    const superAdminId = await readSuperAdminOrArenaAdminId();
     if (!superAdminId) {
-      return NextResponse.json({ success: false, message: 'Unauthorized — Super Admin only' }, { status: 401 });
+      return NextResponse.json({ success: false, message: 'Unauthorized — Super Admin or Arena Admin only' }, { status: 401 });
     }
 
     const payload = schema.parse(await req.json());

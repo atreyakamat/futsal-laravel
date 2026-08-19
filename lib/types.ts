@@ -45,11 +45,14 @@ export interface BookingRow {
   venue_payment_reference?: string | null;
   venue_payment_collected_by?: number | null;
   venue_payment_collected_at?: Date | string | null;
-  refund_status?: 'NONE' | 'PENDING_REVIEW' | 'APPROVED' | 'PROCESSING' | 'REFUNDED' | 'REJECTED' | string | null;
+  refund_status?: 'NONE' | 'PENDING_REVIEW' | 'APPROVED' | 'PROCESSING' | 'REFUNDED' | 'REJECTED' | 'NOT_APPLICABLE' | string | null;
   refund_reviewed_at?: Date | string | null;
   refund_reviewed_by?: number | null;
   refund_reason?: string | null;
   refund_processed_at?: Date | string | null;
+  rescheduled_from_ref?: string | null;
+  rescheduled_to_ref?: string | null;
+  reschedule_used?: boolean;
   created_at: Date;
   updated_at: Date;
 }

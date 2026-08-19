@@ -5,7 +5,7 @@
  *   - Only payment_status = 'confirmed' can cross the PayU boundary
  *   - Non-confirmed payments are blocked BEFORE PayU is called
  *   - Atomic UPDATE (WHERE payment_status='confirmed' RETURNING id) prevents races
- *   - RBAC: only super_admin role is authorized
+ *   - RBAC: only super_admin and platform-wide arena_admin roles are authorized
  *
  * Evidence rule: All PayU interactions use mocked initiatePayuRefund.
  * No real PayU API calls. No sandbox tokens treated as proof of settlement.
@@ -26,7 +26,7 @@ vi.mock('@/lib/payment', () => ({
 }));
 
 vi.mock('@/lib/session', () => ({
-  readSuperAdminId: vi.fn(),
+  readSuperAdminOrArenaAdminId: vi.fn(),
 }));
 
 vi.mock('@/lib/super-admin', () => ({
@@ -37,14 +37,14 @@ vi.mock('@/lib/super-admin', () => ({
 import { POST } from '@/app/api/fg-admin/super-admin/refund/route';
 import { query as domainQuery, getRefundPolicyConfig, ensureSchemaColumns } from '@/lib/domain';
 import { initiatePayuRefund } from '@/lib/payment';
-import { readSuperAdminId } from '@/lib/session';
+import { readSuperAdminOrArenaAdminId } from '@/lib/session';
 import { logAuditAction } from '@/lib/super-admin';
 
 const mockQuery = vi.mocked(domainQuery);
 const mockGetRefundPolicyConfig = vi.mocked(getRefundPolicyConfig);
 const mockEnsureSchemaColumns = vi.mocked(ensureSchemaColumns);
 const mockInitiatePayuRefund = vi.mocked(initiatePayuRefund);
-const mockReadSuperAdminId = vi.mocked(readSuperAdminId);
+const mockReadSuperAdminId = vi.mocked(readSuperAdminOrArenaAdminId);
 const mockLogAuditAction = vi.mocked(logAuditAction);
 
 // ── Shared mutable "database" state ──────────────────────────────
@@ -271,13 +271,24 @@ describe('REFUND-AUTHORIZATION-REGRESSION: Super Admin Refund Endpoint', () => {
       assertPayuSafety();
     });
 
-    it('11. arena admin session → 401 (PayU NOT called)', async () => {
+    it('11. manager (per-turf) session → 401 (PayU NOT called)', async () => {
       mockReadSuperAdminId.mockResolvedValue(null);
       dbBookings = [{ id: 1, booking_ref: 'RBAC-REF-2', payment_status: 'confirmed', amount: 1000, payu_mihpayid: 'PAYU-MIH-1' }];
 
       const res = await POST(makeRequest({ ref: 'RBAC-REF-2', reason: 'test' }));
       expect(res.status).toBe(401);
       assertPayuSafety();
+    });
+
+    it('11b. platform-wide arena_admin session → allowed (not 401)', async () => {
+      // Force-refund was deliberately widened from super_admin-only to also
+      // include the platform-wide arena_admin role — see
+      // lib/session.ts's readSuperAdminOrArenaAdminId.
+      mockReadSuperAdminId.mockResolvedValue(42);
+      dbBookings = [{ id: 1, booking_ref: 'RBAC-REF-2B', payment_status: 'confirmed', amount: 1000, payu_mihpayid: 'PAYU-MIH-1' }];
+
+      const res = await POST(makeRequest({ ref: 'RBAC-REF-2B', reason: 'test' }));
+      expect(res.status).not.toBe(401);
     });
 
     it('12. security staff session → 401 (PayU NOT called)', async () => {

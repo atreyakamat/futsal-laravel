@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readSuperAdminId } from '@/lib/session';
+import { readSuperAdminOrArenaAdminId } from '@/lib/session';
 import { query } from '@/lib/domain';
 import { reconcileRefundStatus } from '@/lib/refund-reconcile';
 import { logAuditAction } from '@/lib/super-admin';
 
 export async function POST(req: NextRequest) {
   try {
-    const superAdminId = await readSuperAdminId();
+    const superAdminId = await readSuperAdminOrArenaAdminId();
     if (!superAdminId) return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();

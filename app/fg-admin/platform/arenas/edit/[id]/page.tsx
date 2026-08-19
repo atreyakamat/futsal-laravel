@@ -1,6 +1,6 @@
 import EditArenaForm from '@/components/EditArenaForm';
 import { readAuthUserId } from '@/lib/session';
-import { getAdminContext, getArenaPaymentMode, getArenaUpiVpa, getArenaPlaceOfSupply } from '@/lib/admin';
+import { getAdminContext, getArenaPaymentMode, getArenaUpiVpa, getArenaPlaceOfSupply, getCustomerRefundEnabled } from '@/lib/admin';
 import { getArenaById } from '@/lib/domain';
 import { redirect } from 'next/navigation';
 
@@ -26,7 +26,8 @@ export default async function EditArenaPage({
   const paymentMode = await getArenaPaymentMode(arena.id);
   const upiVpa = await getArenaUpiVpa(arena.id);
   const gstPlaceOfSupply = await getArenaPlaceOfSupply(arena.id);
-  const arenaWithPayment = { ...arena, payment_mode: paymentMode, upi_vpa: upiVpa, gst_place_of_supply: gstPlaceOfSupply };
+  const customerRefundEnabled = await getCustomerRefundEnabled(arena.id);
+  const arenaWithPayment = { ...arena, payment_mode: paymentMode, upi_vpa: upiVpa, gst_place_of_supply: gstPlaceOfSupply, customer_refund_enabled: customerRefundEnabled };
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-20">

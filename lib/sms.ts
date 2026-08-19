@@ -185,15 +185,38 @@ export class AiSensyProvider implements SmsProvider {
       // Normalize: strip any non-digits
       let destination = to.replace(/[^\d]/g, '').trim();
 
-      // Try to parse structured confirmation or OTP message
+      // Try to parse structured confirmation, reschedule, or OTP message
       let templateParams: string[] = [];
       let ticketNumber = '';
       let isOtp = false;
+      let isReschedule = false;
 
       const otpMatch = message.match(/\b\d{6}\b/);
       const otp = otpMatch ? otpMatch[0] : '';
 
-      if (message.startsWith('CONFIRMED|')) {
+      if (message.startsWith('RESCHEDULED|')) {
+        isReschedule = true;
+        const parts = message.split('|');
+        const oldDateStr = parts[1] || '';
+        const oldTimeRange = parts[2] || '';
+        const newDateStr = parts[3] || '';
+        const newTimeRange = parts[4] || '';
+        ticketNumber = parts[5] || '';
+        const customerName = parts[6] || 'Player';
+
+        const formatDate = (d: string) => {
+          try {
+            return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+          } catch {
+            return d;
+          }
+        };
+
+        // Matches the 6-placeholder agnelarena_reschedule template:
+        // {{1}} name, {{2}} old date, {{3}} old time, {{4}} new date,
+        // {{5}} new time, {{6}} new ticket number.
+        templateParams = [customerName, formatDate(oldDateStr), oldTimeRange, formatDate(newDateStr), newTimeRange, ticketNumber];
+      } else if (message.startsWith('CONFIRMED|')) {
         const parts = message.split('|');
         const dateStr = parts[1] || '';
         const timeRange = parts[2] || '';
@@ -232,7 +255,7 @@ export class AiSensyProvider implements SmsProvider {
       }
 
       // Try to extract dynamic ticket number if present (starts with TKT-)
-      if (!ticketNumber && !isOtp) {
+      if (!ticketNumber && !isOtp && !isReschedule) {
         const ticketMatch = message.match(/\bTKT-[A-Z0-9-]+\b/i);
         ticketNumber = ticketMatch ? ticketMatch[0] : '';
       }
@@ -252,18 +275,21 @@ export class AiSensyProvider implements SmsProvider {
       // explicitly set to a template that was actually approved with a
       // dynamic button.
       const bookingCampaignName = process.env.AISENSY_CAMPAIGN_NAME_BOOKING || 'agnelarena_cofirm';
-      const useDynamicButton = Boolean(process.env.AISENSY_CAMPAIGN_NAME_BOOKING) && !isOtp;
+      const rescheduleCampaignName = process.env.AISENSY_CAMPAIGN_NAME_RESCHEDULE || 'agnelarena_reschedule';
+      const useDynamicButton = Boolean(process.env.AISENSY_CAMPAIGN_NAME_BOOKING) && !isOtp && !isReschedule;
 
       const payload: any = {
         apiKey: this.apiKey,
         campaignName: isOtp
           ? (process.env.AISENSY_CAMPAIGN_NAME_OTP || 'agnel_arena_otp')
-          : bookingCampaignName,
+          : isReschedule
+            ? rescheduleCampaignName
+            : bookingCampaignName,
         destination: destination,
         userName: this.userName,
         templateParams: templateParams,
         source: this.source,
-        media: isOtp ? {} : {
+        media: (isOtp || isReschedule) ? {} : {
           url: pdfUrl,
           filename: ticketNumber ? `ticket-${ticketNumber}.pdf` : "booking_confirmation.pdf"
         },
@@ -293,6 +319,17 @@ export class AiSensyProvider implements SmsProvider {
                 parameters: [{ type: "text", text: otp }],
               },
             ]
+          : isReschedule
+            ? (Boolean(process.env.AISENSY_CAMPAIGN_NAME_RESCHEDULE)
+                ? [
+                    {
+                      type: "button",
+                      sub_type: "url",
+                      index: 0,
+                      parameters: [{ type: "text", text: ticketNumber || 'N/A' }],
+                    },
+                  ]
+                : [])
           : useDynamicButton
             ? [
                 {
@@ -332,7 +369,7 @@ export class AiSensyProvider implements SmsProvider {
 
       if (!response.ok) {
         const errText = await response.text();
-        const errMsg = `[AiSensyProvider] Failed to send WhatsApp message: ${response.status} - ${errText} | destination=${destination} | campaign=${isOtp ? (process.env.AISENSY_CAMPAIGN_NAME_OTP || 'agnel_arena_otp') : (process.env.AISENSY_CAMPAIGN_NAME_BOOKING || 'agnelarena_cofirm')} | templateParams=${JSON.stringify(templateParams)}`;
+        const errMsg = `[AiSensyProvider] Failed to send WhatsApp message: ${response.status} - ${errText} | destination=${destination} | campaign=${isOtp ? (process.env.AISENSY_CAMPAIGN_NAME_OTP || 'agnel_arena_otp') : isReschedule ? rescheduleCampaignName : bookingCampaignName} | templateParams=${JSON.stringify(templateParams)}`;
         console.error(errMsg);
         logToPublic(errMsg);
         return false;

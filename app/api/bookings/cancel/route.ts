@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { readAuthUserId } from '@/lib/session';
 import { query } from '@/lib/domain';
 import { evaluateCancellationEligibility, calculateRefundAmount } from '@/lib/refund-policy';
+import { getCustomerRefundEnabled } from '@/lib/admin';
 import { reportServerError } from '@/lib/error-log';
 
 export async function POST(req: NextRequest) {
@@ -88,16 +89,19 @@ export async function POST(req: NextRequest) {
     const grossAmount = bookings.reduce((sum: number, b: any) => sum + Number(b.amount), 0);
     const { serviceFee, refundAmount } = calculateRefundAmount(grossAmount, refundPolicyConfig, bookings.length);
 
-    // Offline (pay-at-venue) bookings never went through PayU. If nothing was
-    // ever collected, there is nothing to refund — this cancellation should
-    // resolve immediately (NOT_APPLICABLE) rather than sit in the admin's
-    // refund-review queue implying money is owed. If the venue DID collect
-    // payment, the refund has to happen manually at the venue (outside the
-    // app/PayU), so it still needs admin review — but the messaging should
-    // say so rather than implying an automatic online refund.
+    // Default policy: no self-service refunds at all — cancelling forfeits
+    // the amount paid, and rescheduling (app/api/bookings/reschedule) is the
+    // offered remedy instead. A super_admin/arena_admin can still always
+    // force a refund manually (app/api/fg-admin/super-admin/refund) — this
+    // only governs what a *customer's own* cancellation does automatically.
+    // customer_refund_enabled is a forward-looking per-arena off switch;
+    // when an arena has it on, fall back to the old payment-mode-aware
+    // refund-eligible flow.
+    const refundsEnabledForArena = await getCustomerRefundEnabled(firstBooking.arena_id);
+
     const isOfflineBooking = firstBooking.payment_method === 'offline';
     const wasVenuePaymentCollected = isOfflineBooking && firstBooking.venue_payment_status === 'PAID';
-    const noRefundDue = isOfflineBooking && !wasVenuePaymentCollected;
+    const noRefundDue = !refundsEnabledForArena || (isOfflineBooking && !wasVenuePaymentCollected);
 
     // Cancelling frees the slot immediately (payment_status -> 'cancelled', so
     // it drops out of the active-slot query) — the actual refund still
@@ -132,7 +136,9 @@ export async function POST(req: NextRequest) {
     if (noRefundDue) {
       return NextResponse.json({
         success: true,
-        message: 'Booking cancelled and the slot has been released. This was a pay-at-venue booking and no payment was collected, so no refund is due.',
+        message: refundsEnabledForArena
+          ? 'Booking cancelled and the slot has been released. This was a pay-at-venue booking and no payment was collected, so no refund is due.'
+          : 'Booking cancelled and the slot has been released. No refund is issued for cancellations — rescheduling to a new slot is available instead, up until 24 hours before your booking.',
         refundEligible: false,
         grossAmount,
         serviceFee: 0,

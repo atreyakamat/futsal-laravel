@@ -1,20 +1,23 @@
 /**
  * POST /api/fg-admin/super-admin/refund
  *
- * Super Admin ONLY — bypasses all time rules and issues a refund with the
- * configured handling fee deducted (see lib/refund-policy.ts — either a
- * percentage or a flat fixed amount, per the refund_fee_mode/value settings).
+ * Super Admin or platform-wide Arena Admin — bypasses all time rules and
+ * issues a refund with the configured handling fee deducted (see
+ * lib/refund-policy.ts — either a percentage or a flat fixed amount, per the
+ * refund_fee_mode/value settings). Customer self-service cancellation
+ * issues no refund by default (see app/api/bookings/cancel/route.ts) — this
+ * force-refund path is the deliberate override for exceptional cases.
  *
  * Requirement Checklist:
- *  1. Super Admin can override the 3-hour rule.
- *  2. Super Admin can issue refunds even after the cutoff.
+ *  1. Super Admin/Arena Admin can override the 3-hour rule.
+ *  2. Super Admin/Arena Admin can issue refunds even after the cutoff.
  *  3. Even overridden refunds deduct the configured handling fee.
  *  4. Every override MUST:
  *      - Require a reason.
  *      - Be stored in audit logs.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { readSuperAdminId } from '@/lib/session';
+import { readSuperAdminOrArenaAdminId } from '@/lib/session';
 import { query, ensureSchemaColumns, getRefundPolicyConfig } from '@/lib/domain';
 import { logAuditAction } from '@/lib/super-admin';
 import { calculateRefundAmount } from '@/lib/refund-policy';
@@ -31,9 +34,9 @@ const schema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    const superAdminId = await readSuperAdminId();
+    const superAdminId = await readSuperAdminOrArenaAdminId();
     if (!superAdminId) {
-      return NextResponse.json({ success: false, message: 'Unauthorized — Super Admin only' }, { status: 401 });
+      return NextResponse.json({ success: false, message: 'Unauthorized — Super Admin or Arena Admin only' }, { status: 401 });
     }
 
     const payload = schema.parse(await req.json());

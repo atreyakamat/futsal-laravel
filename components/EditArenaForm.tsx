@@ -17,6 +17,7 @@ export default function EditArenaForm({ arena }: { arena: any }) {
     payment_mode: arena.payment_mode || 'online',
     upi_vpa: arena.upi_vpa || '',
     gst_place_of_supply: arena.gst_place_of_supply || '',
+    customer_refund_enabled: Boolean(arena.customer_refund_enabled),
   });
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -170,6 +171,20 @@ export default function EditArenaForm({ arena }: { arena: any }) {
             </p>
           </div>
         )}
+        <div className="space-y-3 p-4 rounded-xl border border-white/10 bg-white/[0.02]">
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={formData.customer_refund_enabled}
+              onChange={(e) => setFormData({ ...formData, customer_refund_enabled: e.target.checked })}
+              className="w-4 h-4 accent-primary"
+            />
+            <span className="label-classic !ml-0">Allow customer self-service refunds</span>
+          </label>
+          <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest">
+            Off by default — cancellations forfeit payment and customers can only reschedule. Turning this on restores the old payment-mode-aware refund-eligible cancellation flow for this arena only. Force refunds by super admin / arena admin always remain available regardless of this setting.
+          </p>
+        </div>
         <div className="space-y-3">
           <label className="label-classic">GST Place of Supply (State)</label>
           <input
