@@ -29,13 +29,14 @@ describe('Payment Lifecycle & Ticket Security Safeguards', () => {
   });
 
   describe('Cancellation Cutoff Rules', () => {
-    it('should disallow cancellation if game time is less than 3 hours away', () => {
+    it('should still allow cancellation, but not a refund, if game time is less than 24 hours away', () => {
       const nearFuture = new Date(Date.now() + 1.5 * 60 * 60 * 1000); // 1.5h in future
       const dateStr = nearFuture.toLocaleDateString('sv-SE', { timeZone: 'Asia/Kolkata' });
       const timeStr = nearFuture.toLocaleTimeString('en-GB', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' });
 
       const res = isCancellationAllowed(dateStr, timeStr);
-      expect(res.allowed).toBe(false);
+      expect(res.allowed).toBe(true);
+      expect(res.refundEligible).toBe(false);
     });
   });
 });

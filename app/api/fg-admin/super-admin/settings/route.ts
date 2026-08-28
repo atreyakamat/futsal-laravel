@@ -113,13 +113,13 @@ export async function GET(request: Request) {
     const settingsRows = await query<{ key: string; value: string }>(
       `SELECT key, value FROM settings WHERE key IN ('cancellation_cutoff_hours', 'refund_fee_mode', 'refund_fee_value')`
     );
-    let cancellation_cutoff_hours = 3;
+    let cancellation_cutoff_hours = 24;
     let refund_fee_mode = 'FIXED';
     let refund_fee_value = 300;
 
     for (const row of settingsRows) {
       if (row.key === 'cancellation_cutoff_hours') {
-        cancellation_cutoff_hours = parseInt(row.value, 10) || 3;
+        cancellation_cutoff_hours = parseInt(row.value, 10) || 24;
       } else if (row.key === 'refund_fee_mode') {
         refund_fee_mode = row.value.toUpperCase() === 'PERCENTAGE' ? 'PERCENTAGE' : 'FIXED';
       } else if (row.key === 'refund_fee_value') {
@@ -169,13 +169,13 @@ export async function POST(request: Request) {
 
     if (payload.action === 'UPDATE_CUTOFF') {
       const cutoff = parseInt(payload.cutoff, 10);
-      if (isNaN(cutoff) || cutoff < 3 || cutoff > 72) {
-        return NextResponse.json({ success: false, message: 'Cutoff must be an integer between 3 and 72 hours' }, { status: 400 });
+      if (isNaN(cutoff) || cutoff < 24 || cutoff > 72) {
+        return NextResponse.json({ success: false, message: 'Cutoff must be an integer between 24 and 72 hours' }, { status: 400 });
       }
 
       // Get previous value for audit log
       const prevSetting = await query<any>(`SELECT value FROM settings WHERE key = 'cancellation_cutoff_hours'`);
-      const prevValue = prevSetting && prevSetting.length > 0 ? prevSetting[0].value : '3';
+      const prevValue = prevSetting && prevSetting.length > 0 ? prevSetting[0].value : '24';
 
       // Upsert
       await query(`

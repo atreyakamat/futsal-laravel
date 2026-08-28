@@ -1,5 +1,5 @@
 import { getBookingsByRef, getArenaById, getRefundPolicyConfig, formatRefundPolicyText, query } from '@/lib/domain';
-import { DEFAULT_CANCEL_CUTOFF_HOURS, RESCHEDULE_CUTOFF_HOURS, RESCHEDULE_MAX_WINDOW_DAYS } from '@/lib/refund-policy';
+import { DEFAULT_CANCEL_CUTOFF_HOURS, RESCHEDULE_CUTOFF_HOURS, RESCHEDULE_MAX_WINDOW_DAYS, getInvoiceMonthEnd } from '@/lib/refund-policy';
 import { getArenaUpiVpa, getCustomerRefundEnabled } from '@/lib/admin';
 import { mergeSlots, getDurationText } from '@/lib/slot-merge';
 import Link from 'next/link';
@@ -93,8 +93,10 @@ export default async function BookingSuccessPage({ params }: Props) {
   let cutoffHours = DEFAULT_CANCEL_CUTOFF_HOURS;
   if (cutoffSetting?.[0]?.value) {
     const parsed = parseInt(cutoffSetting[0].value, 10);
-    if (!isNaN(parsed) && parsed >= 3 && parsed <= 72) cutoffHours = parsed;
+    if (!isNaN(parsed) && parsed >= 24 && parsed <= 72) cutoffHours = parsed;
   }
+  const invoiceMonthEnd = getInvoiceMonthEnd(firstBooking.created_at);
+  const invoiceMonthEndText = invoiceMonthEnd.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
 
   const totalAmount = bookings.reduce((sum, b) => sum + Number(b.amount), 0);
   const slots = bookings.map((b) => b.time_slot);
@@ -261,7 +263,7 @@ export default async function BookingSuccessPage({ params }: Props) {
                   <p className="font-black text-sm mb-2 text-white uppercase tracking-tight">Cancellation Policy</p>
                   {!refundsEnabled ? (
                     <p className="text-xs text-white/40 leading-relaxed font-medium">
-                      No refunds are issued for cancellations. You may reschedule this booking once — to a slot priced the same or less — up to {RESCHEDULE_CUTOFF_HOURS} hours before your session and within {RESCHEDULE_MAX_WINDOW_DAYS} days. Cancellation (no refund) remains open until {cutoffHours} hours before your session.
+                      No refunds are issued for cancellations. You may reschedule this booking once — to a slot priced the same or less — up to {RESCHEDULE_CUTOFF_HOURS} hours before your session and within {RESCHEDULE_MAX_WINDOW_DAYS} days. Cancellation itself remains open right up to your session — it simply won&apos;t carry a refund.
                     </p>
                   ) : isOfflinePayment ? (
                     <p className="text-xs text-white/40 leading-relaxed font-medium">
@@ -269,7 +271,7 @@ export default async function BookingSuccessPage({ params }: Props) {
                     </p>
                   ) : (
                     <p className="text-xs text-white/40 leading-relaxed font-medium">
-                      Cancellations are allowed up to {cutoffHours} hours before your booking.<br/>
+                      Cancel any time up to {cutoffHours} hours before your booking to be refund-eligible, and by <strong className="text-white/70">{invoiceMonthEndText}</strong> (the end of the month this booking was paid in) at the latest. Cancellation itself stays open right up to your session — later cancellations just won&apos;t carry a refund.<br/>
                       Eligible refunds are processed after deducting a {formatRefundPolicyText(refundPolicy, bookings.length)}.
                     </p>
                   )}

@@ -37,10 +37,10 @@ export default async function DashboardPage() {
   const settingRes = await query<any>(
     `SELECT value FROM settings WHERE key = 'cancellation_cutoff_hours'`
   );
-  let cutoffHours = 3;
+  let cutoffHours = 24;
   if (settingRes && settingRes.length > 0 && settingRes[0].value) {
     const parsed = parseInt(settingRes[0].value, 10);
-    if (!isNaN(parsed) && parsed >= 3 && parsed <= 72) {
+    if (!isNaN(parsed) && parsed >= 24 && parsed <= 72) {
       cutoffHours = parsed;
     }
   }
@@ -198,6 +198,7 @@ export default async function DashboardPage() {
                 refundAmount={firstBooking.refund_amount ? Number(firstBooking.refund_amount) : null}
                 cancellationReason={(firstBooking as any).cancellation_reason ?? null}
                 updatedAt={firstBooking.updated_at || new Date()}
+                createdAt={firstBooking.created_at || new Date()}
                 totalAmount={totalAmount}
                 payuMihpayid={firstBooking.payu_mihpayid}
                 refundStatus={(firstBooking as any).refund_status ?? null}

@@ -14,6 +14,7 @@ export default function CancelBookingBtn({
   refundAmount,
   cancellationReason,
   updatedAt,
+  createdAt,
   totalAmount,
   refundTimeline = DEFAULT_REFUND_TIMELINE,
   payuMihpayid,
@@ -34,6 +35,7 @@ export default function CancelBookingBtn({
   refundAmount: number | null;
   cancellationReason: string | null;
   updatedAt: string | Date;
+  createdAt: string | Date;
   totalAmount: number;
   refundTimeline?: string;
   payuMihpayid?: string | null;
@@ -50,19 +52,20 @@ export default function CancelBookingBtn({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const activeCutoffHours = cutoffHours ?? 3;
-
-  // Default policy: no self-service refunds at all (see
-  // app/api/bookings/cancel/route.ts) — refundsEnabled is a per-arena
-  // forward-looking opt-in. A pay-at-venue booking with nothing collected
-  // never owed a refund either way.
-  const noRefundApplies = !refundsEnabled || (paymentMethod === 'offline' && venuePaymentStatus !== 'PAID');
+  const activeCutoffHours = cutoffHours ?? 24;
 
   const rescheduleEligibility = evaluateRescheduleEligibility(bookingDateStr, timeSlots, Date.now(), rescheduleUsed, paymentStatus);
   const canReschedule = paymentStatus === 'confirmed' && !isCancellationRequested && rescheduleEligibility.allowed;
 
-  // Evaluate time eligibility for cancellation
-  const eligibility = evaluateCancellationEligibility(bookingDateStr, timeSlots, Date.now(), activeCutoffHours);
+  // Evaluate time eligibility for cancellation — cancellation itself stays
+  // available right up to game start; refundEligible is the gated part.
+  const eligibility = evaluateCancellationEligibility(bookingDateStr, timeSlots, Date.now(), activeCutoffHours, createdAt);
+
+  // Default policy: refund-eligible cancellation (see app/api/bookings/cancel/route.ts)
+  // — refundsEnabled is a per-arena opt-OUT. A pay-at-venue booking with
+  // nothing collected never owed a refund either way, and the time-window
+  // rule above can also close out refund eligibility on its own.
+  const noRefundApplies = !refundsEnabled || !eligibility.refundEligible || (paymentMethod === 'offline' && venuePaymentStatus !== 'PAID');
 
   // Calculate fee and expected refund amount based on active policy
   const { serviceFee, refundAmount: calculatedRefund, feeMode, feeValue } = calculateRefundAmount(totalAmount, {
@@ -215,25 +218,26 @@ export default function CancelBookingBtn({
     );
   }
 
-  // Render Late Cancellation Window Closed (< cutoff away)
-  if (eligibility.code === 'LATE_CANCELLATION') {
-    return (
-      <div className="mt-4 px-4 py-2 bg-white/5 border border-white/10 text-white/40 font-black rounded-xl text-[10px] uppercase tracking-widest text-center flex items-center justify-center gap-2" title={`Cancellations are only allowed at least ${activeCutoffHours} hours before slot start time`}>
-        <span className="material-symbols-outlined text-sm">lock_clock</span>
-        CANCELLATION WINDOW CLOSED (&lt; {activeCutoffHours}H)
-      </div>
-    );
-  }
-
   if (paymentStatus !== 'confirmed') {
     return null;
   }
 
+  const noRefundReason = (() => {
+    if (paymentMethod === 'offline' && venuePaymentStatus !== 'PAID') {
+      return 'This is a pay-at-venue booking and no payment was collected, so no refund applies.';
+    }
+    if (!refundsEnabled) {
+      return `No refund is issued for cancellations at this arena.${canReschedule ? ' Consider rescheduling instead — you can still move this booking to a new slot at no cost.' : ''}`;
+    }
+    if (eligibility.code === 'NO_REFUND_MONTH_EXPIRED') {
+      return 'The refund window for this booking (through the end of the month it was paid in) has closed, so no refund applies.';
+    }
+    return `This booking starts within ${activeCutoffHours} hours, so it is no longer eligible for a refund.`;
+  })();
+
   const handleCancel = async () => {
     const confirmMessage = noRefundApplies
-      ? (refundsEnabled
-          ? `Cancel Booking ${bookingRef}?\n\nThis is a pay-at-venue booking and no payment was collected, so no refund applies.`
-          : `Cancel Booking ${bookingRef}?\n\nNo refund is issued for cancellations.${canReschedule ? ' Consider rescheduling instead — you can still move this booking to a new slot at no cost.' : ''}`)
+      ? `Cancel Booking ${bookingRef}?\n\n${noRefundReason}`
       : (() => {
           const feeDescription = feeMode === 'PERCENTAGE'
             ? `${feeValue}% cancellation fee (₹${serviceFee})`
@@ -277,6 +281,9 @@ export default function CancelBookingBtn({
     <div className="mt-4 w-full md:w-auto flex flex-col md:items-end gap-2">
       {errorMsg && (
         <p className="text-[10px] text-red-400 font-bold mb-2 uppercase tracking-wider">{errorMsg}</p>
+      )}
+      {noRefundApplies && refundsEnabled && (paymentMethod !== 'offline' || venuePaymentStatus === 'PAID') && (
+        <p className="text-[10px] text-amber-400/80 font-bold mb-1 uppercase tracking-wider text-right max-w-xs">{noRefundReason}</p>
       )}
       {canReschedule && (
         <Link

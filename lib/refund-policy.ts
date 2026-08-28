@@ -3,19 +3,34 @@
  *
  * Centralised refund policy for Agnel Arena.
  *
- * Rules (as per Basil Sir & Booking Systems Engineering Specification):
+ * Rules (as per Basil Sir & Booking Systems Engineering Specification, updated 2026-08-28):
  *  - Timezone: Asia/Kolkata (IST, UTC+5:30) as authoritative server clock.
- *  - Customer self-cancel: allowed ≥ 3 hours before earliest slot start (bookingStart).
- *  - Customer self-cancel: < 3 hours before start OR game in progress → rejected (LATE_CANCELLATION).
- *  - Customer self-cancel: after game end (now >= bookingEnd) → rejected (PAST_BOOKING).
+ *  - Customer self-cancel: always allowed up until the game has ended (now < bookingEnd).
+ *    There is no hard cutoff that blocks the cancellation action itself — only refund
+ *    eligibility is time-boxed (see below). Once the game has ended, cancellation is
+ *    rejected outright (PAST_BOOKING).
+ *  - Refund eligibility: a cancellation is refund-eligible only when BOTH hold:
+ *      (a) at least `cutoffHours` (default/floor 24h, admin-configurable 24–72h) before
+ *          the booking's earliest slot start, AND
+ *      (b) on or before the last day (23:59:59 IST) of the calendar month in which the
+ *          booking was paid for — i.e. `bookings.created_at`'s IST month. Example: paid
+ *          5 Sep → refund window closes end-of-day 30 Sep IST, regardless of how far out
+ *          the booking date itself is.
+ *    Failing either condition still lets the booking be cancelled — just with no refund
+ *    (NO_REFUND_LATE if too close to play, NO_REFUND_MONTH_EXPIRED if past the invoice
+ *    month's end).
  *  - Customer self-cancel: already requested or cancelled → rejected (ALREADY_REQUESTED).
  *  - Service Fee: 5% deducted from gross total amount on eligible refunds.
  *  - Super Admin: can bypass ALL time rules and force-refund at any point (always minus 5% fee).
  *  - Arena Admin: can reschedule any booking but CANNOT issue refunds.
+ *  - Per-arena `customer_refund_enabled` setting: refunds are ON by default; an arena can
+ *    set this to 'false' to opt OUT entirely (reschedule-only, no refund ever).
  */
 
 export const REFUND_SERVICE_FEE_PCT = 5; // percentage deducted from eligible refunds
-export const DEFAULT_CANCEL_CUTOFF_HOURS = 3; // default fallback if setting not configured
+export const DEFAULT_CANCEL_CUTOFF_HOURS = 24; // default fallback if setting not configured
+export const MIN_CANCEL_CUTOFF_HOURS = 24; // floor — refund eligibility requires at least this many hours before play
+export const MAX_CANCEL_CUTOFF_HOURS = 72;
 export const DEFAULT_REFUND_TIMELINE = "Expected within 5–7 business days.";
 
 // Rescheduling replaces refunds as the default self-service remedy: a fixed
@@ -26,11 +41,16 @@ export const RESCHEDULE_CUTOFF_HOURS = 24;
 export const RESCHEDULE_MAX_WINDOW_DAYS = 30;
 
 export interface CancellationEligibility {
+  /** Whether the cancellation action itself is permitted right now (false only once the game has ended). */
   allowed: boolean;
-  code: 'ELIGIBLE' | 'PAST_BOOKING' | 'LATE_CANCELLATION' | 'ALREADY_REQUESTED' | 'NOT_CONFIRMED' | 'INVALID_TIME';
+  /** Whether a refund should accompany this cancellation, independent of whether cancellation is allowed. */
+  refundEligible: boolean;
+  code: 'ELIGIBLE' | 'NO_REFUND_LATE' | 'NO_REFUND_MONTH_EXPIRED' | 'PAST_BOOKING' | 'ALREADY_REQUESTED' | 'NOT_CONFIRMED' | 'INVALID_TIME';
   message: string;
   bookingStart: Date;
   bookingEnd: Date;
+  /** Last instant (23:59:59.999 IST, last day of the invoice month) a refund can still be claimed. */
+  invoiceMonthEnd: Date;
   msUntilStart: number;
   msUntilEnd: number;
   cutoffHoursApplied: number;
@@ -283,65 +303,102 @@ export function getBookingTimeRange(bookingDateStr: string, timeSlots: string[])
 }
 
 /**
- * Evaluates whether a customer self-cancellation is permitted according to time and lifecycle rules.
+ * Last instant a refund can still be claimed for a booking paid for on
+ * `paymentDate`: 23:59:59.999 IST on the last calendar day of that payment's
+ * IST month. Pure calendar-month arithmetic — the booking's own play date is
+ * irrelevant here, only when it was *paid for* matters (e.g. paid 31 Aug for
+ * a 1 Sep game still gets an August invoice month, ending 31 Aug 23:59:59 IST).
+ */
+export function getInvoiceMonthEnd(paymentDate: Date | string | number): Date {
+  const d = typeof paymentDate === 'object' ? paymentDate : new Date(paymentDate);
+  // Reinterpret in IST wall-clock terms (same trick as lib/gst-sequence.ts's
+  // getFiscalYear) so the month boundary is correct regardless of server TZ.
+  const istDate = new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+  const year = istDate.getFullYear();
+  const month = istDate.getMonth() + 1; // 1-12, IST calendar month of payment
+  // Date.UTC(year, month, 0) — day 0 of the (0-indexed) `month`-th month is
+  // the last day of the human-numbered `month`, e.g. month=9 (Sep) -> day 0
+  // of JS month index 9 (October) = Sep 30.
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const mm = String(month).padStart(2, '0');
+  const dd = String(lastDay).padStart(2, '0');
+  return new Date(`${year}-${mm}-${dd}T23:59:59.999+05:30`);
+}
+
+/**
+ * Evaluates whether a customer self-cancellation is permitted, and separately
+ * whether it's refund-eligible, according to the rules documented at the top
+ * of this file. `paymentDate` defaults to `now` so callers that don't care
+ * about the invoice-month cap (e.g. tests exercising only the before-play
+ * cutoff) get a trivially-satisfied month check.
  */
 export function evaluateCancellationEligibility(
   bookingDateStr: string,
   timeSlots: string[],
   now: number = Date.now(),
-  cutoffHours: number = DEFAULT_CANCEL_CUTOFF_HOURS
+  cutoffHours: number = DEFAULT_CANCEL_CUTOFF_HOURS,
+  paymentDate: Date | string | number = now
 ): CancellationEligibility {
   const { bookingStart, bookingEnd } = getBookingTimeRange(bookingDateStr, timeSlots);
+  const invoiceMonthEnd = getInvoiceMonthEnd(paymentDate);
 
   const msUntilStart = bookingStart.getTime() - now;
   const msUntilEnd = bookingEnd.getTime() - now;
   const cutoffMs = cutoffHours * 60 * 60 * 1000;
 
+  const base = { bookingStart, bookingEnd, invoiceMonthEnd, msUntilStart, msUntilEnd, cutoffHoursApplied: cutoffHours };
+
   if (now >= bookingEnd.getTime()) {
     return {
+      ...base,
       allowed: false,
+      refundEligible: false,
       code: 'PAST_BOOKING',
       message: 'Cannot cancel a past or completed booking.',
-      bookingStart,
-      bookingEnd,
-      msUntilStart,
-      msUntilEnd,
-      cutoffHoursApplied: cutoffHours,
     };
   }
 
-  if (msUntilStart < cutoffMs) {
+  const withinPlayCutoff = msUntilStart >= cutoffMs;
+  const withinInvoiceMonth = now <= invoiceMonthEnd.getTime();
+
+  if (withinPlayCutoff && withinInvoiceMonth) {
     return {
-      allowed: false,
-      code: 'LATE_CANCELLATION',
-      message: `Cancellations are only allowed at least ${cutoffHours} hours before the game starts.`,
-      bookingStart,
-      bookingEnd,
-      msUntilStart,
-      msUntilEnd,
-      cutoffHoursApplied: cutoffHours,
+      ...base,
+      allowed: true,
+      refundEligible: true,
+      code: 'ELIGIBLE',
+      message: 'Cancellation is eligible for a refund.',
+    };
+  }
+
+  if (!withinInvoiceMonth) {
+    return {
+      ...base,
+      allowed: true,
+      refundEligible: false,
+      code: 'NO_REFUND_MONTH_EXPIRED',
+      message: 'The refund window for this booking (through the end of the month it was paid in) has closed. You can still cancel, but no refund will be issued.',
     };
   }
 
   return {
+    ...base,
     allowed: true,
-    code: 'ELIGIBLE',
-    message: 'Cancellation is eligible.',
-    bookingStart,
-    bookingEnd,
-    msUntilStart,
-    msUntilEnd,
-    cutoffHoursApplied: cutoffHours,
+    refundEligible: false,
+    code: 'NO_REFUND_LATE',
+    message: `Cancellations within ${cutoffHours} hours of the game start are not eligible for a refund. You can still cancel, but no refund will be issued.`,
   };
 }
 
 export function isCancellationAllowed(bookingDateStr: string, slotStart: string, cutoffHours: number = DEFAULT_CANCEL_CUTOFF_HOURS): {
   allowed: boolean;
+  refundEligible: boolean;
   msUntilBooking: number;
 } {
   const evalResult = evaluateCancellationEligibility(bookingDateStr, [slotStart], Date.now(), cutoffHours);
   return {
     allowed: evalResult.allowed,
+    refundEligible: evalResult.refundEligible,
     msUntilBooking: evalResult.msUntilStart,
   };
 }

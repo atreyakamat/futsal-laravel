@@ -62,16 +62,21 @@ async function runSecurityAttendanceLifecycleSuite() {
     await suite('Cancellation Eligibility Rules (Future >3h, Started, Past)', () => {
       const BASE_NOW = new Date('2026-08-01T12:00:00+05:30').getTime();
 
+      // cutoffHours pinned to 3 to exercise this suite's original boundary;
+      // cancellation itself is always allowed pre-game since 2026-08-28 —
+      // only refund eligibility is time-boxed now.
+
       // Case 1: Future > 3h
-      const eval1 = evaluateCancellationEligibility('2026-08-01', ['16:00 - 17:00'], BASE_NOW);
-      assert(eval1.allowed === true && eval1.code === 'ELIGIBLE', 'Future booking > 3h away is eligible');
+      const eval1 = evaluateCancellationEligibility('2026-08-01', ['16:00 - 17:00'], BASE_NOW, 3);
+      assert(eval1.allowed === true && eval1.refundEligible === true && eval1.code === 'ELIGIBLE', 'Future booking > 3h away is refund-eligible');
 
       // Case 2: Booking started
-      const eval2 = evaluateCancellationEligibility('2026-08-01', ['11:30 - 13:00'], BASE_NOW);
-      assert(eval2.allowed === false && eval2.code === 'LATE_CANCELLATION', 'Booking already started is rejected');
+      const eval2 = evaluateCancellationEligibility('2026-08-01', ['11:30 - 13:00'], BASE_NOW, 3);
+      assert(eval2.allowed === true, 'Booking already started can still be cancelled');
+      assert(eval2.refundEligible === false && eval2.code === 'NO_REFUND_LATE', 'Booking already started is not refund-eligible');
 
       // Case 3: Past booking
-      const eval3 = evaluateCancellationEligibility('2026-08-01', ['09:00 - 10:00'], BASE_NOW);
+      const eval3 = evaluateCancellationEligibility('2026-08-01', ['09:00 - 10:00'], BASE_NOW, 3);
       assert(eval3.allowed === false && eval3.code === 'PAST_BOOKING', 'Past booking is rejected (PAST_BOOKING)');
     });
 

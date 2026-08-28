@@ -32,12 +32,13 @@ async function runMutationFalsificationSuite() {
   assert(pastEval.allowed === false, 'Test correctly fails if past booking cancellation were allowed');
   assert(pastEval.code === 'PAST_BOOKING', 'Past booking code is PAST_BOOKING');
 
-  // Mutation Test 2: Intentionally verify < 3 hours cancellation rejection
-  console.log('\n--- Mutation Test 2: Late Cancellation (< 3 Hours) Detection ---');
+  // Mutation Test 2: Intentionally verify < 24 hours cancellation is refund-rejected (but still cancellable)
+  console.log('\n--- Mutation Test 2: Late Cancellation (< 24 Hours) Refund Detection ---');
   const nowMs = new Date('2026-12-25T16:00:00+05:30').getTime(); // 2h before 18:00
   const lateEval = evaluateCancellationEligibility('2026-12-25', ['18:00 - 19:00'], nowMs);
-  assert(lateEval.allowed === false, 'Test correctly fails if late cancellation (<3h) were allowed');
-  assert(lateEval.code === 'LATE_CANCELLATION', 'Late cancellation code is LATE_CANCELLATION');
+  assert(lateEval.allowed === true, 'Test correctly fails if late cancellation were blocked outright');
+  assert(lateEval.refundEligible === false, 'Test correctly fails if a late cancellation (<24h) were refund-eligible');
+  assert(lateEval.code === 'NO_REFUND_LATE', 'Late cancellation code is NO_REFUND_LATE');
 
   // Mutation Test 3: Financial Fee Calculation Accuracy
   console.log('\n--- Mutation Test 3: Financial 5% Service Fee Accuracy ---');

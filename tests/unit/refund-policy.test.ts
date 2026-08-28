@@ -4,12 +4,14 @@ import {
   isCancellationAllowed,
   REFUND_SERVICE_FEE_PCT,
   DEFAULT_CANCEL_CUTOFF_HOURS,
+  MIN_CANCEL_CUTOFF_HOURS,
 } from '@/lib/refund-policy';
 
 describe('Refund Policy Unit Tests', () => {
   it('should have correct policy constants', () => {
     expect(REFUND_SERVICE_FEE_PCT).toBe(5);
-    expect(DEFAULT_CANCEL_CUTOFF_HOURS).toBe(3);
+    expect(DEFAULT_CANCEL_CUTOFF_HOURS).toBe(24);
+    expect(MIN_CANCEL_CUTOFF_HOURS).toBe(24);
   });
 
   describe('calculateRefundAmount', () => {
@@ -36,35 +38,38 @@ describe('Refund Policy Unit Tests', () => {
   });
 
   describe('isCancellationAllowed', () => {
-    it('should allow cancellation if slot is >= 3 hours in the future', () => {
-      // Create a date 5 hours from now in IST (+05:30)
-      const targetTime = new Date(Date.now() + 5 * 60 * 60 * 1000);
-      // Format to YYYY-MM-DD in IST
+    // Cancellation is always allowed pre-game since 2026-08-28 — `allowed`
+    // only turns false for a past/completed booking. `refundEligible` is
+    // the part gated by the (now 24h default/floor) cutoff.
+    it('should be refund-eligible if slot is >= 24 hours in the future', () => {
+      const targetTime = new Date(Date.now() + 25 * 60 * 60 * 1000);
       const istDateStr = targetTime.toLocaleDateString('sv-SE', { timeZone: 'Asia/Kolkata' }); // YYYY-MM-DD
       const istTimeStr = targetTime.toLocaleTimeString('en-GB', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' });
 
       const check = isCancellationAllowed(istDateStr, istTimeStr);
       expect(check.allowed).toBe(true);
-      expect(check.msUntilBooking).toBeGreaterThanOrEqual(3 * 60 * 60 * 1000 - 1000);
+      expect(check.refundEligible).toBe(true);
+      expect(check.msUntilBooking).toBeGreaterThanOrEqual(24 * 60 * 60 * 1000 - 1000);
     });
 
-    it('should disallow cancellation if slot is < 3 hours in the future', () => {
-      // Create a date 1 hour from now in IST
+    it('should still allow cancellation, but not a refund, if slot is < 24 hours in the future', () => {
       const targetTime = new Date(Date.now() + 1 * 60 * 60 * 1000);
       const istDateStr = targetTime.toLocaleDateString('sv-SE', { timeZone: 'Asia/Kolkata' });
       const istTimeStr = targetTime.toLocaleTimeString('en-GB', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' });
 
       const check = isCancellationAllowed(istDateStr, istTimeStr);
-      expect(check.allowed).toBe(false);
+      expect(check.allowed).toBe(true);
+      expect(check.refundEligible).toBe(false);
     });
 
     it('should support full range string inputs like "06:00 - 07:00"', () => {
-      const targetTime = new Date(Date.now() + 6 * 60 * 60 * 1000);
+      const targetTime = new Date(Date.now() + 30 * 60 * 60 * 1000);
       const istDateStr = targetTime.toLocaleDateString('sv-SE', { timeZone: 'Asia/Kolkata' });
       const istTimeStr = targetTime.toLocaleTimeString('en-GB', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' });
 
       const check = isCancellationAllowed(istDateStr, `${istTimeStr} - 08:00`);
       expect(check.allowed).toBe(true);
+      expect(check.refundEligible).toBe(true);
     });
   });
 });

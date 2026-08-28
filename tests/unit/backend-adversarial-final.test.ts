@@ -86,11 +86,12 @@ async function runBackendFinalAdversarialAudit() {
       assert(evalEligible.allowed === true, '>3 hours before start is ELIGIBLE for cancellation');
       assert(refundCalc.refundAmount === 475, 'Gross ₹500 - 5% fee (₹25) = Net Refund ₹475');
 
-      // 2. < 3 Hours before booking start (simulated by evaluating cutoff window)
+      // 2. < 24h before booking start -> still cancellable, just not refund-eligible
       const now = new Date('2026-12-25T16:00:00+05:30').getTime(); // 2 hours before 18:00
       const evalLate = evaluateCancellationEligibility('2026-12-25', ['18:00 - 19:00'], now);
-      assert(evalLate.allowed === false, '<3 hours before start is REJECTED (LATE_CANCELLATION)');
-      assert(evalLate.code === 'LATE_CANCELLATION', 'Rejection code is LATE_CANCELLATION');
+      assert(evalLate.allowed === true, '<24 hours before start can still be cancelled');
+      assert(evalLate.refundEligible === false, '<24 hours before start is NOT refund-eligible');
+      assert(evalLate.code === 'NO_REFUND_LATE', 'Code is NO_REFUND_LATE');
 
       // 3. Past booking (game finished)
       const evalPast = evaluateCancellationEligibility('2025-01-01', ['10:00 - 11:00']);

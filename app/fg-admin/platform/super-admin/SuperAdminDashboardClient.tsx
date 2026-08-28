@@ -1667,17 +1667,17 @@ export default function SuperAdminDashboardClient() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-2">Cancellation Cutoff</label>
-                    <p className="text-xs text-gray-400 mb-3">Minimum time before a booking that customers are allowed to request cancellation.</p>
+                    <p className="text-xs text-gray-400 mb-3">Minimum time before a booking's start for a cancellation to be refund-eligible. Cancellation itself always stays open up to the booking's start — this only controls whether it carries a refund (together with the invoice-month cutoff).</p>
                     <div className="flex gap-4 items-center">
-                      <select 
+                      <select
                         className="bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-sm text-white font-bold outline-none focus:border-primary/50 transition-colors"
-                        value={settings.cancellation_cutoff_hours || 3}
+                        value={settings.cancellation_cutoff_hours || 24}
                         onChange={async (e) => {
                           const val = e.target.value;
                           setSettings(prev => prev ? { ...prev, cancellation_cutoff_hours: parseInt(val) } : prev);
                         }}
                       >
-                        {[3,4,5,6,8,10,12,18,24,36,48,72].map(h => (
+                        {[24,36,48,72].map(h => (
                           <option key={h} value={h}>{h} hours{h >= 24 ? ` (${(h / 24).toFixed(h % 24 === 0 ? 0 : 1)} day${h === 24 ? '' : 's'})` : ''}</option>
                         ))}
                       </select>

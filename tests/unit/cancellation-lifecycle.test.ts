@@ -1,11 +1,16 @@
 /**
  * Comprehensive Unit & Domain Test Suite for Cancellation Lifecycle & Past Booking Restrictions
  *
+ * Updated 2026-08-28 for the month-end + 24h refund policy: cancellation
+ * itself is now always allowed up until the game ends — only refund
+ * eligibility (`refundEligible`) is time-boxed. `allowed === false` now
+ * happens only for PAST_BOOKING.
+ *
  * Tests all rules:
- *  1. Future booking > 3h -> Cancellation allowed
- *  2. Future booking < 3h -> Customer cancellation rejected (LATE_CANCELLATION)
- *  3. Boundary behavior at exactly 3h away -> Cancellation allowed
- *  4. Currently active booking -> Cancellation rejected
+ *  1. Future booking > cutoff -> Cancellation allowed, refund-eligible
+ *  2. Future booking < cutoff -> Cancellation allowed, NOT refund-eligible (NO_REFUND_LATE)
+ *  3. Boundary behavior at exactly cutoff away -> refund-eligible
+ *  4. Currently active booking -> Cancellation allowed, not refund-eligible
  *  5. Past booking -> Cancellation rejected (PAST_BOOKING)
  *  6. Direct API past booking request -> Rejected
  *  7. Multi-slot past BookingGroup -> Rejected at aggregate level
@@ -38,45 +43,55 @@ console.log('====================================================');
 // Base Time: 2026-07-29T12:00:00+05:30 (12:00 PM IST)
 const BASE_NOW = new Date('2026-07-29T12:00:00+05:30').getTime();
 
+// All Test 1-4 calls pin cutoffHours=3 explicitly (the pre-2026-08-28 default)
+// so the boundary math below still exercises a 3h line — only what
+// "failing the cutoff" now means (refundEligible=false, still cancellable)
+// has changed. paymentDate defaults to `now`, keeping the invoice-month
+// check trivially satisfied so it doesn't interfere with these tests.
+
 // -----------------------------------------------------------------------------
-// Test 1: Future booking > 3h away -> Cancellation allowed
+// Test 1: Future booking > 3h away -> Cancellation allowed & refund-eligible
 // -----------------------------------------------------------------------------
 console.log('\n--- Test 1: Future booking > 3h away ---');
 // Game at 16:00 - 17:00 (4 hours from 12:00)
-const res1 = evaluateCancellationEligibility('2026-07-29', ['16:00 - 17:00'], BASE_NOW);
-assert(res1.allowed === true, 'Future booking 4h away is eligible');
+const res1 = evaluateCancellationEligibility('2026-07-29', ['16:00 - 17:00'], BASE_NOW, 3);
+assert(res1.allowed === true, 'Future booking 4h away is cancellable');
+assert(res1.refundEligible === true, 'Future booking 4h away is refund-eligible');
 assert(res1.code === 'ELIGIBLE', 'Eligibility code is ELIGIBLE');
 
 // -----------------------------------------------------------------------------
-// Test 2: Future booking < 3h away -> Customer cancellation rejected
+// Test 2: Future booking < 3h away -> Cancellation allowed, refund NOT eligible
 // -----------------------------------------------------------------------------
 console.log('\n--- Test 2: Future booking < 3h away ---');
 // Game at 14:00 - 15:00 (2 hours from 12:00)
-const res2 = evaluateCancellationEligibility('2026-07-29', ['14:00 - 15:00'], BASE_NOW);
-assert(res2.allowed === false, 'Future booking 2h away is rejected');
-assert(res2.code === 'LATE_CANCELLATION', 'Code is LATE_CANCELLATION');
+const res2 = evaluateCancellationEligibility('2026-07-29', ['14:00 - 15:00'], BASE_NOW, 3);
+assert(res2.allowed === true, 'Future booking 2h away is still cancellable');
+assert(res2.refundEligible === false, 'Future booking 2h away is not refund-eligible');
+assert(res2.code === 'NO_REFUND_LATE', 'Code is NO_REFUND_LATE');
 
 // -----------------------------------------------------------------------------
 // Test 3: Boundary behavior -> Exactly 3h away
 // -----------------------------------------------------------------------------
 console.log('\n--- Test 3: Boundary behavior at exactly 3h away ---');
 // Game at 15:00 - 16:00 (Exactly 3 hours from 12:00)
-const res3 = evaluateCancellationEligibility('2026-07-29', ['15:00 - 16:00'], BASE_NOW);
-assert(res3.allowed === true, 'Exact 3h boundary is eligible for cancellation');
+const res3 = evaluateCancellationEligibility('2026-07-29', ['15:00 - 16:00'], BASE_NOW, 3);
+assert(res3.refundEligible === true, 'Exact 3h boundary is refund-eligible');
 
 // Exactly 2h 59m 59s away (14:59:59 start)
 const nowBoundaryJustUnder = new Date('2026-07-29T12:00:01+05:30').getTime();
-const res3b = evaluateCancellationEligibility('2026-07-29', ['15:00 - 16:00'], nowBoundaryJustUnder);
-assert(res3b.allowed === false, '2h 59m 59s away is rejected as late cancellation');
+const res3b = evaluateCancellationEligibility('2026-07-29', ['15:00 - 16:00'], nowBoundaryJustUnder, 3);
+assert(res3b.allowed === true, '2h 59m 59s away is still cancellable');
+assert(res3b.refundEligible === false, '2h 59m 59s away is not refund-eligible');
 
 // -----------------------------------------------------------------------------
-// Test 4: Currently active booking -> Cancellation rejected
+// Test 4: Currently active booking -> Cancellation allowed, refund NOT eligible
 // -----------------------------------------------------------------------------
 console.log('\n--- Test 4: Currently active booking ---');
 // Game is 11:30 - 13:30 (now is 12:00 PM)
-const res4 = evaluateCancellationEligibility('2026-07-29', ['11:30 - 13:30'], BASE_NOW);
-assert(res4.allowed === false, 'Currently active game cancellation is rejected');
-assert(res4.code === 'LATE_CANCELLATION', 'Code is LATE_CANCELLATION for active game');
+const res4 = evaluateCancellationEligibility('2026-07-29', ['11:30 - 13:30'], BASE_NOW, 3);
+assert(res4.allowed === true, 'Currently active game can still be cancelled');
+assert(res4.refundEligible === false, 'Currently active game is not refund-eligible');
+assert(res4.code === 'NO_REFUND_LATE', 'Code is NO_REFUND_LATE for active game');
 
 // -----------------------------------------------------------------------------
 // Test 5: Past booking -> Cancellation rejected

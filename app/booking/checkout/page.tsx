@@ -4,7 +4,7 @@ import { mergeSlots, getDurationText } from '@/lib/slot-merge';
 import { getPayuConfig } from '@/lib/payment';
 import { getArenaEntryMode, getArenaPaymentMode, getCustomerRefundEnabled } from '@/lib/admin';
 import { getOrCreateCsrfToken } from '@/lib/csrf';
-import { evaluateCancellationEligibility, DEFAULT_CANCEL_CUTOFF_HOURS, RESCHEDULE_CUTOFF_HOURS, RESCHEDULE_MAX_WINDOW_DAYS } from '@/lib/refund-policy';
+import { evaluateCancellationEligibility, getInvoiceMonthEnd, DEFAULT_CANCEL_CUTOFF_HOURS, RESCHEDULE_CUTOFF_HOURS, RESCHEDULE_MAX_WINDOW_DAYS } from '@/lib/refund-policy';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import CheckoutForm from '@/components/CheckoutForm';
@@ -105,10 +105,14 @@ export default async function CheckoutPage({ searchParams }: Props) {
   let cutoffHours = DEFAULT_CANCEL_CUTOFF_HOURS;
   if (cutoffSetting?.[0]?.value) {
     const parsed = parseInt(cutoffSetting[0].value, 10);
-    if (!isNaN(parsed) && parsed >= 3 && parsed <= 72) cutoffHours = parsed;
+    if (!isNaN(parsed) && parsed >= 24 && parsed <= 72) cutoffHours = parsed;
   }
-  const cancellationEligibility = evaluateCancellationEligibility(date, slots, Date.now(), cutoffHours);
-  const isWithinNoRefundWindow = cancellationEligibility.code === 'LATE_CANCELLATION';
+  // Preview only — no booking exists yet, so "paid for" is assumed to be right now.
+  const previewPaymentDate = new Date();
+  const cancellationEligibility = evaluateCancellationEligibility(date, slots, Date.now(), cutoffHours, previewPaymentDate);
+  const isWithinNoRefundWindow = !cancellationEligibility.refundEligible;
+  const invoiceMonthEnd = getInvoiceMonthEnd(previewPaymentDate);
+  const invoiceMonthEndText = invoiceMonthEnd.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-20">
@@ -163,7 +167,7 @@ export default async function CheckoutPage({ searchParams }: Props) {
                     Cancellations are not refunded under any circumstances. You may instead reschedule this booking once, to a slot priced the same or less, up to {RESCHEDULE_CUTOFF_HOURS} hours before your session and within {RESCHEDULE_MAX_WINDOW_DAYS} days.
                   </p>
                   <p className="text-xs font-medium text-white/60 leading-relaxed">
-                    Cancellation (with no refund) remains open until {cutoffHours} hours before your session.
+                    Cancellation itself remains open right up to your session — it simply won&apos;t carry a refund.
                   </p>
                 </div>
               </div>
@@ -176,7 +180,7 @@ export default async function CheckoutPage({ searchParams }: Props) {
                       CANCELLATION & REFUND POLICY
                     </p>
                     <p className="text-xs font-medium text-white/60 leading-relaxed">
-                      Cancel up to {cutoffHours} hours before your scheduled session to be eligible for a refund.
+                      Cancel up to {cutoffHours} hours before your scheduled session, and by <strong className="text-white">{invoiceMonthEndText}</strong> at the latest, to be eligible for a refund. Cancellation itself stays open right up to your session either way.
                     </p>
                     <p className="text-xs font-medium text-white/60 leading-relaxed">
                       Refund: {formatRefundPolicyText(refundPolicy, slots.length)} deducted from the refundable amount.
@@ -188,7 +192,9 @@ export default async function CheckoutPage({ searchParams }: Props) {
                   <div className="flex items-start gap-4 p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-red-500/40 bg-red-500/10">
                     <span className="material-symbols-outlined text-red-500 text-xl sm:text-2xl flex-shrink-0 animate-pulse">warning</span>
                     <p className="text-xs font-black text-red-400 uppercase tracking-widest leading-relaxed">
-                      This booking starts within {cutoffHours} hours. If you cancel or don't show up, you will NOT be eligible for any refund.
+                      {cancellationEligibility.code === 'NO_REFUND_MONTH_EXPIRED'
+                        ? `This booking's refund window has already closed. If you cancel, you will NOT be eligible for any refund.`
+                        : `This booking starts within ${cutoffHours} hours. If you cancel or don't show up, you will NOT be eligible for any refund.`}
                     </p>
                   </div>
                 )}
@@ -230,6 +236,7 @@ export default async function CheckoutPage({ searchParams }: Props) {
               isWithinNoRefundWindow={isWithinNoRefundWindow}
               paymentMode={paymentMode}
               refundsEnabled={refundsEnabled}
+              refundValidUntilText={invoiceMonthEndText}
             />
           </div>
         </div>
