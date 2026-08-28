@@ -4,7 +4,7 @@ import { mergeSlots, getDurationText } from '@/lib/slot-merge';
 import { getPayuConfig } from '@/lib/payment';
 import { getArenaEntryMode, getArenaPaymentMode, getCustomerRefundEnabled } from '@/lib/admin';
 import { getOrCreateCsrfToken } from '@/lib/csrf';
-import { evaluateCancellationEligibility, getRefundDeadline, DEFAULT_CANCEL_CUTOFF_HOURS, RESCHEDULE_CUTOFF_HOURS, RESCHEDULE_MAX_WINDOW_DAYS } from '@/lib/refund-policy';
+import { evaluateCancellationEligibility, getRefundDeadline, DEFAULT_CANCEL_CUTOFF_HOURS } from '@/lib/refund-policy';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import CheckoutForm from '@/components/CheckoutForm';
@@ -167,7 +167,7 @@ export default async function CheckoutPage({ searchParams }: Props) {
                     NO REFUNDS — RESCHEDULE ONLY
                   </p>
                   <p className="text-xs font-medium text-white/70 leading-relaxed">
-                    Cancellations are not refunded under any circumstances. You may instead reschedule this booking once, to a slot priced the same or less, up to {RESCHEDULE_CUTOFF_HOURS} hours before your session and within {RESCHEDULE_MAX_WINDOW_DAYS} days.
+                    Cancellations are not refunded under any circumstances at this arena.
                   </p>
                   <p className="text-xs font-medium text-white/60 leading-relaxed">
                     Cancellation itself remains open right up to your session — it simply won&apos;t carry a refund.

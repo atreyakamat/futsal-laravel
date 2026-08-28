@@ -372,10 +372,11 @@ export async function setArenaUpiVpa(arenaId: number, vpa: string | null) {
  * Default policy (since 2026-08-28): customer refunds are ON by default,
  * gated by the month-end + before-play cutoff window in lib/refund-policy.ts
  * (evaluateCancellationEligibility). This per-arena flag is now an opt-OUT —
- * set to 'false' for a specific arena to force reschedule-only, no-refund-ever
- * for that arena (see lib/refund-policy.ts's RESCHEDULE_* constants,
- * lib/domain.ts's rescheduleBooking). Force-refunds by super_admin/arena_admin
- * remain available regardless of this setting.
+ * set to 'false' for a specific arena to make cancellations there never
+ * refunded. Force-refunds by super_admin/arena_admin remain available
+ * regardless of this setting. (Customer self-service rescheduling is a
+ * separate, currently globally-disabled feature — see
+ * lib/refund-policy.ts's RESCHEDULING_ENABLED.)
  */
 export async function getCustomerRefundEnabled(arenaId: number): Promise<boolean> {
   const setting = await getArenaSetting(arenaId, 'customer_refund_enabled');

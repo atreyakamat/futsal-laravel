@@ -182,7 +182,7 @@ export default function EditArenaForm({ arena }: { arena: any }) {
             <span className="label-classic !ml-0">Allow customer self-service refunds</span>
           </label>
           <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest">
-            On by default — cancellations are refund-eligible up to the cancellation cutoff and through the end of the invoice month. Turning this off makes cancellations reschedule-only (no refund ever) for this arena. Force refunds by super admin / arena admin always remain available regardless of this setting.
+            On by default — cancellations are refund-eligible up to the cancellation cutoff and through the end of the invoice month. Turning this off means cancellations at this arena are never refunded. Force refunds by super admin / arena admin always remain available regardless of this setting.
           </p>
         </div>
         <div className="space-y-3">

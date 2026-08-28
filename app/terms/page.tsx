@@ -33,13 +33,13 @@ export default function TermsOfServicePage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-white mb-4">3. Cancellations and Rescheduling</h2>
+            <h2 className="text-2xl font-bold text-white mb-4">3. Cancellations</h2>
             <p className="mb-4">
-              <strong className="text-white">No refunds are issued for cancellations, under any circumstances</strong> — including no-shows. Rescheduling to a new slot is offered instead as the standard remedy. (An individual arena may, at its own discretion, opt back into offering refund-eligible cancellations; where that applies, refund terms will be shown to you at checkout for that arena.)
+              You may cancel a confirmed booking at any time up until the slot starts. A cancellation is <strong className="text-white">refund-eligible</strong> only if made at least the arena's configured cutoff (24 hours or more, shown at checkout and in your booking) before the slot start, and on or before the end of the calendar month in which the booking was paid for. Cancellations made after either deadline still release the slot but are <strong className="text-white">not refunded</strong>. (An individual arena may, at its own discretion, opt out of offering refund-eligible cancellations entirely; where that applies, this will be shown to you at checkout for that arena.)
             </p>
             <ul className="list-disc pl-6 space-y-2">
-              <li>You may cancel a confirmed booking up until the arena's configured cancellation cutoff (shown at checkout and in your booking) before the slot start. No refund is issued.</li>
-              <li>You may instead reschedule a confirmed booking to a new slot, subject to all of the following: at least 24 hours before the original slot's start time; only once per booking; the new slots must be contiguous (back-to-back) and on a single date; the new date must be within 30 days of the original booking date; and the new slots' total price must not exceed the original total. A new ticket is issued for the rescheduled booking and the original ticket is void.</li>
+              <li>Eligible refunds are processed after deducting the arena's cancellation fee, shown at checkout and in your booking.</li>
+              <li>Self-service rescheduling is not currently offered.</li>
               <li>If the arena cancels a booking due to unforeseen circumstances, a full refund will be initiated regardless of the above.</li>
               <li>Agnel Arena's management may, at its discretion, issue a refund outside of the above policy in exceptional cases.</li>
             </ul>

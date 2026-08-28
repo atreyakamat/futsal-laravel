@@ -1,5 +1,5 @@
 import { getBookingsByRef, getArenaById, getRefundPolicyConfig, formatRefundPolicyText, query } from '@/lib/domain';
-import { DEFAULT_CANCEL_CUTOFF_HOURS, RESCHEDULE_CUTOFF_HOURS, RESCHEDULE_MAX_WINDOW_DAYS, getInvoiceMonthEnd } from '@/lib/refund-policy';
+import { DEFAULT_CANCEL_CUTOFF_HOURS, getInvoiceMonthEnd } from '@/lib/refund-policy';
 import { getArenaUpiVpa, getCustomerRefundEnabled } from '@/lib/admin';
 import { mergeSlots, getDurationText } from '@/lib/slot-merge';
 import Link from 'next/link';
@@ -263,7 +263,7 @@ export default async function BookingSuccessPage({ params }: Props) {
                   <p className="font-black text-sm mb-2 text-white uppercase tracking-tight">Cancellation Policy</p>
                   {!refundsEnabled ? (
                     <p className="text-xs text-white/40 leading-relaxed font-medium">
-                      No refunds are issued for cancellations. You may reschedule this booking once — to a slot priced the same or less — up to {RESCHEDULE_CUTOFF_HOURS} hours before your session and within {RESCHEDULE_MAX_WINDOW_DAYS} days. Cancellation itself remains open right up to your session — it simply won&apos;t carry a refund.
+                      No refunds are issued for cancellations at this arena. Cancellation itself remains open right up to your session — it simply won&apos;t carry a refund.
                     </p>
                   ) : isOfflinePayment ? (
                     <p className="text-xs text-white/40 leading-relaxed font-medium">

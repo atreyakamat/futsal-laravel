@@ -22,9 +22,13 @@
  *  - Customer self-cancel: already requested or cancelled → rejected (ALREADY_REQUESTED).
  *  - Service Fee: 5% deducted from gross total amount on eligible refunds.
  *  - Super Admin: can bypass ALL time rules and force-refund at any point (always minus 5% fee).
- *  - Arena Admin: can reschedule any booking but CANNOT issue refunds.
+ *  - Arena Admin: can reschedule any booking (via the separate admin reschedule tool)
+ *    but CANNOT issue refunds.
  *  - Per-arena `customer_refund_enabled` setting: refunds are ON by default; an arena can
- *    set this to 'false' to opt OUT entirely (reschedule-only, no refund ever).
+ *    set this to 'false' to opt OUT entirely (no refund ever for that arena).
+ *  - Customer self-service rescheduling is currently disabled globally
+ *    (RESCHEDULING_ENABLED = false) — cancellation is the only self-service
+ *    remedy for now.
  */
 
 export const REFUND_SERVICE_FEE_PCT = 5; // percentage deducted from eligible refunds
@@ -414,9 +418,15 @@ export function isCancellationAllowed(bookingDateStr: string, slotStart: string,
   };
 }
 
+// Global kill switch — self-service rescheduling by customers is currently
+// disabled for all arenas (2026-08-28). This only gates the customer-facing
+// flow (dashboard/reschedule, /api/bookings/reschedule); it does not affect
+// the separate arena-admin reschedule tool used to manage bookings directly.
+export const RESCHEDULING_ENABLED = false;
+
 export interface RescheduleEligibility {
   allowed: boolean;
-  code: 'ELIGIBLE' | 'PAST_BOOKING' | 'TOO_CLOSE_TO_START' | 'ALREADY_RESCHEDULED' | 'NOT_CONFIRMED';
+  code: 'ELIGIBLE' | 'PAST_BOOKING' | 'TOO_CLOSE_TO_START' | 'ALREADY_RESCHEDULED' | 'NOT_CONFIRMED' | 'DISABLED';
   message: string;
 }
 
@@ -432,6 +442,9 @@ export function evaluateRescheduleEligibility(
   alreadyRescheduled: boolean = false,
   paymentStatus: string = 'confirmed'
 ): RescheduleEligibility {
+  if (!RESCHEDULING_ENABLED) {
+    return { allowed: false, code: 'DISABLED', message: 'Rescheduling is currently unavailable.' };
+  }
   if (alreadyRescheduled) {
     return { allowed: false, code: 'ALREADY_RESCHEDULED', message: 'This booking has already been rescheduled once and cannot be rescheduled again.' };
   }

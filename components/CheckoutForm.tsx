@@ -181,8 +181,7 @@ export default function CheckoutForm({
 
                   {!refundsEnabled ? (
                     <div className="space-y-3 text-sm text-white/70">
-                      <p>Cancellations are <strong className="text-white">not refunded</strong> under any circumstances.</p>
-                      <p>You may instead reschedule this booking once, to a slot priced the same or less, up to 24 hours before your session and within 30 days.</p>
+                      <p>Cancellations are <strong className="text-white">not refunded</strong> under any circumstances at this arena.</p>
                       <p>Cancellation itself remains open right up to your session — it simply won&apos;t carry a refund.</p>
                     </div>
                   ) : paymentMode === 'online' ? (
@@ -216,10 +215,10 @@ export default function CheckoutForm({
                     />
                     <span className="text-sm font-bold text-white">
                       {!refundsEnabled
-                        ? 'I Agree that no refunds are issued for cancellations, and rescheduling (once, ≥24h before, within 30 days) is the only alternative.'
+                        ? 'I Agree that no refunds are issued for cancellations at this arena.'
                         : paymentMode === 'online'
                           ? noRefundWindow
-                            ? 'I Agree that this booking is not eligible for a refund if cancelled — rescheduling remains available up to 24 hours before my session.'
+                            ? 'I Agree that this booking is not eligible for a refund if cancelled.'
                             : `I Agree that this booking is refund-eligible only if cancelled before ${refundDeadlineText}.`
                           : 'I Agree to the Cancellation Policy.'}
                     </span>
