@@ -4,7 +4,7 @@ import { mergeSlots, getDurationText } from '@/lib/slot-merge';
 import { getPayuConfig } from '@/lib/payment';
 import { getArenaEntryMode, getArenaPaymentMode, getCustomerRefundEnabled } from '@/lib/admin';
 import { getOrCreateCsrfToken } from '@/lib/csrf';
-import { evaluateCancellationEligibility, getInvoiceMonthEnd, DEFAULT_CANCEL_CUTOFF_HOURS, RESCHEDULE_CUTOFF_HOURS, RESCHEDULE_MAX_WINDOW_DAYS } from '@/lib/refund-policy';
+import { evaluateCancellationEligibility, getRefundDeadline, DEFAULT_CANCEL_CUTOFF_HOURS, RESCHEDULE_CUTOFF_HOURS, RESCHEDULE_MAX_WINDOW_DAYS } from '@/lib/refund-policy';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import CheckoutForm from '@/components/CheckoutForm';
@@ -111,8 +111,11 @@ export default async function CheckoutPage({ searchParams }: Props) {
   const previewPaymentDate = new Date();
   const cancellationEligibility = evaluateCancellationEligibility(date, slots, Date.now(), cutoffHours, previewPaymentDate);
   const isWithinNoRefundWindow = !cancellationEligibility.refundEligible;
-  const invoiceMonthEnd = getInvoiceMonthEnd(previewPaymentDate);
-  const invoiceMonthEndText = invoiceMonthEnd.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
+  const refundDeadline = getRefundDeadline(cancellationEligibility.bookingStart, cancellationEligibility.invoiceMonthEnd, cutoffHours);
+  const refundDeadlineText = `${refundDeadline.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' })}, ${refundDeadline
+    .toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' })
+    .replace(/am$/i, 'AM')
+    .replace(/pm$/i, 'PM')}`;
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-20">
@@ -172,7 +175,21 @@ export default async function CheckoutPage({ searchParams }: Props) {
                 </div>
               </div>
             ) : paymentMode === 'online' ? (
-              <>
+              isWithinNoRefundWindow && checkoutTotal > 0 ? (
+                <div className="flex items-start gap-4 p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-red-500/40 bg-red-500/10">
+                  <span className="material-symbols-outlined text-red-500 text-xl sm:text-2xl flex-shrink-0 animate-pulse">warning</span>
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-black text-red-500 uppercase tracking-[0.15em] sm:tracking-[0.2em] leading-relaxed">
+                      NO REFUND ON CANCELLATION
+                    </p>
+                    <p className="text-xs font-black text-red-400 uppercase tracking-widest leading-relaxed">
+                      {cancellationEligibility.code === 'NO_REFUND_MONTH_EXPIRED'
+                        ? `This booking's refund window has already closed. If you cancel, you will NOT be eligible for any refund.`
+                        : `This booking starts within ${cutoffHours} hours. If you cancel or don't show up, you will NOT be eligible for any refund.`}
+                    </p>
+                  </div>
+                </div>
+              ) : (
                 <div className="flex items-start gap-4 p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-red-500/20 bg-red-500/10">
                   <span className="material-symbols-outlined text-red-500 text-xl sm:text-2xl flex-shrink-0">event_busy</span>
                   <div className="space-y-2">
@@ -180,25 +197,14 @@ export default async function CheckoutPage({ searchParams }: Props) {
                       CANCELLATION & REFUND POLICY
                     </p>
                     <p className="text-xs font-medium text-white/60 leading-relaxed">
-                      Cancel up to {cutoffHours} hours before your scheduled session, and by <strong className="text-white">{invoiceMonthEndText}</strong> at the latest, to be eligible for a refund. Cancellation itself stays open right up to your session either way.
+                      This booking can be cancelled with a refund before <strong className="text-white">{refundDeadlineText}</strong>. After that — or once your session begins — cancellation is still possible, just without a refund.
                     </p>
                     <p className="text-xs font-medium text-white/60 leading-relaxed">
                       Refund: {formatRefundPolicyText(refundPolicy, slots.length)} deducted from the refundable amount.
                     </p>
                   </div>
                 </div>
-
-                {isWithinNoRefundWindow && checkoutTotal > 0 && (
-                  <div className="flex items-start gap-4 p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-red-500/40 bg-red-500/10">
-                    <span className="material-symbols-outlined text-red-500 text-xl sm:text-2xl flex-shrink-0 animate-pulse">warning</span>
-                    <p className="text-xs font-black text-red-400 uppercase tracking-widest leading-relaxed">
-                      {cancellationEligibility.code === 'NO_REFUND_MONTH_EXPIRED'
-                        ? `This booking's refund window has already closed. If you cancel, you will NOT be eligible for any refund.`
-                        : `This booking starts within ${cutoffHours} hours. If you cancel or don't show up, you will NOT be eligible for any refund.`}
-                    </p>
-                  </div>
-                )}
-              </>
+              )
             ) : (
               <div className="flex items-start gap-4 p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-yellow-500/20 bg-yellow-500/5">
                 <span className="material-symbols-outlined text-yellow-400 text-xl sm:text-2xl flex-shrink-0">event_busy</span>
@@ -234,9 +240,10 @@ export default async function CheckoutPage({ searchParams }: Props) {
               cutoffHours={cutoffHours}
               refundFeeText={formatRefundPolicyText(refundPolicy, slots.length)}
               isWithinNoRefundWindow={isWithinNoRefundWindow}
+              cancellationCode={cancellationEligibility.code}
               paymentMode={paymentMode}
               refundsEnabled={refundsEnabled}
-              refundValidUntilText={invoiceMonthEndText}
+              refundDeadlineText={refundDeadlineText}
             />
           </div>
         </div>

@@ -17,9 +17,10 @@ interface CheckoutFormProps {
   cutoffHours: number;
   refundFeeText: string;
   isWithinNoRefundWindow: boolean;
+  cancellationCode: string;
   paymentMode: 'online' | 'offline';
   refundsEnabled: boolean;
-  refundValidUntilText: string;
+  refundDeadlineText: string;
 }
 
 export default function CheckoutForm({
@@ -36,9 +37,10 @@ export default function CheckoutForm({
   cutoffHours,
   refundFeeText,
   isWithinNoRefundWindow,
+  cancellationCode,
   paymentMode,
   refundsEnabled,
-  refundValidUntilText,
+  refundDeadlineText,
 }: CheckoutFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const [showPolicyModal, setShowPolicyModal] = useState(false);
@@ -154,62 +156,77 @@ export default function CheckoutForm({
       {showPolicyModal && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[100] p-4 overflow-y-auto">
           <div className="glass-card !p-8 sm:!p-10 max-w-lg w-full space-y-6 my-8">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-black uppercase tracking-tighter italic">
-                {!refundsEnabled ? (
-                  <>No <span className="text-primary">Refunds</span></>
-                ) : paymentMode === 'online' ? (
-                  <>Cancellation & <span className="text-primary">Refund Policy</span></>
-                ) : (
-                  <>Cancellation <span className="text-primary">Policy</span></>
-                )}
-              </h2>
-              <button onClick={() => setShowPolicyModal(false)} className="text-white/40 hover:text-white transition-colors">
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
+            {(() => {
+              const noRefundWindow = refundsEnabled && paymentMode === 'online' && isWithinNoRefundWindow && checkoutTotal > 0;
+              return (
+                <>
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-black uppercase tracking-tighter italic">
+                      {!refundsEnabled ? (
+                        <>No <span className="text-primary">Refunds</span></>
+                      ) : paymentMode === 'online' ? (
+                        noRefundWindow ? (
+                          <>No <span className="text-primary">Refund</span> On Cancellation</>
+                        ) : (
+                          <>Cancellation & <span className="text-primary">Refund Policy</span></>
+                        )
+                      ) : (
+                        <>Cancellation <span className="text-primary">Policy</span></>
+                      )}
+                    </h2>
+                    <button onClick={() => setShowPolicyModal(false)} className="text-white/40 hover:text-white transition-colors">
+                      <span className="material-symbols-outlined">close</span>
+                    </button>
+                  </div>
 
-            {!refundsEnabled ? (
-              <div className="space-y-3 text-sm text-white/70">
-                <p>Cancellations are <strong className="text-white">not refunded</strong> under any circumstances.</p>
-                <p>You may instead reschedule this booking once, to a slot priced the same or less, up to 24 hours before your session and within 30 days.</p>
-                <p>Cancellation itself remains open right up to your session — it simply won&apos;t carry a refund.</p>
-              </div>
-            ) : paymentMode === 'online' ? (
-              <div className="space-y-3 text-sm text-white/70">
-                <p>Cancel up to <strong className="text-white">{cutoffHours} hours</strong> before your scheduled session, and by <strong className="text-white">{refundValidUntilText}</strong> at the latest (the end of the month you paid in), to be eligible for a refund.</p>
-                <p>Eligible refunds are processed after deducting a <strong className="text-white">{refundFeeText}</strong>.</p>
-                <p>Cancellation itself stays open right up to your session either way — later cancellations just won&apos;t carry a refund.</p>
-              </div>
-            ) : (
-              <div className="space-y-3 text-sm text-white/70">
-                <p>This is a <strong className="text-white">pay-at-venue</strong> booking — payment is not collected online.</p>
-                <p>You can cancel this booking from your dashboard. Since no online payment is taken, <strong className="text-white">no refund applies</strong>.</p>
-              </div>
-            )}
+                  {!refundsEnabled ? (
+                    <div className="space-y-3 text-sm text-white/70">
+                      <p>Cancellations are <strong className="text-white">not refunded</strong> under any circumstances.</p>
+                      <p>You may instead reschedule this booking once, to a slot priced the same or less, up to 24 hours before your session and within 30 days.</p>
+                      <p>Cancellation itself remains open right up to your session — it simply won&apos;t carry a refund.</p>
+                    </div>
+                  ) : paymentMode === 'online' ? (
+                    noRefundWindow ? (
+                      <div className="px-4 py-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400 text-xs font-black uppercase tracking-widest flex items-start gap-3">
+                        <span className="material-symbols-outlined text-lg shrink-0 animate-pulse">warning</span>
+                        {cancellationCode === 'NO_REFUND_MONTH_EXPIRED'
+                          ? "This booking's refund window has already closed. If you cancel, you will NOT be eligible for any refund."
+                          : `This booking starts within ${cutoffHours} hours. If you cancel or don't show up, you will NOT be eligible for any refund.`}
+                      </div>
+                    ) : (
+                      <div className="space-y-3 text-sm text-white/70">
+                        <p>This booking can be cancelled with a refund before <strong className="text-white">{refundDeadlineText}</strong>.</p>
+                        <p>Eligible refunds are processed after deducting a <strong className="text-white">{refundFeeText}</strong>.</p>
+                        <p>After that deadline — or once your session begins — cancellation is still possible, just without a refund.</p>
+                      </div>
+                    )
+                  ) : (
+                    <div className="space-y-3 text-sm text-white/70">
+                      <p>This is a <strong className="text-white">pay-at-venue</strong> booking — payment is not collected online.</p>
+                      <p>You can cancel this booking from your dashboard. Since no online payment is taken, <strong className="text-white">no refund applies</strong>.</p>
+                    </div>
+                  )}
 
-            {refundsEnabled && paymentMode === 'online' && isWithinNoRefundWindow && checkoutTotal > 0 && (
-              <div className="px-4 py-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400 text-xs font-black uppercase tracking-widest flex items-start gap-3">
-                <span className="material-symbols-outlined text-lg shrink-0 animate-pulse">warning</span>
-                This booking starts within {cutoffHours} hours. If you cancel or don't show up, you will NOT be eligible for any refund.
-              </div>
-            )}
-
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={agreed}
-                onChange={(e) => setAgreed(e.target.checked)}
-                className="mt-1 w-4 h-4 accent-primary shrink-0"
-              />
-              <span className="text-sm font-bold text-white">
-                {!refundsEnabled
-                  ? 'I Agree that no refunds are issued for cancellations, and rescheduling (once, ≥24h before, within 30 days) is the only alternative.'
-                  : paymentMode === 'online'
-                    ? `I Agree that this booking is refund-eligible only until ${refundValidUntilText}, and only if cancelled at least ${cutoffHours} hours before my session${isWithinNoRefundWindow && checkoutTotal > 0 ? ' — and I understand that window has already closed for this booking' : ''}.`
-                    : 'I Agree to the Cancellation Policy.'}
-              </span>
-            </label>
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={agreed}
+                      onChange={(e) => setAgreed(e.target.checked)}
+                      className="mt-1 w-4 h-4 accent-primary shrink-0"
+                    />
+                    <span className="text-sm font-bold text-white">
+                      {!refundsEnabled
+                        ? 'I Agree that no refunds are issued for cancellations, and rescheduling (once, ≥24h before, within 30 days) is the only alternative.'
+                        : paymentMode === 'online'
+                          ? noRefundWindow
+                            ? 'I Agree that this booking is not eligible for a refund if cancelled — rescheduling remains available up to 24 hours before my session.'
+                            : `I Agree that this booking is refund-eligible only if cancelled before ${refundDeadlineText}.`
+                          : 'I Agree to the Cancellation Policy.'}
+                    </span>
+                  </label>
+                </>
+              );
+            })()}
 
             <div className="flex gap-4">
               <button onClick={() => setShowPolicyModal(false)} className="btn-secondary flex-1 !py-3">

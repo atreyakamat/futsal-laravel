@@ -11,7 +11,7 @@
  * above only removes the refund, it never blocks the cancellation.
  */
 import { describe, it, expect } from 'vitest';
-import { evaluateCancellationEligibility, getInvoiceMonthEnd, DEFAULT_CANCEL_CUTOFF_HOURS } from '@/lib/refund-policy';
+import { evaluateCancellationEligibility, getInvoiceMonthEnd, getRefundDeadline, DEFAULT_CANCEL_CUTOFF_HOURS } from '@/lib/refund-policy';
 
 describe('getInvoiceMonthEnd (pure calendar-month arithmetic)', () => {
   it('returns 23:59:59.999 IST on the 30th for a September payment', () => {
@@ -44,6 +44,39 @@ describe('getInvoiceMonthEnd (pure calendar-month arithmetic)', () => {
     // 2026-08-31T20:00:00Z is already 2026-09-01 01:30 IST — must resolve to September, not August.
     const end = getInvoiceMonthEnd(new Date('2026-08-31T20:00:00Z'));
     expect(end.toISOString()).toBe(new Date('2026-09-30T23:59:59.999+05:30').toISOString());
+  });
+});
+
+describe('getRefundDeadline (concrete deadline shown at checkout)', () => {
+  it('the 5th Sep spec example: booking 10 Sep 6pm, paid 5 Sep -> deadline is the play-cutoff (well inside the invoice month)', () => {
+    const bookingStart = new Date('2026-09-10T18:00:00+05:30');
+    const invoiceMonthEnd = getInvoiceMonthEnd(new Date('2026-09-05T09:00:00+05:30'));
+    const deadline = getRefundDeadline(bookingStart, invoiceMonthEnd, 24);
+    expect(deadline.toISOString()).toBe(new Date('2026-09-09T18:00:00+05:30').toISOString());
+  });
+
+  it('booking 5 Sep 4pm -> refund deadline is exactly 24h earlier, 4 Sep 4pm', () => {
+    const bookingStart = new Date('2026-09-05T16:00:00+05:30');
+    const invoiceMonthEnd = getInvoiceMonthEnd(new Date('2026-09-01T09:00:00+05:30'));
+    const deadline = getRefundDeadline(bookingStart, invoiceMonthEnd, 24);
+    expect(deadline.toISOString()).toBe(new Date('2026-09-04T16:00:00+05:30').toISOString());
+  });
+
+  it('falls back to the invoice month end when that is the tighter constraint (far-future booking)', () => {
+    const bookingStart = new Date('2026-12-25T18:00:00+05:30'); // months away
+    const invoiceMonthEnd = getInvoiceMonthEnd(new Date('2026-09-05T09:00:00+05:30')); // 30 Sep 23:59:59
+    const deadline = getRefundDeadline(bookingStart, invoiceMonthEnd, 24);
+    expect(deadline.toISOString()).toBe(invoiceMonthEnd.toISOString());
+  });
+
+  it('31st -> 1st booking with a same-day-payment: deadline is before the payment instant itself (already-closed window)', () => {
+    // Paid 31 Aug 18:00, playing 1 Sep 06:00 — 24h-before-play cutoff (31 Aug 06:00)
+    // is earlier than the invoice month end (31 Aug 23:59:59.999), so the play
+    // cutoff wins and the deadline sits before the payment ever happened.
+    const bookingStart = new Date('2026-09-01T06:00:00+05:30');
+    const invoiceMonthEnd = getInvoiceMonthEnd(new Date('2026-08-31T18:00:00+05:30'));
+    const deadline = getRefundDeadline(bookingStart, invoiceMonthEnd, 24);
+    expect(deadline.toISOString()).toBe(new Date('2026-08-31T06:00:00+05:30').toISOString());
   });
 });
 

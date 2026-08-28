@@ -390,6 +390,17 @@ export function evaluateCancellationEligibility(
   };
 }
 
+/**
+ * The latest instant a cancellation is still refund-eligible — the earlier
+ * of "cutoffHours before bookingStart" and the invoice month's end. Lets UI
+ * copy state a concrete deadline (e.g. "cancel before 4 Sep, 3:00 PM")
+ * instead of relative phrasing.
+ */
+export function getRefundDeadline(bookingStart: Date, invoiceMonthEnd: Date, cutoffHours: number): Date {
+  const playCutoff = new Date(bookingStart.getTime() - cutoffHours * 60 * 60 * 1000);
+  return playCutoff.getTime() < invoiceMonthEnd.getTime() ? playCutoff : invoiceMonthEnd;
+}
+
 export function isCancellationAllowed(bookingDateStr: string, slotStart: string, cutoffHours: number = DEFAULT_CANCEL_CUTOFF_HOURS): {
   allowed: boolean;
   refundEligible: boolean;
