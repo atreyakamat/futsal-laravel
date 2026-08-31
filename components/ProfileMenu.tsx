@@ -123,15 +123,7 @@ export default function ProfileMenu({ userId, role, arenaId, userName }: Profile
                   onClick={() => setOpen(false)}
                 >
                   <span className="material-symbols-outlined text-white/60 text-lg">people</span>
-                  Admin Management
-                </Link>
-                <Link
-                  href="/fg-admin/platform/arena-admins"
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-white/80 hover:bg-white/[0.04] hover:text-primary transition-colors"
-                  onClick={() => setOpen(false)}
-                >
-                  <span className="material-symbols-outlined text-white/60 text-lg">shield_person</span>
-                  Arena Admins
+                  Team Management
                 </Link>
               </>
             )}

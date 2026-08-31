@@ -224,14 +224,23 @@ model Setting {
   @@map("settings")
 }
 
+// One row per (admin, turf) assignment. Was originally a 1:1 mirror of a
+// Manager's single arena_id (unique on user_id alone, never read back
+// anywhere) — widened 2026-08-31 into a true many-to-many junction so a
+// single ArenaAdmin account (arena_id left NULL) can be scoped to a SUBSET
+// of turfs instead of only "one turf" (Manager, arena_id set) or "every
+// turf" (platform arena_admin, arena_id NULL + zero rows here). See
+// lib/admin.ts's getAdminContext and lib/super-admin.ts's
+// getAdminArenaAssignments/setAdminArenaAssignments.
 model ArenaManager {
   id         Int      @id @default(autoincrement())
-  user_id    Int      @unique
+  user_id    Int
   arena_id   Int
   role       String   @default("manager")
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
+  @@unique([user_id, arena_id])
   @@index([user_id])
   @@index([arena_id])
   @@map("arena_managers")

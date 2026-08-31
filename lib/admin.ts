@@ -3,7 +3,8 @@ import { cookies } from 'next/headers';
 import type { NextRequest } from 'next/server';
 import { query, queryOne, transaction, getSetting, createBookingBatch } from '@/lib/domain';
 import { sendTicketEmail } from '@/lib/ticket';
-import { readAuthRole, getCookieValueFromRequest, unsignValue } from '@/lib/session';
+import { readAuthRole, readArenaId, getCookieValueFromRequest, unsignValue } from '@/lib/session';
+import { getAdminArenaAssignments } from '@/lib/super-admin';
 import { sendEmail, generateApprovalNotificationEmail, generatePendingApprovalEmail } from '@/lib/email';
 import { generateApprovalActionToken } from '@/lib/approval-token';
 
@@ -33,6 +34,13 @@ export type AdminContext = {
   customer_mobile: string | null;
   arenaId: number | null;
   arenaRole: string | null;
+  /**
+   * Only meaningful for role 'arena_admin': the specific turfs this admin
+   * is scoped to (via arena_managers). Empty array = platform-wide,
+   * unrestricted — NOT "assigned to nothing". Always [] for every other
+   * role (Managers/Security carry a single arenaId instead).
+   */
+  assignedArenaIds: number[];
 };
 
 export function isAdminRole(role: string | null | undefined): role is AdminRole {
@@ -76,15 +84,24 @@ export async function getAdminContext(userId: number | null, sessionId?: string 
         customer_mobile: null,
         arenaId: null,
         arenaRole: null,
+        assignedArenaIds: [],
       };
     }
   }
 
-  // 2. Manager — per-turf row in arena_admins (arena_id set). This is the
-  // role that used to be called "arena_admin" before the role split; every
-  // existing account/login is unaffected, just resolved under the new name.
+  // 2. Manager — a row in arena_admins operating a single turf's dashboard.
+  // Two shapes land here:
+  //   - arena_id IS NOT NULL: the classic single-turf Manager (role that
+  //     used to be called "arena_admin" before the role split) — arenaId
+  //     comes straight from the row, exactly as before.
+  //   - arena_id IS NULL: a multi-turf arena_admin who has picked one of
+  //     their assigned turfs to actively work in (see
+  //     /fg-admin/select-arena) — the session's fg_arena_id cookie carries
+  //     which one, validated here against their arena_managers assignments
+  //     on every request (cheap, and closes the window where an admin
+  //     un-assigned from a turf mid-session could keep acting on it).
   if (roleCookie === 'manager') {
-    const manager = await queryOne<{
+    const row = await queryOne<{
       id: number;
       email: string;
       arena_id: number | null;
@@ -92,24 +109,41 @@ export async function getAdminContext(userId: number | null, sessionId?: string 
       last_name: string | null;
       is_active: boolean;
     }>(
-      'SELECT id, email, arena_id, first_name, last_name, is_active FROM arena_admins WHERE id = ? AND arena_id IS NOT NULL LIMIT 1',
+      'SELECT id, email, arena_id, first_name, last_name, is_active FROM arena_admins WHERE id = ? LIMIT 1',
       [userId]
     );
 
-    if (manager && manager.is_active) {
-      return {
-        id: manager.id,
-        name: [manager.first_name, manager.last_name].filter(Boolean).join(' ') || manager.email,
-        email: manager.email,
-        role: 'manager',
-        customer_mobile: null,
-        arenaId: manager.arena_id,
-        arenaRole: 'manager',
-      };
+    if (row && row.is_active) {
+      let effectiveArenaId: number | null = row.arena_id;
+      let assignedArenaIds: number[] = [];
+
+      if (effectiveArenaId === null) {
+        const cookieArenaId = await readArenaId();
+        assignedArenaIds = await getAdminArenaAssignments(row.id);
+        effectiveArenaId = cookieArenaId !== null && assignedArenaIds.includes(cookieArenaId) ? cookieArenaId : null;
+      }
+
+      if (effectiveArenaId !== null) {
+        return {
+          id: row.id,
+          name: [row.first_name, row.last_name].filter(Boolean).join(' ') || row.email,
+          email: row.email,
+          role: 'manager',
+          customer_mobile: null,
+          arenaId: effectiveArenaId,
+          arenaRole: 'manager',
+          // Non-empty only for a multi-turf arena_admin currently operating
+          // as Manager-for-this-turf — lets the UI offer a "Switch Turf"
+          // link. Always [] for a genuine single-turf Manager row.
+          assignedArenaIds,
+        };
+      }
     }
   }
 
-  // 3. arena_admin — the new platform-wide role, same table, arena_id NULL.
+  // 3. arena_admin — arena_id NULL. Platform-wide (unrestricted) if it has
+  // no arena_managers rows, or scoped to a specific SET of turfs if it
+  // does; either way it lands on the shared platform dashboard.
   if (roleCookie === 'arena_admin') {
     const platformAdmin = await queryOne<{
       id: number;
@@ -123,6 +157,7 @@ export async function getAdminContext(userId: number | null, sessionId?: string 
     );
 
     if (platformAdmin && platformAdmin.is_active) {
+      const assignedArenaIds = await getAdminArenaAssignments(platformAdmin.id);
       return {
         id: platformAdmin.id,
         name: [platformAdmin.first_name, platformAdmin.last_name].filter(Boolean).join(' ') || platformAdmin.email,
@@ -131,6 +166,7 @@ export async function getAdminContext(userId: number | null, sessionId?: string 
         customer_mobile: null,
         arenaId: null,
         arenaRole: null,
+        assignedArenaIds,
       };
     }
   }
@@ -158,6 +194,7 @@ export async function getAdminContext(userId: number | null, sessionId?: string 
         customer_mobile: securityStaff.phone,
         arenaId: securityStaff.arena_id,
         arenaRole: 'security',
+        assignedArenaIds: [],
       };
     }
   }
@@ -184,6 +221,7 @@ export async function getAdminContext(userId: number | null, sessionId?: string 
         customer_mobile: null,
         arenaId: null,
         arenaRole: null,
+        assignedArenaIds: [],
       };
     }
   }

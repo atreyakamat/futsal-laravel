@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { removeArenaAdmin, logAuditAction } from '@/lib/super-admin';
+import { removeArenaAdmin, logAuditAction, setAdminArenaAssignments } from '@/lib/super-admin';
 import { readSuperAdminId } from '@/lib/session';
 import { z } from 'zod';
 import { query, queryOne } from '@/lib/db';
@@ -69,6 +69,11 @@ const updateSchema = z.object({
   email: z.string().email().optional(),
   is_active: z.boolean().optional(),
   password: z.string().min(6).optional().or(z.literal('')),
+  // Reassign a Manager to a different single turf.
+  arena_id: z.number().int().positive().optional(),
+  // Reassign a scoped/multi-turf arena_admin's turf set. [] clears all
+  // assignments, making them platform-wide/unrestricted again.
+  arena_ids: z.array(z.number().int().positive()).optional(),
 });
 
 export async function PUT(
@@ -139,6 +144,20 @@ export async function PUT(
         } else if (user.role === 'security') {
           await query(`UPDATE security_staff SET ${legacyUpdates.join(', ')}, updated_at = NOW() WHERE id = ?`, legacyValues);
         }
+      }
+
+      // Reassign a Manager to a different single turf — updates both the
+      // authoritative arena_admins.arena_id and its arena_managers mirror
+      // row, keeping them consistent.
+      if (payload.arena_id !== undefined && user.role === 'manager') {
+        await query('UPDATE arena_admins SET arena_id = ?, updated_at = NOW() WHERE id = ?', [payload.arena_id, adminId]);
+        await setAdminArenaAssignments(adminId, [payload.arena_id], 'manager');
+      }
+
+      // Reassign a scoped arena_admin's turf set (arena_admins.arena_id
+      // stays NULL either way — only the arena_managers rows change).
+      if (payload.arena_ids !== undefined && user.role === 'arena_admin') {
+        await setAdminArenaAssignments(adminId, payload.arena_ids, 'arena_admin');
       }
     }
 

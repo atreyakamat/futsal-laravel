@@ -144,17 +144,55 @@ export async function createArenaAdmin(
 }
 
 /**
- * Create a platform-wide arena_admin (spans every turf, one tier below
+ * The turfs a scoped (arena_id NULL) ArenaAdmin is assigned to, by user_id
+ * (== arena_admins.id, they share one id — see createArenaAdmin above).
+ * Empty array means unrestricted/platform-wide, NOT "assigned to nothing" —
+ * callers should treat [] as "every arena".
+ */
+export async function getAdminArenaAssignments(adminId: number): Promise<number[]> {
+  const rows = await query<{ arena_id: number }>(
+    'SELECT arena_id FROM arena_managers WHERE user_id = ? ORDER BY arena_id',
+    [adminId]
+  );
+  return rows.map((r) => r.arena_id);
+}
+
+/**
+ * Replaces an admin's full set of turf assignments (delete + reinsert —
+ * simplest correct semantics for what's normally a handful of rows edited
+ * from a checkbox list). Passing [] clears all assignments, making the
+ * admin unrestricted/platform-wide again.
+ */
+export async function setAdminArenaAssignments(adminId: number, arenaIds: number[], role: string = 'manager'): Promise<void> {
+  await query('DELETE FROM arena_managers WHERE user_id = ?', [adminId]);
+  const uniqueArenaIds = Array.from(new Set(arenaIds));
+  for (const arenaId of uniqueArenaIds) {
+    await query(
+      'INSERT INTO arena_managers (user_id, arena_id, role, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())',
+      [adminId, arenaId, role]
+    );
+  }
+}
+
+/**
+ * Create a platform-wide or turf-scoped arena_admin (one tier below
  * super_admin) — same arena_admins table as createArenaAdmin/Manager
- * above, but with arena_id left NULL, and no arena_managers row (that
- * table is exclusively for single-arena-scoped roles).
+ * above, but with arena_id left NULL. `arenaIds` determines the actual
+ * scope via arena_managers, resolved at read time by getAdminContext:
+ *   - []        -> platform-wide, spans every turf (today's behavior)
+ *   - [x]       -> scoped to exactly turf x
+ *   - [x, y, …] -> scoped to that specific set of turfs
+ * In every case the admin picks (or is auto-assigned, if exactly one) a
+ * turf to actively work in via /fg-admin/select-arena, at which point their
+ * session behaves exactly like a Manager's for that turf.
  */
 export async function createPlatformArenaAdmin(
   name: string,
   email: string,
   phone?: string,
   createdById?: number,
-  password?: string
+  password?: string,
+  arenaIds: number[] = []
 ) {
   const existingUser = await queryOne<{ id: number }>(
     'SELECT id FROM users WHERE email = ?',
@@ -181,6 +219,10 @@ export async function createPlatformArenaAdmin(
     'INSERT INTO arena_admins (id, arena_id, email, password_hash, first_name, last_name, is_active, created_by, created_at, updated_at) VALUES (?, NULL, ?, ?, ?, ?, true, ?, NOW(), NOW())',
     [userId, email, hashedPassword, name.split(' ')[0], name.split(' ')[1] || '', createdById || 1]
   );
+
+  if (arenaIds.length > 0) {
+    await setAdminArenaAssignments(userId, arenaIds, 'arena_admin');
+  }
 
   if (!usingTypedPassword) {
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
@@ -338,6 +380,61 @@ export async function removeAccountant(accountantId: number) {
   await query('UPDATE accountants SET is_active = false WHERE id = ?', [accountantId]);
 }
 
+/** Edit an accountant's name/email/password/active-state (all optional, only supplied fields change). */
+export async function updateAccountant(
+  accountantId: number,
+  updates: { name?: string; email?: string; password?: string; is_active?: boolean }
+) {
+  const setClauses: string[] = [];
+  const values: any[] = [];
+
+  if (updates.name) {
+    const parts = updates.name.split(' ');
+    setClauses.push('first_name = ?', 'last_name = ?');
+    values.push(parts[0], parts.slice(1).join(' ') || '');
+  }
+  if (updates.email) {
+    setClauses.push('email = ?');
+    values.push(updates.email);
+  }
+  if (updates.password) {
+    const hash = await bcrypt.hash(updates.password, 12);
+    setClauses.push('password_hash = ?');
+    values.push(hash);
+  }
+  if (updates.is_active !== undefined) {
+    setClauses.push('is_active = ?');
+    values.push(updates.is_active);
+  }
+
+  if (setClauses.length === 0) return;
+
+  values.push(accountantId);
+  await query(`UPDATE accountants SET ${setClauses.join(', ')}, updated_at = NOW() WHERE id = ?`, values);
+
+  // Mirror name/email/password onto the shared users row, same as
+  // admins/[id]'s PUT does for arena_admins/security_staff.
+  const userUpdates: string[] = [];
+  const userValues: any[] = [];
+  if (updates.name) {
+    userUpdates.push('name = ?');
+    userValues.push(updates.name);
+  }
+  if (updates.email) {
+    userUpdates.push('email = ?');
+    userValues.push(updates.email);
+  }
+  if (updates.password) {
+    const hash = await bcrypt.hash(updates.password, 12);
+    userUpdates.push('password = ?');
+    userValues.push(hash);
+  }
+  if (userUpdates.length > 0) {
+    userValues.push(accountantId);
+    await query(`UPDATE users SET ${userUpdates.join(', ')}, updated_at = NOW() WHERE id = ?`, userValues);
+  }
+}
+
 export interface StaffDirectoryRow {
   id: number;
   email: string;
@@ -347,8 +444,12 @@ export interface StaffDirectoryRow {
   created_at: string;
   role: 'super_admin' | 'manager' | 'arena_admin' | 'security' | 'accountant';
   arena_id: number | null;
+  /** Single turf name for Manager/Security, comma-joined list for a scoped
+   *  arena_admin, NULL for platform-wide arena_admin or non-arena roles. */
   arena_name: string | null;
   phone: string | null;
+  /** Populated only for role 'arena_admin' — [] means platform-wide. */
+  arena_ids: number[];
 }
 
 /**
@@ -357,26 +458,38 @@ export interface StaffDirectoryRow {
  * never belong here, and `users.role` isn't consulted by getAdminContext()
  * for any of these roles (each has its own dedicated table).
  */
-export async function listStaffAccounts() {
-  return query<StaffDirectoryRow>(`
+export async function listStaffAccounts(): Promise<StaffDirectoryRow[]> {
+  const rows = await query<Omit<StaffDirectoryRow, 'arena_ids'>>(`
     SELECT sa.id, sa.email, sa.first_name, sa.last_name, sa.is_active, sa.created_at,
            'super_admin'::text AS role, NULL::int AS arena_id, NULL::text AS arena_name, NULL::text AS phone
       FROM super_admins sa
     UNION ALL
     SELECT aa.id, aa.email, aa.first_name, aa.last_name, aa.is_active, aa.created_at,
            CASE WHEN aa.arena_id IS NULL THEN 'arena_admin' ELSE 'manager' END,
-           aa.arena_id, a.name, NULL::text
+           aa.arena_id,
+           COALESCE(
+             a.name,
+             (SELECT STRING_AGG(a2.name, ', ' ORDER BY a2.name) FROM arena_managers am JOIN arenas a2 ON a2.id = am.arena_id WHERE am.user_id = aa.id)
+           ),
+           NULL::text
       FROM arena_admins aa LEFT JOIN arenas a ON a.id = aa.arena_id
     UNION ALL
     SELECT s.id, s.email, s.first_name, s.last_name, s.is_active, s.created_at,
-           'security'::text, s.arena_id, a2.name, s.phone
-      FROM security_staff s LEFT JOIN arenas a2 ON a2.id = s.arena_id
+           'security'::text, s.arena_id, a3.name, s.phone
+      FROM security_staff s LEFT JOIN arenas a3 ON a3.id = s.arena_id
     UNION ALL
     SELECT ac.id, ac.email, ac.first_name, ac.last_name, ac.is_active, ac.created_at,
            'accountant'::text, NULL::int, NULL::text, NULL::text
       FROM accountants ac
     ORDER BY role, created_at DESC
   `);
+
+  return Promise.all(
+    rows.map(async (row) => ({
+      ...row,
+      arena_ids: row.role === 'arena_admin' ? await getAdminArenaAssignments(row.id) : [],
+    }))
+  );
 }
 
 /**

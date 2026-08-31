@@ -53,6 +53,18 @@ export default function UnifiedLoginForm() {
       const data = await res.json();
 
       if (res.ok && data.success) {
+        // A multi-turf arena_admin account resolves to a different landing
+        // spot at login time (see app/api/auth/arena-admin/login): exactly
+        // one assigned turf auto-enters it (role comes back as 'manager'),
+        // two or more send them to the turf picker instead of the platform
+        // dashboard.
+        if (activeTab === 'arena_admin') {
+          if (data.data?.role === 'manager') {
+            redirectPath = '/fg-admin/arena/dashboard';
+          } else if (data.data?.needs_arena_selection) {
+            redirectPath = '/fg-admin/select-arena';
+          }
+        }
         router.push(redirectPath);
       } else {
         setError(data.message || 'Login failed');

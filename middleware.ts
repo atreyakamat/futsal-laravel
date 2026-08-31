@@ -5,17 +5,30 @@ import { getClientIp, authRateLimiter, apiRateLimiter } from '@/lib/rate-limiter
 import { getSecurityHeaders } from '@/lib/env-validate';
 import { generateCsrfToken, signCsrfToken, verifyCsrfTokenSigned, getCsrfCookieOptions } from '@/lib/csrf';
 
+// NOTE: '/fg-admin/platform' + '/api/fg-admin/platform' and
+// '/fg-admin/arena' + '/api/fg-admin/arena' were left stale by the
+// Manager/arena_admin role split (see prisma/migrations/
+// 20260817000000_arena_admin_nullable_arena_id and lib/admin.ts's
+// getAdminContext) — arena_admin (platform-wide) was granted access to the
+// shared platform dashboard/bookings/approvals/reports, and 'manager' was
+// introduced as the new name for the per-turf role, but this table was
+// never updated to match: it still only allowed 'super_admin' on the
+// platform prefixes and only 'arena_admin' (never 'manager') on the arena
+// prefixes, silently locking both roles out of their own dashboards.
+// Fixed 2026-08-31 — see also the multi-turf admin feature (an arena_admin
+// scoped to specific turfs operates through '/fg-admin/arena/*' with a
+// 'manager'-shaped session for whichever turf it has selected).
 const ROLE_MATRIX: Record<string, string[]> = {
   '/arena-admin': ['arena_admin'],
-  '/fg-admin/platform': ['super_admin'],
-  '/fg-admin/arena': ['arena_admin'],
+  '/fg-admin/platform': ['super_admin', 'arena_admin'],
+  '/fg-admin/arena': ['arena_admin', 'manager'],
   '/fg-admin/security': ['security'],
   '/fg-admin/accountant': ['accountant', 'super_admin'],
   '/api/fg-admin/platform/slots': ['super_admin', 'arena_admin'],
-  '/api/fg-admin/platform': ['super_admin'],
+  '/api/fg-admin/platform': ['super_admin', 'arena_admin'],
   '/api/fg-admin/super-admin': ['super_admin'],
   '/api/fg-admin/security': ['security'],
-  '/api/fg-admin/arena': ['arena_admin'],
+  '/api/fg-admin/arena': ['arena_admin', 'manager'],
   '/api/fg-admin/accountant': ['accountant', 'super_admin'],
   '/api/security/verify': ['security', 'super_admin'],
   '/api/security/checkin': ['security', 'super_admin'],

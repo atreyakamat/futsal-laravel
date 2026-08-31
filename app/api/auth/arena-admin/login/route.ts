@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { verifyArenaAdminCredentials } from '@/lib/super-admin';
+import { verifyArenaAdminCredentials, getAdminArenaAssignments } from '@/lib/super-admin';
 import { signValue, getCookieOptions } from '@/lib/session';
 import { verifyTurnstileToken } from '@/lib/turnstile';
 
@@ -55,6 +55,24 @@ export async function POST(request: Request) {
       );
     }
 
+    const assignedArenaIds = await getAdminArenaAssignments(admin.id);
+    const cookieOpts = getCookieOptions(60 * 60 * 24 * 7);
+
+    if (assignedArenaIds.length === 1) {
+      // Scoped to exactly one turf — auto-enter it, same session shape a
+      // Manager would get (see lib/admin.ts's getAdminContext).
+      const arenaId = assignedArenaIds[0];
+      const response = NextResponse.json({
+        success: true,
+        message: 'Login successful',
+        data: { id: admin.id, email: admin.email, role: 'manager', arena_id: arenaId },
+      });
+      response.cookies.set('fg_auth_user', await signValue(`${admin.id}`), cookieOpts);
+      response.cookies.set('fg_auth_role', await signValue('manager'), cookieOpts);
+      response.cookies.set('fg_arena_id', await signValue(`${arenaId}`), cookieOpts);
+      return response;
+    }
+
     const response = NextResponse.json({
       success: true,
       message: 'Login successful',
@@ -62,10 +80,12 @@ export async function POST(request: Request) {
         id: admin.id,
         email: admin.email,
         role: 'arena_admin',
+        // Client uses this to route to the turf picker instead of the
+        // platform dashboard when the account is scoped to 2+ turfs.
+        needs_arena_selection: assignedArenaIds.length > 1,
       },
     });
 
-    const cookieOpts = getCookieOptions(60 * 60 * 24 * 7);
     response.cookies.set('fg_auth_user', await signValue(`${admin.id}`), cookieOpts);
     response.cookies.set('fg_auth_role', await signValue('arena_admin'), cookieOpts);
 

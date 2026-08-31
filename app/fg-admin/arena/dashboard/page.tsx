@@ -57,9 +57,20 @@ export default async function ArenaAdminDashboardPage() {
             Facility: <span className="text-white">{arena?.name || 'My Arena'}</span>
           </p>
         </div>
-        <div className="glass px-8 py-5 rounded-[2rem] border border-white/5 flex items-center gap-4">
-          <div className="w-3 h-3 rounded-full bg-primary animate-pulse" />
-          <span className="text-xs font-black uppercase tracking-widest text-primary italic">Live Operations</span>
+        <div className="flex items-center gap-4">
+          {context.assignedArenaIds.length > 1 && (
+            <Link
+              href="/fg-admin/select-arena"
+              className="glass px-6 py-5 rounded-[2rem] border border-white/5 flex items-center gap-3 text-xs font-black uppercase tracking-widest text-white/60 hover:text-primary hover:border-primary/30 transition-colors"
+            >
+              <span className="material-symbols-outlined text-lg">swap_horiz</span>
+              Switch Turf
+            </Link>
+          )}
+          <div className="glass px-8 py-5 rounded-[2rem] border border-white/5 flex items-center gap-4">
+            <div className="w-3 h-3 rounded-full bg-primary animate-pulse" />
+            <span className="text-xs font-black uppercase tracking-widest text-primary italic">Live Operations</span>
+          </div>
         </div>
       </div>
 

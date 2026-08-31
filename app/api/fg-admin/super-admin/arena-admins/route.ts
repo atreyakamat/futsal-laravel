@@ -1,12 +1,15 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { createPlatformArenaAdmin, getPlatformArenaAdmins, removePlatformArenaAdmin, logAuditAction } from '@/lib/super-admin';
+import { createPlatformArenaAdmin, getPlatformArenaAdmins, removePlatformArenaAdmin, getAdminArenaAssignments, logAuditAction } from '@/lib/super-admin';
 import { readSuperAdminId } from '@/lib/session';
 
 const createArenaAdminSchema = z.object({
   name: z.string().min(1).max(255),
   email: z.string().email(),
   password: z.string().min(8).optional().or(z.literal('')),
+  // Which turfs this admin is scoped to: omit/[] = platform-wide (every
+  // turf), [x] = scoped to exactly turf x, [x, y, …] = scoped to that set.
+  arena_ids: z.array(z.number().int().positive()).optional(),
 });
 
 export async function POST(request: Request) {
@@ -21,14 +24,14 @@ export async function POST(request: Request) {
       isJson ? await request.json() : Object.fromEntries((await request.formData()).entries())
     );
 
-    const result = await createPlatformArenaAdmin(payload.name, payload.email, undefined, superAdminId, payload.password || undefined);
+    const result = await createPlatformArenaAdmin(payload.name, payload.email, undefined, superAdminId, payload.password || undefined, payload.arena_ids || []);
 
     await logAuditAction(
       superAdminId,
       'CREATE_ARENA_ADMIN',
       'arena_admin',
       result.admin.id,
-      { email: result.admin.email },
+      { email: result.admin.email, arena_ids: payload.arena_ids || [] },
       request.headers.get('x-forwarded-for') || 'unknown',
       request.headers.get('user-agent') || 'unknown'
     );
@@ -61,7 +64,10 @@ export async function GET() {
     }
 
     const admins = await getPlatformArenaAdmins();
-    return NextResponse.json({ success: true, data: admins });
+    const withAssignments = await Promise.all(
+      admins.map(async (admin) => ({ ...admin, arena_ids: await getAdminArenaAssignments(admin.id) }))
+    );
+    return NextResponse.json({ success: true, data: withAssignments });
   } catch (error) {
     console.error('Fetch arena admins error:', error);
     return NextResponse.json({ success: false, message: 'Internal server error' }, { status: 500 });

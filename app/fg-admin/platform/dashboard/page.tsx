@@ -18,6 +18,14 @@ export default async function AdminDashboardPage() {
     redirect('/fg-admin/platform/super-admin');
   }
 
+  // A scoped arena_admin (assigned to specific turfs rather than
+  // platform-wide) doesn't get the unscoped, every-turf view below — send
+  // them to pick a turf instead, whose dashboard is /fg-admin/arena/*
+  // (see /fg-admin/select-arena and lib/admin.ts's getAdminContext).
+  if (context.role === 'arena_admin' && context.assignedArenaIds.length > 0) {
+    redirect('/fg-admin/select-arena');
+  }
+
   // arena_admin (platform-wide, one tier below super_admin) sees unscoped
   // stats across every turf, same as super_admin would — only manager
   // (per-turf) and security get their single arena's numbers. The fuller
