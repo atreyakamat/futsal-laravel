@@ -12,6 +12,7 @@ const REQUEST_TYPE_LABELS: Record<string, string> = {
   slot_template_update: 'Slot Pricing Update',
   entry_mode_update: 'Entry Mode Change',
   FREE_BOOKING_REQUEST: 'Free Booking Request',
+  admin_free_booking: 'Free / Discounted Booking Request',
   timing_update: 'Arena Timing Update',
   ARENA_UPDATE: 'Arena Info Update',
   BLOCK_SLOT_REQUEST: 'Slot Block Request',
@@ -23,6 +24,7 @@ const REQUEST_ICONS: Record<string, string> = {
   slot_template_update: 'payments',
   entry_mode_update: 'toggle_on',
   FREE_BOOKING_REQUEST: 'event_available',
+  admin_free_booking: 'event_available',
   timing_update: 'schedule',
   ARENA_UPDATE: 'edit_location',
   BLOCK_SLOT_REQUEST: 'block',
@@ -55,6 +57,37 @@ function PayloadSummary({ requestType, payloadJson }: { requestType: string; pay
             <p className="text-sm font-black text-white mt-0.5">{String(payload.customerName ?? '')}</p>
           </div>
         )}
+      </div>
+    );
+  }
+
+  if (requestType === 'admin_free_booking') {
+    const slots = Array.isArray(payload.slots) ? (payload.slots as string[]).join(', ') : String(payload.slots ?? '');
+    const isDiscounted = typeof payload.discountedSlotPrice === 'number';
+    return (
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <div className="p-3 rounded-xl bg-white/5 border border-white/5">
+          <p className="text-[9px] text-white/40 uppercase tracking-widest font-bold">Date</p>
+          <p className="text-sm font-black text-white mt-0.5">{String(payload.bookingDate ?? '—')}</p>
+        </div>
+        <div className="p-3 rounded-xl bg-white/5 border border-white/5">
+          <p className="text-[9px] text-white/40 uppercase tracking-widest font-bold">Time Slots</p>
+          <p className="text-sm font-black text-white mt-0.5">{slots || '—'}</p>
+        </div>
+        <div className="p-3 rounded-xl bg-white/5 border border-white/5 col-span-2">
+          <p className="text-[9px] text-white/40 uppercase tracking-widest font-bold">Customer</p>
+          <p className="text-sm font-black text-white mt-0.5">{String(payload.customerName ?? '—')} · {String(payload.customerMobile ?? '—')}</p>
+        </div>
+        <div className="p-3 rounded-xl bg-white/5 border border-white/5">
+          <p className="text-[9px] text-white/40 uppercase tracking-widest font-bold">Price</p>
+          <p className="text-sm font-black text-primary mt-0.5">{isDiscounted ? `₹${payload.discountedSlotPrice}/slot` : 'FREE'}</p>
+        </div>
+        <div className="p-3 rounded-xl bg-white/5 border border-white/5">
+          <p className="text-[9px] text-white/40 uppercase tracking-widest font-bold">Payment Collected</p>
+          <p className="text-sm font-black text-white mt-0.5">
+            {payload.paymentReference ? `${String(payload.paymentMethod ?? 'offline').toUpperCase()} — ${String(payload.paymentReference)}` : 'Not yet collected'}
+          </p>
+        </div>
       </div>
     );
   }

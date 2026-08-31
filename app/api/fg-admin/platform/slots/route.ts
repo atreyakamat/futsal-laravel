@@ -113,6 +113,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
   }
 
+  // Manager is scoped to entry-mode and holiday requests only — pricing,
+  // slot structure, timings, images, and blocking stay super_admin/
+  // arena_admin territory even as a request (unlike free/discounted
+  // bookings, which Manager may request approval for).
+  const MANAGER_ALLOWED_ACTIONS = ['entry_mode', 'holiday_add', 'holiday_delete'];
+  if (context.role === 'manager' && !MANAGER_ALLOWED_ACTIONS.includes(action)) {
+    return NextResponse.json({ success: false, message: 'Managers may only request entry-mode changes or manage holidays.' }, { status: 403 });
+  }
+
   const arenaId = (context.role === 'super_admin' || context.role === 'arena_admin')
     ? Number((form as Record<string, string>).arena_id ?? '0') || null
     : context.arenaId;

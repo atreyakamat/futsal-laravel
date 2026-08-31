@@ -83,6 +83,24 @@ export default async function AdminBookingCreatePage() {
           </p>
         </div>
 
+        <div className="grid md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <label className="label-classic">Payment Method</label>
+            <select name="payment_method" className="input-field" defaultValue="">
+              <option value="">— Not collected yet —</option>
+              <option value="cash">Cash</option>
+              <option value="upi">UPI</option>
+            </select>
+          </div>
+          <div className="space-y-2">
+            <label className="label-classic">Payment Reference</label>
+            <input name="payment_reference" className="input-field" placeholder="UPI UTR / cash receipt no." />
+          </div>
+        </div>
+        <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest -mt-4">
+          Only used for a Discounted booking — record the cash/UPI payment collected from the customer to mark it paid and issue an invoice. Leave blank if payment hasn't been collected yet (you can confirm it later from Bookings). Ignored for a Free booking.
+        </p>
+
         <div className="space-y-2">
           <label className="label-classic">Notes</label>
           <textarea name="notes" rows={3} className="input-field" />

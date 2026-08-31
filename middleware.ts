@@ -18,13 +18,23 @@ import { generateCsrfToken, signCsrfToken, verifyCsrfTokenSigned, getCsrfCookieO
 // Fixed 2026-08-31 — see also the multi-turf admin feature (an arena_admin
 // scoped to specific turfs operates through '/fg-admin/arena/*' with a
 // 'manager'-shaped session for whichever turf it has selected).
+// '/fg-admin/platform/bookings/create' + '/api/fg-admin/platform/bookings'
+// and '/api/fg-admin/platform/slots' additionally allow 'manager' — these
+// are the specific endpoints Manager's own arena UI (e.g.
+// /fg-admin/arena/slots) submits free/discounted-booking, entry-mode, and
+// holiday REQUESTS to (never a direct change for that role — the route
+// handlers themselves still gate direct application to super_admin/
+// arena_admin only; see app/api/fg-admin/platform/slots/route.ts's
+// per-action manager allowlist).
 const ROLE_MATRIX: Record<string, string[]> = {
   '/arena-admin': ['arena_admin'],
+  '/fg-admin/platform/bookings/create': ['super_admin', 'arena_admin', 'manager'],
   '/fg-admin/platform': ['super_admin', 'arena_admin'],
   '/fg-admin/arena': ['arena_admin', 'manager'],
   '/fg-admin/security': ['security'],
   '/fg-admin/accountant': ['accountant', 'super_admin'],
-  '/api/fg-admin/platform/slots': ['super_admin', 'arena_admin'],
+  '/api/fg-admin/platform/slots': ['super_admin', 'arena_admin', 'manager'],
+  '/api/fg-admin/platform/bookings': ['super_admin', 'arena_admin', 'manager'],
   '/api/fg-admin/platform': ['super_admin', 'arena_admin'],
   '/api/fg-admin/super-admin': ['super_admin'],
   '/api/fg-admin/security': ['security'],
@@ -36,6 +46,8 @@ const ROLE_MATRIX: Record<string, string[]> = {
 
 const PROTECTED_PREFIXES = [
   '/api/fg-admin/platform/slots',
+  '/api/fg-admin/platform/bookings',
+  '/fg-admin/platform/bookings/create',
   '/fg-admin/platform',
   '/fg-admin/arena',
   '/fg-admin/security',

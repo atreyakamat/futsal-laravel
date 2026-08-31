@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createApprovalRequest, getAdminContext, hasArenaAccess } from '@/lib/admin';
-import { createBookingBatch } from '@/lib/domain';
+import { createBookingBatch, query } from '@/lib/domain';
 import { readAuthUserId } from '@/lib/session';
 import { sendTicketEmail } from '@/lib/ticket';
+import { issueTaxInvoice } from '@/lib/gst-documents';
 import { normalizePhoneNumber } from '@/lib/phone';
 
 const bodySchema = z.object({
@@ -17,6 +18,11 @@ const bodySchema = z.object({
   // Discounted (but non-zero) price per slot — e.g. a manager offering
   // ₹300 instead of the normal ₹500. Distinct from free_booking (₹0).
   discounted_price_per_slot: z.coerce.number().nonnegative().optional(),
+  // Cash/UPI payment the admin/manager collected from the walk-in customer
+  // for a discounted booking — used to mark it paid and issue an invoice.
+  // Meaningless (ignored) for a free booking, which collects nothing.
+  payment_method: z.enum(['cash', 'upi']).optional(),
+  payment_reference: z.string().max(120).optional(),
   notes: z.string().max(500).optional().nullable(),
 });
 
@@ -50,6 +56,8 @@ export async function POST(request: Request) {
     customer_email: payloadObject.customer_email ? String(payloadObject.customer_email) : null,
     free_booking: String(payloadObject.free_booking ?? 'false') === 'true' || payloadObject.free_booking === 'on' || payloadObject.free_booking === '1',
     discounted_price_per_slot: payloadObject.discounted_price_per_slot ? Number(payloadObject.discounted_price_per_slot) : undefined,
+    payment_method: payloadObject.payment_method ? String(payloadObject.payment_method) : undefined,
+    payment_reference: payloadObject.payment_reference ? String(payloadObject.payment_reference) : undefined,
     notes: payloadObject.notes ? String(payloadObject.notes) : null,
   });
 
@@ -95,6 +103,8 @@ export async function POST(request: Request) {
         // Discount takes priority when both happen to be present; a request
         // is either free or discounted, not both.
         discountedSlotPrice: isDiscounted ? payload.discounted_price_per_slot : undefined,
+        paymentMethod: isDiscounted ? payload.payment_method : undefined,
+        paymentReference: isDiscounted ? payload.payment_reference : undefined,
         requestedByRole: context.role,
       },
       notes: payload.notes ?? null,
@@ -121,8 +131,30 @@ export async function POST(request: Request) {
     userId: null,
     sessionId: `admin-${context.id}-${Date.now()}`,
     freeBooking: payload.free_booking,
+    // A discounted booking was paid in cash/UPI on the spot, not online —
+    // offlinePayment confirms it immediately instead of leaving it
+    // 'pending' and waiting for a PayU payment that will never happen.
+    offlinePayment: isDiscounted,
     discountedSlotPrice: payload.discounted_price_per_slot,
   });
+
+  // Cash/UPI payment collected for a discounted booking is the point of
+  // supply — mark it paid and issue the Tax Invoice here, same as
+  // confirm-venue-payment does for a regular offline booking. A free (₹0)
+  // booking has nothing to collect or invoice.
+  if (isDiscounted && payload.payment_reference) {
+    await query(
+      `UPDATE bookings
+          SET venue_payment_status = 'PAID',
+              venue_payment_reference = ?,
+              venue_payment_collected_by = ?,
+              venue_payment_collected_at = NOW(),
+              updated_at = NOW()
+        WHERE booking_ref = ?`,
+      [`${payload.payment_method ?? 'offline'}: ${payload.payment_reference}`, context.id, booking.bookingRef]
+    );
+    await issueTaxInvoice(booking.bookingRef);
+  }
 
   // Free and discounted bookings both skip the payment gateway — the admin
   // applying them is the "payment" (an offline decision), not the customer

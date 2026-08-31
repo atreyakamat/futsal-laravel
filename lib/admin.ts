@@ -7,6 +7,7 @@ import { readAuthRole, readArenaId, getCookieValueFromRequest, unsignValue } fro
 import { getAdminArenaAssignments } from '@/lib/super-admin';
 import { sendEmail, generateApprovalNotificationEmail, generatePendingApprovalEmail } from '@/lib/email';
 import { generateApprovalActionToken } from '@/lib/approval-token';
+import { issueTaxInvoice } from '@/lib/gst-documents';
 
 // 'arena_admin' is platform-wide (one tier below super_admin, spans every
 // turf); 'manager' is its per-turf counterpart — both are rows in the same
@@ -891,6 +892,13 @@ export async function resolveApprovalRequest(input: {
       // (but non-zero) price per slot — discountedSlotPrice being present
       // takes priority; otherwise this is the original always-free path.
       const discountedSlotPrice = typeof payload.discountedSlotPrice === 'number' ? payload.discountedSlotPrice : undefined;
+      const isDiscounted = discountedSlotPrice !== undefined;
+      // Cash/UPI details the manager collected from the walk-in customer at
+      // request time (see app/fg-admin/platform/bookings/create) — only
+      // meaningful for a discounted (non-zero) booking; a free booking
+      // collects nothing.
+      const paymentMethod = isDiscounted && (payload.paymentMethod === 'cash' || payload.paymentMethod === 'upi') ? payload.paymentMethod : undefined;
+      const paymentReference = isDiscounted && typeof payload.paymentReference === 'string' && payload.paymentReference.trim() ? payload.paymentReference.trim() : undefined;
 
       const booking = await createBookingBatch({
         arenaId,
@@ -901,18 +909,42 @@ export async function resolveApprovalRequest(input: {
         customerEmail: payload.customerEmail ? String(payload.customerEmail) : null,
         userId: null,
         sessionId: `approval-${request.id}`,
-        freeBooking: discountedSlotPrice === undefined,
+        freeBooking: !isDiscounted,
+        // A discounted booking was paid in cash/UPI at the point of
+        // request, not online — offlinePayment confirms it immediately
+        // (payment_status='confirmed') instead of leaving it 'pending' and
+        // waiting for a PayU payment that will never happen.
+        offlinePayment: isDiscounted,
         discountedSlotPrice,
       });
+
+      // Manager-collected cash/UPI payment is the point of supply for a
+      // discounted booking — mark it paid and issue the Tax Invoice here,
+      // same as confirm-venue-payment does for a regular offline booking. A
+      // free (₹0) booking has nothing to collect or invoice.
+      if (isDiscounted && paymentReference) {
+        await query(
+          `UPDATE bookings
+              SET venue_payment_status = 'PAID',
+                  venue_payment_reference = ?,
+                  venue_payment_collected_by = ?,
+                  venue_payment_collected_at = NOW(),
+                  updated_at = NOW()
+            WHERE booking_ref = ?`,
+          [`${paymentMethod ?? 'offline'}: ${paymentReference}`, request.requested_by, booking.bookingRef]
+        );
+        await issueTaxInvoice(booking.bookingRef);
+      }
+
       await sendTicketEmail(booking.bookingRef);
 
       await createAdminAuditLog({
-        action: discountedSlotPrice !== undefined ? 'DISCOUNTED_BOOKING_REQUEST' : 'FREE_BOOKING_REQUEST',
+        action: isDiscounted ? 'DISCOUNTED_BOOKING_REQUEST' : 'FREE_BOOKING_REQUEST',
         requestedBy: request.requested_by,
         approvedBy: input.decisionBy,
         arenaId,
-        fieldChanged: discountedSlotPrice !== undefined ? 'Discounted Booking' : 'Free Booking',
-        newValue: payload,
+        fieldChanged: isDiscounted ? 'Discounted Booking' : 'Free Booking',
+        newValue: { ...payload, paymentMethod, paymentReference },
         reason: input.reason
       });
     }
