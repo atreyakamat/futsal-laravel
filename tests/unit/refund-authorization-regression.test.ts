@@ -33,6 +33,21 @@ vi.mock('@/lib/super-admin', () => ({
   logAuditAction: vi.fn(),
 }));
 
+// The route now also re-fetches the full admin context (added alongside
+// hasArenaAccess's arena-scoping check) — mirror readSuperAdminOrArenaAdminId's
+// resolved id back as a trusted, unrestricted context (assignedArenaIds: [])
+// so these RBAC/idempotency regression cases keep testing what they always
+// tested, independent of the new per-arena authorization layer (covered by
+// its own tests instead).
+vi.mock('@/lib/admin', () => ({
+  getAdminContext: vi.fn(async (userId: number | null) =>
+    userId
+      ? { id: userId, name: 'Test Admin', email: 'admin@test.com', role: 'super_admin', customer_mobile: null, arenaId: null, arenaRole: null, assignedArenaIds: [] }
+      : null
+  ),
+  hasArenaAccess: vi.fn(() => true),
+}));
+
 // Import route handler (its dependencies are now mocked)
 import { POST } from '@/app/api/fg-admin/super-admin/refund/route';
 import { query as domainQuery, getRefundPolicyConfig, ensureSchemaColumns } from '@/lib/domain';

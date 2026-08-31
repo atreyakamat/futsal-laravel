@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { createApprovalRequest, getAdminContext } from '@/lib/admin';
+import { createApprovalRequest, getAdminContext, hasArenaAccess } from '@/lib/admin';
 import { createBookingBatch } from '@/lib/domain';
 import { readAuthUserId } from '@/lib/session';
 import { sendTicketEmail } from '@/lib/ticket';
@@ -68,6 +68,13 @@ export async function POST(request: Request) {
 
   if (!arenaId) {
     return NextResponse.json({ success: false, message: 'No arena assigned for this account.' }, { status: 400 });
+  }
+
+  // A scoped arena_admin (assigned to specific turfs rather than
+  // platform-wide) must not be able to act on a turf outside their
+  // assignment just by naming a different arena_id in the request.
+  if (!hasArenaAccess(context, arenaId)) {
+    return NextResponse.json({ success: false, message: 'You are not authorized for this arena.' }, { status: 403 });
   }
 
   const isDiscounted = payload.discounted_price_per_slot !== undefined;

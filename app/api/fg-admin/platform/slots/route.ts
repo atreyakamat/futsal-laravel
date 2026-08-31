@@ -4,6 +4,7 @@ import {
   createApprovalRequest,
   getAdminContext,
   getArenaEntryMode,
+  hasArenaAccess,
   listArenas,
   replaceArenaPricing,
   setArenaEntryMode,
@@ -55,11 +56,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
     }
 
-    const arenas = (context.role === 'super_admin' || context.role === 'arena_admin') ? await listArenas() : [];
-    const arenaId = (await resolveArenaId(request, userId)) ?? ((context.role === 'super_admin' || context.role === 'arena_admin') ? arenas[0]?.id ?? null : null);
+    const allArenas = (context.role === 'super_admin' || context.role === 'arena_admin') ? await listArenas() : [];
+    // A scoped arena_admin only gets to see/pick among their assigned
+    // turfs, never the full platform list (mirrors hasArenaAccess below).
+    const arenas = context.role === 'arena_admin' && context.assignedArenaIds.length > 0
+      ? allArenas.filter((a) => context.assignedArenaIds.includes(a.id))
+      : allArenas;
+    const requestedArenaId = await resolveArenaId(request, userId);
+    const arenaId = requestedArenaId ?? ((context.role === 'super_admin' || context.role === 'arena_admin') ? arenas[0]?.id ?? null : null);
 
     if (!arenaId) {
       return NextResponse.json({ success: true, arenas, slots: [], entryMode: 'open' });
+    }
+
+    if ((context.role === 'super_admin' || context.role === 'arena_admin') && !hasArenaAccess(context, arenaId)) {
+      return NextResponse.json({ success: false, message: 'You are not authorized for this arena.' }, { status: 403 });
     }
 
     const slots = await getArenaPricing(arenaId);
@@ -108,6 +119,10 @@ export async function POST(request: Request) {
 
   if (!arenaId) {
     return NextResponse.json({ success: false, message: 'Arena is required.' }, { status: 400 });
+  }
+
+  if ((context.role === 'super_admin' || context.role === 'arena_admin') && !hasArenaAccess(context, arenaId)) {
+    return NextResponse.json({ success: false, message: 'You are not authorized for this arena.' }, { status: 403 });
   }
 
   if (action === 'entry_mode') {

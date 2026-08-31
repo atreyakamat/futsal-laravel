@@ -47,6 +47,30 @@ export function isAdminRole(role: string | null | undefined): role is AdminRole 
   return ['super_admin', 'arena_admin', 'manager', 'security', 'accountant'].includes(String(role));
 }
 
+/**
+ * Whether this admin context may act on the given arena. Centralises the
+ * scoping rule introduced 2026-08-31 (see prisma/migrations/
+ * 20260831000000_arena_manager_multi_turf): a super_admin can act on any
+ * arena; an arena_admin can act on any arena ONLY if assignedArenaIds is
+ * empty (platform-wide), otherwise only on arenas in that list; manager and
+ * security are pinned to their single arenaId. Every endpoint that takes an
+ * arena_id from the request (rather than deriving it solely from the
+ * session) MUST call this before acting on it — arena_admin used to always
+ * mean "platform-wide, trust any arena_id" and several routes still assume
+ * that; this closes the gap for the now-possible scoped case.
+ */
+export function hasArenaAccess(context: Pick<AdminContext, 'role' | 'arenaId' | 'assignedArenaIds'>, arenaId: number | null | undefined): boolean {
+  if (!arenaId) return false;
+  if (context.role === 'super_admin') return true;
+  if (context.role === 'arena_admin') {
+    return context.assignedArenaIds.length === 0 || context.assignedArenaIds.includes(arenaId);
+  }
+  if (context.role === 'manager' || context.role === 'security') {
+    return context.arenaId === arenaId;
+  }
+  return false;
+}
+
 export async function getAdminContext(userId: number | null, sessionId?: string | null): Promise<AdminContext | null> {
   if (!userId) return null;
 
@@ -562,9 +586,9 @@ export async function createApprovalRequest(input: {
   return request;
 }
 
-export async function listApprovalRequests(scope: { status?: string; arenaId?: number | null } = {}) {
+export async function listApprovalRequests(scope: { status?: string; arenaId?: number | null; arenaIds?: number[] } = {}) {
   const clauses = ['1=1'];
-  const params: Array<string | number | null> = [];
+  const params: Array<string | number | null | number[]> = [];
 
   if (scope.status) {
     clauses.push('ar.status = ?');
@@ -574,6 +598,14 @@ export async function listApprovalRequests(scope: { status?: string; arenaId?: n
   if (scope.arenaId) {
     clauses.push('ar.arena_id = ?');
     params.push(scope.arenaId);
+  }
+
+  // Scoped arena_admin — restrict to their assigned turfs. An empty array
+  // deliberately matches nothing (not "no filter") — callers pass this
+  // only when they've already determined the admin IS scoped.
+  if (scope.arenaIds) {
+    clauses.push('ar.arena_id = ANY(?)');
+    params.push(scope.arenaIds);
   }
 
   return query<{

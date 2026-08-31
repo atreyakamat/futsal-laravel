@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { createApprovalRequest, getAdminContext, listApprovalRequests } from '@/lib/admin';
+import { createApprovalRequest, getAdminContext, hasArenaAccess, listApprovalRequests } from '@/lib/admin';
 import { readAuthUserId } from '@/lib/session';
 
 const bodySchema = z.object({
@@ -18,9 +18,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
   }
 
-  const requests = await listApprovalRequests({
-    arenaId: null,
-  });
+  const requests = await listApprovalRequests(
+    context.role === 'arena_admin' && context.assignedArenaIds.length > 0
+      ? { arenaIds: context.assignedArenaIds }
+      : {}
+  );
 
   return NextResponse.json({ success: true, requests });
 }
@@ -35,6 +37,10 @@ export async function POST(request: Request) {
 
   if (!context || !['super_admin', 'admin', 'manager', 'arena_admin'].includes(context.role)) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
+  }
+
+  if (!hasArenaAccess(context, payload.arena_id)) {
+    return NextResponse.json({ success: false, message: 'You are not authorized for this arena.' }, { status: 403 });
   }
 
   const created = await createApprovalRequest({

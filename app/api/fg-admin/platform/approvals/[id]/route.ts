@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getAdminContext, resolveApprovalRequest } from '@/lib/admin';
+import { getAdminContext, hasArenaAccess, resolveApprovalRequest } from '@/lib/admin';
 import { readAuthUserId } from '@/lib/session';
+import { queryOne } from '@/lib/db';
 
 const bodySchema = z.object({
   decision: z.enum(['approved', 'rejected']),
@@ -22,6 +23,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const payload = bodySchema.parse(
       isJson ? await request.json() : Object.fromEntries((await request.formData()).entries())
     );
+
+    // A scoped arena_admin may only decide requests filed against one of
+    // their assigned turfs — otherwise they could approve (and thereby
+    // create/discount) a booking on a turf they have no authority over.
+    const targetRequest = await queryOne<{ arena_id: number | null }>(
+      'SELECT arena_id FROM approval_requests WHERE id = ? LIMIT 1',
+      [Number(id)]
+    );
+    if (!targetRequest) {
+      return NextResponse.json({ success: false, message: 'Approval request not found' }, { status: 404 });
+    }
+    if (!hasArenaAccess(context, targetRequest.arena_id)) {
+      return NextResponse.json({ success: false, message: 'You are not authorized for this arena.' }, { status: 403 });
+    }
 
     await resolveApprovalRequest({
       requestId: Number(id),

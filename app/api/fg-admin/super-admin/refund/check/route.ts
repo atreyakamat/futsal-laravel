@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readSuperAdminOrArenaAdminId } from '@/lib/session';
 import { query } from '@/lib/domain';
+import { getAdminContext, hasArenaAccess } from '@/lib/admin';
 import { reconcileRefundStatus } from '@/lib/refund-reconcile';
 import { logAuditAction } from '@/lib/super-admin';
 
@@ -8,6 +9,8 @@ export async function POST(req: NextRequest) {
   try {
     const superAdminId = await readSuperAdminOrArenaAdminId();
     if (!superAdminId) return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    const context = await getAdminContext(superAdminId);
+    if (!context) return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
     const refundRequestId = body.refundRequestId || body.refund_request_id || null;
@@ -18,11 +21,21 @@ export async function POST(req: NextRequest) {
     }
 
     let targetRefundId = refundRequestId;
-    if (!targetRefundId && bookingRef) {
-      const row = (await query('SELECT payu_refund_request_id FROM bookings WHERE booking_ref = ? LIMIT 1', [bookingRef])) as any[];
-      targetRefundId = (row?.[0] as any)?.payu_refund_request_id || null;
+    if (bookingRef) {
+      const row = (await query('SELECT payu_refund_request_id, arena_id FROM bookings WHERE booking_ref = ? LIMIT 1', [bookingRef])) as any[];
+      if (!hasArenaAccess(context, row?.[0]?.arena_id)) {
+        return NextResponse.json({ success: false, message: 'You are not authorized for this arena.' }, { status: 403 });
+      }
       if (!targetRefundId) {
-        return NextResponse.json({ success: false, message: 'No PayU refund request id found for booking_ref' }, { status: 404 });
+        targetRefundId = (row?.[0] as any)?.payu_refund_request_id || null;
+        if (!targetRefundId) {
+          return NextResponse.json({ success: false, message: 'No PayU refund request id found for booking_ref' }, { status: 404 });
+        }
+      }
+    } else if (refundRequestId) {
+      const owner = (await query('SELECT arena_id FROM bookings WHERE payu_refund_request_id = ? LIMIT 1', [refundRequestId])) as any[];
+      if (owner?.length > 0 && !hasArenaAccess(context, owner[0].arena_id)) {
+        return NextResponse.json({ success: false, message: 'You are not authorized for this arena.' }, { status: 403 });
       }
     }
 

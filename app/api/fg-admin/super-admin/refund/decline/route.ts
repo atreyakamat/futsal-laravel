@@ -15,6 +15,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readSuperAdminOrArenaAdminId } from '@/lib/session';
 import { query } from '@/lib/domain';
+import { getAdminContext, hasArenaAccess } from '@/lib/admin';
 import { logAuditAction } from '@/lib/super-admin';
 import { reportServerError } from '@/lib/error-log';
 import { z } from 'zod';
@@ -30,12 +31,20 @@ export async function POST(req: NextRequest) {
     if (!superAdminId) {
       return NextResponse.json({ success: false, message: 'Unauthorized — Super Admin or Arena Admin only' }, { status: 401 });
     }
+    const context = await getAdminContext(superAdminId);
+    if (!context) {
+      return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    }
 
     const payload = schema.parse(await req.json());
 
-    const firstBooking = await query<any>(`SELECT id FROM bookings WHERE booking_ref = ? LIMIT 1`, [payload.ref]);
+    const firstBooking = await query<any>(`SELECT id, arena_id FROM bookings WHERE booking_ref = ? LIMIT 1`, [payload.ref]);
     if (!firstBooking || firstBooking.length === 0) {
       return NextResponse.json({ success: false, message: 'Booking not found' }, { status: 404 });
+    }
+
+    if (!hasArenaAccess(context, firstBooking[0].arena_id)) {
+      return NextResponse.json({ success: false, message: 'You are not authorized for this arena.' }, { status: 403 });
     }
 
     const updatedRows = await query<{ id: number }>(

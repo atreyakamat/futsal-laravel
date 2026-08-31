@@ -9,7 +9,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { readAuthUserId } from '@/lib/session';
-import { getAdminContext, createAdminAuditLog } from '@/lib/admin';
+import { getAdminContext, createAdminAuditLog, hasArenaAccess } from '@/lib/admin';
 import { query } from '@/lib/domain';
 import { issueTaxInvoice } from '@/lib/gst-documents';
 import { reportServerError } from '@/lib/error-log';
@@ -46,9 +46,10 @@ export async function POST(request: Request) {
 
     const booking = bookings[0];
 
-    // Managers may only confirm payments for their own arena's bookings —
-    // super_admin/arena_admin (platform-wide) may confirm for any arena.
-    if (context.role === 'manager' && booking.arena_id !== context.arenaId) {
+    // Managers may only confirm payments for their own arena's bookings;
+    // a scoped arena_admin only for their assigned turf(s); super_admin
+    // and a platform-wide (unscoped) arena_admin may confirm for any arena.
+    if (context.role !== 'super_admin' && !hasArenaAccess(context, booking.arena_id)) {
       return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 });
     }
 

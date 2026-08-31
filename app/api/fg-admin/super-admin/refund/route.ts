@@ -19,6 +19,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readSuperAdminOrArenaAdminId } from '@/lib/session';
 import { query, ensureSchemaColumns, getRefundPolicyConfig } from '@/lib/domain';
+import { getAdminContext, hasArenaAccess } from '@/lib/admin';
 import { logAuditAction } from '@/lib/super-admin';
 import { calculateRefundAmount } from '@/lib/refund-policy';
 import { initiatePayuRefund } from '@/lib/payment';
@@ -38,6 +39,10 @@ export async function POST(req: NextRequest) {
     if (!superAdminId) {
       return NextResponse.json({ success: false, message: 'Unauthorized — Super Admin or Arena Admin only' }, { status: 401 });
     }
+    const context = await getAdminContext(superAdminId);
+    if (!context) {
+      return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    }
 
     const payload = schema.parse(await req.json());
 
@@ -53,6 +58,14 @@ export async function POST(req: NextRequest) {
     }
 
     const firstBooking = bookings[0];
+
+    // A scoped arena_admin (assigned to specific turfs, not platform-wide)
+    // must not be able to force-refund a booking on a turf outside their
+    // assignment — this force-refund path bypasses every other check.
+    if (!hasArenaAccess(context, firstBooking.arena_id)) {
+      return NextResponse.json({ success: false, message: 'You are not authorized for this arena.' }, { status: 403 });
+    }
+
     console.log('[REFUND API PAYMENT_STATUS CHECK]', firstBooking.booking_ref, '-> payment_status:', firstBooking.payment_status, 'refund_status:', firstBooking.refund_status);
 
     // Cancellation now frees the slot immediately (payment_status flips to
