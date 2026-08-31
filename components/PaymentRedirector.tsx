@@ -15,6 +15,7 @@ type Props = {
     productinfo: string;
     surl: string;
     furl: string;
+    enforce_paymethod?: string;
   };
 };
 
@@ -41,6 +42,9 @@ export default function PaymentRedirector({ payuUrl, params }: Props) {
       <input type="hidden" name="productinfo" value={params.productinfo} />
       <input type="hidden" name="surl" value={params.surl} />
       <input type="hidden" name="furl" value={params.furl} />
+      {params.enforce_paymethod && (
+        <input type="hidden" name="enforce_paymethod" value={params.enforce_paymethod} />
+      )}
     </form>
   );
 }
