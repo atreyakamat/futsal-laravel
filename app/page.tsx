@@ -50,7 +50,7 @@ export default async function Home() {
           </h1>
           
           <p className="max-w-xl mx-auto text-white/40 text-lg md:text-xl font-medium mb-12">
-            Experience the future of turf booking in Goa. Premium facilities, instant AI-powered reservations.
+            Experience the future of turf booking in Goa. Premium facilities, instant slot locking, and secure reservations.
           </p>
 
           <div className="flex flex-col md:flex-row gap-6 justify-center items-center">
@@ -126,47 +126,6 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* AI Assistant Section */}
-      <section className="py-32 border-t border-white/5 bg-white/[0.02]">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid md:grid-cols-2 gap-20 items-center">
-            <div>
-              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-8">
-                <span className="material-symbols-outlined text-primary text-3xl">smart_toy</span>
-              </div>
-              <h2 className="text-4xl font-black tracking-tighter italic uppercase mb-6">
-                Meet your <span className="text-primary">AI Coach</span>
-              </h2>
-              <p className="text-white/40 text-lg leading-relaxed mb-10">
-                Our advanced AI assistant helps you find the perfect arena, checks availability in real-time, and handles your bookings seamlessly. No more waiting, just playing.
-              </p>
-              <div className="flex gap-4">
-                <div className="px-4 py-2 rounded-xl border border-white/10 bg-white/5">
-                  <span className="text-[10px] font-bold tracking-widest uppercase text-white/20">Real-time</span>
-                </div>
-                <div className="px-4 py-2 rounded-xl border border-white/10 bg-white/5">
-                  <span className="text-[10px] font-bold tracking-widest uppercase text-white/20">Instant</span>
-                </div>
-              </div>
-            </div>
-            
-            <div className="glass-card !p-12 relative overflow-hidden group">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2" />
-              <p className="text-white/60 italic text-lg leading-relaxed relative z-10 font-medium">
-                "Finding a turf used to take 10 calls. Now I just chat with the assistant and it's done in 30 seconds. The premium experience Goa needed."
-              </p>
-              <div className="mt-8 flex items-center gap-4 relative z-10">
-                <div className="w-12 h-12 rounded-full bg-white/10 border border-white/20" />
-                <div>
-                  <p className="font-black text-sm uppercase italic">Rahul Fernandes</p>
-                  <p className="text-[10px] text-primary font-bold uppercase tracking-widest">Active Player</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Quick Stats */}
       <section className="py-20 border-y border-white/5">
         <div className="max-w-7xl mx-auto px-6">
@@ -181,7 +140,7 @@ export default async function Home() {
             </div>
             <div>
               <p className="text-4xl font-black italic mb-2">24/7</p>
-              <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em]">AI Assistant</p>
+              <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em]">Online Booking</p>
             </div>
             <div>
               <p className="text-4xl font-black italic mb-2">0.5s</p>
@@ -247,7 +206,7 @@ export default async function Home() {
                 <span className="material-symbols-outlined text-primary">chat_bubble</span>
               </div>
               <p className="text-white/40 text-sm leading-relaxed">
-                Need help picking a slot or checking prices? Our AI assistant is here to help you 24/7.
+                Need help picking a slot or checking prices? Reach out to our team — we're happy to help.
               </p>
             </div>
           </div>
