@@ -8,6 +8,7 @@ import { evaluateCancellationEligibility, getRefundDeadline, DEFAULT_CANCEL_CUTO
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import CheckoutForm from '@/components/CheckoutForm';
+import ChangeSlotsLink from '@/components/ChangeSlotsLink';
 
 type Props = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -255,7 +256,10 @@ export default async function CheckoutPage({ searchParams }: Props) {
               <span className="material-symbols-outlined text-[120px]">receipt_long</span>
             </div>
 
-            <h2 className="label-classic mb-6 sm:mb-10">Reservation Summary</h2>
+            <div className="flex items-center justify-between mb-6 sm:mb-10">
+              <h2 className="label-classic !mb-0">Reservation Summary</h2>
+              <ChangeSlotsLink arenaSlug={arena.slug} arenaId={arena.id} date={date} csrfToken={csrfToken} />
+            </div>
 
             <div className="space-y-6 sm:space-y-8">
               <div className="flex items-start gap-4 sm:gap-5">

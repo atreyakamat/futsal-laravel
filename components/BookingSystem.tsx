@@ -58,11 +58,16 @@ export default function BookingSystem({
   initialCustomerEmail?: string;
 }) {
   // 1. All State declarations at the top
-  // `date` doubles as both the "active" booking date AND the start of the
-  // visible grid window — the grid always shows this date plus the next
-  // (DAYS_VISIBLE - 1) days, so there's one source of truth instead of a
-  // separate window-position state that could drift out of sync with it.
+  // `date` is the "active" column — the one selectedSlots belongs to, and
+  // the one highlighted in the grid. `windowStart` is the left edge of the
+  // visible DAYS_VISIBLE-day window, kept as a separate state on purpose:
+  // they used to be the same value, which meant clicking a slot in e.g. the
+  // 2nd column re-anchored the whole window on that date, visibly shifting
+  // column 2 into column 1's position. Explicit navigation (Prev/Next, the
+  // date picker, a mobile date chip) moves both together; clicking a slot
+  // in a non-active column only moves `date` — the window stays put.
   const [date, setDate] = useState(initialDate || todayLocalStr());
+  const [windowStart, setWindowStart] = useState(initialDate || todayLocalStr());
   const [slotsByDate, setSlotsByDate] = useState<Record<string, Slot[]>>({});
   const [holidayByDate, setHolidayByDate] = useState<Record<string, string | null>>({});
   const [selectedSlots, setSelectedSlots] = useState<Slot[]>([]);
@@ -80,8 +85,15 @@ export default function BookingSystem({
   const dateInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
+  // Lets fetchWindow read the latest active date without depending on it —
+  // see the comment on fetchWindow's dependency array below for why.
+  const dateRef = useRef(date);
+  useEffect(() => {
+    dateRef.current = date;
+  }, [date]);
+
   const todayStr = todayLocalStr();
-  const windowDates = Array.from({ length: DAYS_VISIBLE }, (_, i) => addDays(date, i));
+  const windowDates = Array.from({ length: DAYS_VISIBLE }, (_, i) => addDays(windowStart, i));
   const mobileDates = Array.from({ length: 7 }, (_, i) => addDays(todayStr, i));
   const slots = slotsByDate[date] || [];
   const holidayReason = holidayByDate[date] || null;
@@ -112,8 +124,13 @@ export default function BookingSystem({
       setRetryCount(0);
       setError(null);
 
-      // Sync selected slots (always for the active date) with latest availability
-      const activeSlots = nextSlotsByDate[date] || [];
+      // Sync selected slots (always for the active date) with latest
+      // availability. Reads dateRef rather than `date` directly so this
+      // callback doesn't need `date` in its own dependency array below —
+      // it only needs the freshest value at call time, not to be recreated
+      // (and re-trigger the fetch effect) every time the active column
+      // changes independently of the visible window.
+      const activeSlots = nextSlotsByDate[dateRef.current] || [];
       setSelectedSlots((prev) =>
         prev.filter((ps) =>
           activeSlots.some((s) => s.time_slot === ps.time_slot && (s.status === 'available' || s.status === 'selected'))
@@ -126,10 +143,12 @@ export default function BookingSystem({
     } finally {
       setLoading(false);
     }
-    // windowDates is derived fresh from `date` every render — depending on
-    // `date` alone (not the derived array) avoids an infinite effect loop.
+    // windowDates is derived fresh from `windowStart` every render —
+    // depending on `windowStart` alone (not the derived array, and not
+    // `date`, see dateRef above) avoids both an infinite effect loop and a
+    // spurious refetch/loading-flash when only the active column changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [arenaId, date]);
+  }, [arenaId, windowStart]);
 
   // 3. Effects
   // Self-heal a stale server-rendered initial date: the server computes its
@@ -138,7 +157,10 @@ export default function BookingSystem({
   // snap forward once on mount rather than showing already-past dates.
   useEffect(() => {
     const localToday = todayLocalStr();
-    if (date < localToday) setDate(localToday);
+    if (date < localToday) {
+      setDate(localToday);
+      setWindowStart(localToday);
+    }
     // Mount-only check — this isn't meant to re-run as `date` changes from
     // normal navigation afterward.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -172,10 +194,14 @@ export default function BookingSystem({
 
   // 4. Actions
   // Switching the active date always clears any in-progress selection —
-  // same behavior the old date-card strip already had.
+  // same behavior the old date-card strip already had. This is the explicit
+  // navigation path (Prev/Next, date picker, mobile date chip), so it moves
+  // the visible window along with the active date — unlike a slot click on
+  // a non-active column, which only moves `date` (see toggleSlotForDate).
   function changeDate(newDate: string) {
     if (newDate < todayStr) newDate = todayStr;
     setDate(newDate);
+    setWindowStart(newDate);
     setSelectedSlots([]);
   }
 
@@ -214,6 +240,9 @@ export default function BookingSystem({
         if (data.success) {
           if (!isActiveColumn) {
             // Switching columns starts a fresh selection on the new date.
+            // Deliberately does NOT touch windowStart — targetDate is
+            // already one of the visible columns, so the window itself
+            // must stay put or the column just clicked would jump position.
             setDate(targetDate);
             setSelectedSlots([slot]);
           } else {
