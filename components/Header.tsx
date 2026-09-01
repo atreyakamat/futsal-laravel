@@ -201,7 +201,7 @@ export default function Header({ userId, role, arenaId, userName }: HeaderProps)
               <div className="space-y-3">
                 <div className="px-2 py-2 rounded-xl bg-white/[0.02] border border-white/5">
                   <p className="text-xs font-black text-white/40 uppercase tracking-widest">Signed in as</p>
-                  <p className="text-sm font-black text-white capitalize">{role?.replace('_', ' ')}</p>
+                  <p className="text-sm font-black text-white truncate capitalize">{userName || role?.replace('_', ' ')}</p>
                   {arenaId && <p className="text-[10px] text-white/30 uppercase tracking-widest">Arena ID: {arenaId}</p>}
                 </div>
                 <button
