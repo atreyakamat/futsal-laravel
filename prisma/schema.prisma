@@ -141,6 +141,7 @@ model Booking {
   rescheduled_from_ref   String?
   rescheduled_to_ref     String?
   reschedule_used        Boolean   @default(false)
+  reminder_sent_at       DateTime?
   created_at             DateTime  @default(now())
   updated_at             DateTime  @updatedAt
 
@@ -428,6 +429,30 @@ model Notification {
   @@index([is_read])
   @@index([created_at])
   @@map("notifications")
+}
+
+/// A single browser/device's Web Push subscription. owner_type + owner_id
+/// identifies who to notify without a foreign key into `users`, since
+/// admin/manager identities live in super_admins/arena_admins, not `users`
+/// (see ArenaAdmin's doc comment) — mirrors the owner-table split
+/// lib/admin.ts's getAdminContext already resolves:
+///   'user'         -> users.id            (customer/player)
+///   'super_admin'  -> super_admins.id
+///   'arena_admin'  -> arena_admins.id      (covers both the platform-wide
+///                     "admin" role and the per-turf "manager" role, same
+///                     as the table it mirrors — disambiguate via that row's
+///                     arena_id, not via owner_type)
+model PushSubscription {
+  id         Int      @id @default(autoincrement())
+  owner_type String
+  owner_id   Int
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  created_at DateTime @default(now())
+
+  @@index([owner_type, owner_id])
+  @@map("push_subscriptions")
 }
 
 model SlotTiming {

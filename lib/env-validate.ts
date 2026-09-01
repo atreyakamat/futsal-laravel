@@ -27,6 +27,10 @@ const SOFT_REQUIRED_ENV_VARS = [
   // widget doesn't render at all — see components/TurnstileWidget.tsx.
   'TURNSTILE_SECRET_KEY',
   'NEXT_PUBLIC_TURNSTILE_SITE_KEY',
+  // Web push (booking alerts to staff, slot reminders to customers) — lib/push.ts
+  // no-ops silently and PushNotificationManager never prompts until these are set.
+  'NEXT_PUBLIC_VAPID_PUBLIC_KEY',
+  'VAPID_PRIVATE_KEY',
 ];
 
 const PRODUCTION_REQUIRED_VARS = [

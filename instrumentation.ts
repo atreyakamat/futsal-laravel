@@ -9,6 +9,9 @@ export async function register() {
 
     const { startDailyDigestCron } = await import('./lib/daily-digest-cron');
     startDailyDigestCron();
+
+    const { startBookingReminderCron } = await import('./lib/booking-reminder-cron');
+    startBookingReminderCron();
   }
 
   if (process.env.NEXT_RUNTIME === 'edge') {

@@ -2,6 +2,7 @@ import { getArenaById, getBookingsByRef, queryOne } from '@/lib/domain';
 import { mergeSlots, getDurationText } from '@/lib/slot-merge';
 import { sendEmail, generateBookingConfirmationEmail, generateRescheduleConfirmationEmail, type EmailAttachment } from '@/lib/email';
 import { getSmsProvider } from '@/lib/sms';
+import { notifyStaffOfNewBooking } from '@/lib/push';
 import { buildTicketVerificationUrl, generateQrDataUrl } from '@/lib/qr';
 import { generateTicketDownloadToken } from '@/lib/ticket-token';
 import { generateTicketPdfBuffer } from '@/lib/pdf';
@@ -102,6 +103,12 @@ export async function sendTicketEmail(bookingRef: string, appUrl?: string) {
   if (!firstBooking) {
     return { sent: false, reason: 'No recipient booking found' as const };
   }
+
+  // Push alert to super_admin/admin/manager — every path that reaches this
+  // function is a booking that just became real (paid online, free/offline,
+  // or an admin-approved free/discounted booking), so this is the single
+  // place to fire it from rather than duplicating the call at each call site.
+  await notifyStaffOfNewBooking(bookingRef);
 
   // 1. Send SMS / WhatsApp Notification (contains ticket details to map template)
   if (firstBooking.customer_mobile) {

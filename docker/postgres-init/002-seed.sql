@@ -37,7 +37,7 @@ FROM arenas a, (
          ('23:00-00:00'::TEXT, 1416::NUMERIC)
 ) AS prices(time_slot, price)
 WHERE a.slug = 'aiem-assagao'
-ON CONFLICT (arena_id, time_slot) DO NOTHING;
+ON CONFLICT (arena_id, time_slot) WHERE day_of_week IS NULL DO NOTHING;
 
 -- Insert slot timings for AIEM Assagao
 INSERT INTO slot_timings (arena_id, time_slot, start_time, end_time, day_of_week, created_at, updated_at)

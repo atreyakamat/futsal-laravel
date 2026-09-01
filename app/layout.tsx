@@ -6,7 +6,9 @@ import '@/lib/env-validate';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import SupportWidget from '@/components/SupportWidget';
+import PwaManager from '@/components/PwaManager';
 import { readAuthUserId, readAuthRole, readArenaId } from '@/lib/session';
+import { getOrCreateCsrfToken } from '@/lib/csrf';
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ['latin'],
@@ -45,6 +47,16 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'AgnelArena',
+  },
+  icons: {
+    icon: [{ url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
+    apple: [{ url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
+  },
 };
 
 export const viewport: Viewport = {
@@ -65,12 +77,14 @@ export default async function RootLayout({
   let arenaId: number | null = null;
 
   let userName: string | null = null;
+  let csrfToken = '';
 
   try {
     userId = await readAuthUserId();
     role = await readAuthRole();
     arenaId = await readArenaId();
-    
+    csrfToken = await getOrCreateCsrfToken();
+
     if (userId && role !== 'super_admin') {
       const { findUserById } = await import('@/lib/domain');
       const user = await findUserById(userId);
@@ -98,6 +112,7 @@ export default async function RootLayout({
           <Footer />
         </div>
         <SupportWidget />
+        <PwaManager userId={userId} role={role} csrfToken={csrfToken} />
       </body>
     </html>
   );
