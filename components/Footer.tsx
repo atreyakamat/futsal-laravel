@@ -98,6 +98,9 @@ export default function Footer() {
             <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em]">
               © {new Date().getFullYear()} AGNELARENA. ALL RIGHTS RESERVED.
             </p>
+            <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em]">
+              Designed &amp; Developed by Agnel Tech Services
+            </p>
           </div>
           <div className="flex items-center gap-6">
             <span className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em] flex items-center gap-2">
