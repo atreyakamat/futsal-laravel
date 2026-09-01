@@ -218,7 +218,21 @@ async function main() {
       console.log('Applying seed file: 002-seed.sql');
       await client.query(sql);
     }
-    await seedDemoData(client);
+
+    // seedDemoData upserts the admin/super-admin password from ADMIN_PASSWORD
+    // and creates the demo arena/security logins — meant for bootstrapping a
+    // brand-new database, not for running again on every container restart.
+    // This used to run unconditionally, which silently reverted any password
+    // change made through the app's own admin UI (and kept recreating the
+    // demo arena@test.com/security@test.com accounts) on every redeploy or
+    // crash-restart. Gated on "has this database already been bootstrapped"
+    // so it only ever runs once, against a genuinely empty database.
+    const { rows } = await client.query('SELECT COUNT(*) FROM super_admins');
+    if (Number(rows[0].count) > 0) {
+      console.log('Super admin already exists — skipping demo/admin seeding (already bootstrapped).');
+    } else {
+      await seedDemoData(client);
+    }
   } finally {
     await client.end();
   }
