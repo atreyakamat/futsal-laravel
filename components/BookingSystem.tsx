@@ -677,7 +677,7 @@ export default function BookingSystem({
 
                 <div className="space-y-2">
                   <label htmlFor="booking_customer_email" className="label-classic">
-                    Email Address <span className="text-white/20 italic lowercase">(optional)</span>
+                    Email Address
                   </label>
                   <div className="relative group">
                     <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-primary transition-colors text-lg">

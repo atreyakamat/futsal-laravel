@@ -14,7 +14,23 @@ type BeforeInstallPromptEvent = Event & {
 };
 
 const INSTALL_DISMISSED_KEY = 'fg_pwa_install_dismissed';
+const IOS_INSTALL_DISMISSED_KEY = 'fg_pwa_ios_install_dismissed';
 const PUSH_DISMISSED_KEY = 'fg_push_prompt_dismissed';
+
+// iOS Safari has never fired `beforeinstallprompt` (no Apple support for the
+// API) and has no programmatic install trigger at all — the only way to add
+// to home screen is the user manually tapping Share > Add to Home Screen. So
+// the existing install banner, which waits for that event, never appears on
+// iPhone/iPad. This detects iOS Safari specifically (excluding Chrome/Firefox
+// on iOS, which wrap the same WebKit but still can't install either — kept
+// simple by just checking "not already standalone" below) to show instructions
+// instead of a broken "Install" button that would have nothing to call.
+function isIosSafari(): boolean {
+  const ua = window.navigator.userAgent;
+  const isIos = /iPad|iPhone|iPod/.test(ua) || (ua.includes('Macintosh') && navigator.maxTouchPoints > 1);
+  const isSafari = /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua);
+  return isIos && isSafari;
+}
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -40,6 +56,7 @@ export default function PwaManager({ userId, role, csrfToken }: PwaManagerProps)
   const isStaff = !!role && STAFF_ROLES.includes(role);
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
+  const [showIosInstallBanner, setShowIosInstallBanner] = useState(false);
   const [showPushBanner, setShowPushBanner] = useState(false);
 
   useEffect(() => {
@@ -64,6 +81,15 @@ export default function PwaManager({ userId, role, csrfToken }: PwaManagerProps)
   }, []);
 
   useEffect(() => {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true;
+    if (isStandalone) return;
+    if (localStorage.getItem(IOS_INSTALL_DISMISSED_KEY)) return;
+    if (!isIosSafari()) return;
+
+    setShowIosInstallBanner(true);
+  }, []);
+
+  useEffect(() => {
     if (!userId) return;
     const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
     if (!vapidKey) return;
@@ -85,6 +111,11 @@ export default function PwaManager({ userId, role, csrfToken }: PwaManagerProps)
   const dismissInstall = () => {
     localStorage.setItem(INSTALL_DISMISSED_KEY, '1');
     setShowInstallBanner(false);
+  };
+
+  const dismissIosInstall = () => {
+    localStorage.setItem(IOS_INSTALL_DISMISSED_KEY, '1');
+    setShowIosInstallBanner(false);
   };
 
   const handleEnableNotifications = async () => {
@@ -131,6 +162,21 @@ export default function PwaManager({ userId, role, csrfToken }: PwaManagerProps)
             Install
           </button>
           <button onClick={dismissInstall} aria-label="Dismiss" className="text-white/40 hover:text-white/70 flex-shrink-0 px-1">
+            ✕
+          </button>
+        </div>
+      )}
+
+      {showIosInstallBanner && (
+        <div className="pointer-events-auto w-full max-w-md rounded-xl border border-white/10 bg-dark/95 backdrop-blur-md shadow-2xl p-4 flex items-center gap-3">
+          <img src="/icons/icon-192.png" alt="" className="w-10 h-10 rounded-lg flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-white">Install AgnelArena</p>
+            <p className="text-xs text-white/60">
+              Tap <span className="material-symbols-outlined align-middle text-sm">ios_share</span> Share, then &quot;Add to Home Screen&quot;.
+            </p>
+          </div>
+          <button onClick={dismissIosInstall} aria-label="Dismiss" className="text-white/40 hover:text-white/70 flex-shrink-0 px-1">
             ✕
           </button>
         </div>

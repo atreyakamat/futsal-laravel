@@ -13,7 +13,7 @@ const bodySchema = z.object({
   slots: z.array(z.string().min(1)).min(1),
   customer_name: z.string().min(1).max(100),
   customer_mobile: z.string().min(5).max(15),
-  customer_email: z.string().email().nullable().optional(),
+  customer_email: z.string().min(1, 'Email is required').email(),
 });
 
 async function readPayload(request: Request) {
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
     slots,
     customer_name: String(payloadObject.customer_name),
     customer_mobile: normalizePhoneNumber(String(payloadObject.customer_mobile)),
-    customer_email: payloadObject.customer_email ? String(payloadObject.customer_email) : null,
+    customer_email: payloadObject.customer_email ? String(payloadObject.customer_email) : '',
   });
 
   const sessionId = getWritableSessionId(request);
@@ -87,7 +87,7 @@ export async function POST(request: Request) {
       slots: payload.slots,
       customerName: payload.customer_name,
       customerMobile: payload.customer_mobile,
-      customerEmail: payload.customer_email ?? null,
+      customerEmail: payload.customer_email,
       userId: isStaffRole ? null : authUserId,
       sessionId,
       freeBooking: entryMode === 'free',

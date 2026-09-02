@@ -104,7 +104,7 @@ export default async function BookingPaymentFailedPage({ params }: Props) {
                 <div>
                   <p className="font-black text-sm mb-2 text-white uppercase tracking-tight">Start Over</p>
                   <p className="text-xs text-white/40 leading-relaxed font-medium">
-                    Click the "START OVER" button below to go back to the home page and select your time slots again.
+                    Click the "START OVER" button below to go back to {arena.name} and select your time slots again.
                   </p>
                 </div>
               </li>
@@ -124,7 +124,7 @@ export default async function BookingPaymentFailedPage({ params }: Props) {
 
           <div className="flex flex-col sm:flex-row gap-6">
             <Link
-              href="/"
+              href={`/arena/${arena.slug}`}
               className="btn-primary flex-1 text-center bg-red-500 hover:bg-red-600 text-black font-black py-4 px-6 rounded-full block tracking-widest text-xs uppercase"
             >
               START OVER

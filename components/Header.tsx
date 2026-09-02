@@ -61,7 +61,7 @@ export default function Header({ userId, role, arenaId, userName }: HeaderProps)
             </Link>
 
             {/* Admin Nav Desktop */}
-            <nav className="hidden md:flex items-center gap-6">
+            <nav className="hidden md:flex items-center gap-6 flex-wrap">
               {role === 'super_admin' && (
                 <>
                   <Link href="/fg-admin/platform/super-admin" className={`text-xs font-black uppercase tracking-widest hover:text-primary transition-colors ${pathname.includes('/super-admin') ? 'text-primary' : 'text-white/60'}`}>
@@ -91,6 +91,21 @@ export default function Header({ userId, role, arenaId, userName }: HeaderProps)
                   <Link href="/fg-admin/platform/audit-logs" className={`text-xs font-black uppercase tracking-widest hover:text-primary transition-colors ${pathname.includes('/audit-logs') ? 'text-primary' : 'text-white/60'}`}>
                     Audit Logs
                   </Link>
+                  <Link href="/fg-admin/platform/users" className={`text-xs font-black uppercase tracking-widest hover:text-primary transition-colors ${pathname.includes('/users') ? 'text-primary' : 'text-white/60'}`}>
+                    Users
+                  </Link>
+                  <Link href="/fg-admin/platform/notifications" className={`text-xs font-black uppercase tracking-widest hover:text-primary transition-colors ${pathname.includes('/notifications') ? 'text-primary' : 'text-white/60'}`}>
+                    Notifications
+                  </Link>
+                  <Link href="/fg-admin/platform/gst-documents" className={`text-xs font-black uppercase tracking-widest hover:text-primary transition-colors ${pathname.includes('/gst-documents') ? 'text-primary' : 'text-white/60'}`}>
+                    GST Docs
+                  </Link>
+                  <Link href="/fg-admin/platform/credentials" className={`text-xs font-black uppercase tracking-widest hover:text-primary transition-colors ${pathname.includes('/credentials') ? 'text-primary' : 'text-white/60'}`}>
+                    Credentials
+                  </Link>
+                  <Link href="/fg-admin/platform/settings" className={`text-xs font-black uppercase tracking-widest hover:text-primary transition-colors ${pathname.includes('/settings') ? 'text-primary' : 'text-white/60'}`}>
+                    Settings
+                  </Link>
                 </>
               )}
               {role === 'manager' && (
@@ -103,6 +118,9 @@ export default function Header({ userId, role, arenaId, userName }: HeaderProps)
                   </Link>
                   <Link href="/fg-admin/arena/slots" className={`text-xs font-black uppercase tracking-widest hover:text-primary transition-colors ${pathname.includes('/slots') ? 'text-primary' : 'text-white/60'}`}>
                     Slots
+                  </Link>
+                  <Link href="/fg-admin/arena/notifications" className={`text-xs font-black uppercase tracking-widest hover:text-primary transition-colors ${pathname.includes('/notifications') ? 'text-primary' : 'text-white/60'}`}>
+                    Notifications
                   </Link>
                   <Link href="/fg-admin/arena/settings" className={`text-xs font-black uppercase tracking-widest hover:text-primary transition-colors ${pathname.includes('/settings') ? 'text-primary' : 'text-white/60'}`}>
                     Settings
@@ -118,6 +136,11 @@ export default function Header({ userId, role, arenaId, userName }: HeaderProps)
                     Verify
                   </Link>
                 </>
+              )}
+              {role === 'accountant' && (
+                <Link href="/fg-admin/accountant/dashboard" className={`text-xs font-black uppercase tracking-widest hover:text-primary transition-colors ${pathname.includes('/accountant') ? 'text-primary' : 'text-white/60'}`}>
+                  Dashboard
+                </Link>
               )}
             </nav>
           </div>
