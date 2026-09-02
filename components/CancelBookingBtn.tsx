@@ -26,6 +26,7 @@ export default function CancelBookingBtn({
   refundFeeValue = 300,
   refundsEnabled = false,
   rescheduleUsed = false,
+  adminCreated = false,
 }: {
   bookingRef: string;
   bookingDateStr: string;
@@ -47,6 +48,7 @@ export default function CancelBookingBtn({
   refundFeeValue?: number;
   refundsEnabled?: boolean;
   rescheduleUsed?: boolean;
+  adminCreated?: boolean;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -220,6 +222,19 @@ export default function CancelBookingBtn({
 
   if (paymentStatus !== 'confirmed') {
     return null;
+  }
+
+  // Staff booked this on the customer's behalf (see
+  // app/api/fg-admin/platform/bookings/route.ts) — only staff (super_admin,
+  // admin, arena_admin, manager) can cancel/refund it, via the admin
+  // bookings list. Self-service cancellation and reschedule stay off the
+  // table here regardless of refund eligibility.
+  if (adminCreated) {
+    return (
+      <div className="mt-4 w-full md:w-auto px-4 py-3 bg-white/5 border border-white/10 text-white/40 rounded-xl text-[10px] font-bold uppercase tracking-widest text-center max-w-xs md:ml-auto">
+        This booking was made on your behalf by our team. Contact the arena or support to cancel or change it.
+      </div>
+    );
   }
 
   const noRefundReason = (() => {

@@ -12,6 +12,9 @@ export async function register() {
 
     const { startBookingReminderCron } = await import('./lib/booking-reminder-cron');
     startBookingReminderCron();
+
+    const { startPaymentReminderCron } = await import('./lib/payment-reminder-cron');
+    startPaymentReminderCron();
   }
 
   if (process.env.NEXT_RUNTIME === 'edge') {

@@ -379,6 +379,128 @@ export function generateRefundCompletedEmail(
   return { subject, html, text };
 }
 
+/**
+ * Sent once, right when staff book a slot on a customer's behalf (see
+ * app/api/fg-admin/platform/bookings/route.ts) and leave it 'pending' for
+ * the customer to pay online later — the only correspondence channel they
+ * have before that customer ever logs in.
+ */
+export function generatePendingPaymentEmail(
+  bookingRef: string,
+  arenaName: string,
+  arenaAddress: string,
+  bookingDate: string,
+  timeSlots: string[],
+  customerName: string,
+  totalAmount: number,
+  loginUrl: string
+): { subject: string; html: string; text: string } {
+  const subject = `Action Needed: Complete Payment for ${bookingRef} - ${arenaName}`;
+  const mergedSlots = timeSlots.join(', ');
+  const arenaRowValue = arenaAddress ? `${arenaName}<br><span style="font-weight: 400; color: #999; font-size: 12px;">${arenaAddress}</span>` : arenaName;
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: #ffb300; padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+        <h1 style="color: #050505; margin: 0; font-size: 28px; font-weight: 900;">AGNEL<span style="color: #050505;">ARENA</span></h1>
+        <p style="color: #050505; margin: 10px 0 0; font-size: 14px; font-weight: 700;">A Slot Has Been Reserved For You</p>
+      </div>
+      <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e5e5; border-top: none; border-radius: 0 0 12px 12px;">
+        <h2 style="color: #1a1a1a; margin-top: 0;">Hi ${customerName},</h2>
+        <p>Our team has reserved the slot below for you. It's held, but <strong>payment hasn't been made yet</strong> — log in and complete payment to confirm it.</p>
+
+        <div style="background: #f5f5f5; border-radius: 8px; padding: 20px; margin: 20px 0;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr><td style="padding: 8px 0; color: #666; font-size: 14px;">Booking Reference</td><td style="padding: 8px 0; font-weight: 700; text-align: right;">${bookingRef}</td></tr>
+            <tr><td style="padding: 8px 0; color: #666; font-size: 14px; vertical-align: top;">Arena</td><td style="padding: 8px 0; font-weight: 700; text-align: right;">${arenaRowValue}</td></tr>
+            <tr><td style="padding: 8px 0; color: #666; font-size: 14px;">Date</td><td style="padding: 8px 0; font-weight: 700; text-align: right;">${new Date(bookingDate).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</td></tr>
+            <tr><td style="padding: 8px 0; color: #666; font-size: 14px;">Time Slots</td><td style="padding: 8px 0; font-weight: 700; text-align: right; color: #ffb300;">${mergedSlots}</td></tr>
+            <tr><td style="padding: 8px 0; color: #666; font-size: 14px;">Amount Due</td><td style="padding: 8px 0; font-weight: 700; text-align: right;">₹${totalAmount.toFixed(2)}</td></tr>
+          </table>
+        </div>
+
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${loginUrl}" style="display: inline-block; background: #0df220; color: #050505; font-weight: 900; font-size: 14px; text-decoration: none; padding: 14px 28px; border-radius: 8px;">LOG IN &amp; PAY NOW</a>
+        </div>
+
+        <div style="background: #fff8e1; border: 1px solid #ffd54f; border-radius: 8px; padding: 16px; margin: 20px 0;">
+          <p style="margin: 0; color: #5d4037; font-size: 14px;"><strong>Note:</strong> This slot stays reserved for you, but it isn't a confirmed booking until payment is completed.</p>
+        </div>
+
+        <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 20px 0;">
+        <p style="color: #999; font-size: 12px; text-align: center;">AgnelArena - Premium Turf Booking in Goa</p>
+      </div>
+    </body>
+    </html>
+  `;
+  const text = `A slot has been reserved for you at ${arenaName} on ${bookingDate} for ${mergedSlots} (Ref: ${bookingRef}). Amount due: ₹${totalAmount.toFixed(2)}. Log in and pay: ${loginUrl}`;
+  return { subject, html, text };
+}
+
+/**
+ * Sent once, ~1 hour before a still-unpaid staff-created booking's slot
+ * starts (see lib/payment-reminder-cron.ts) — the "pay now or lose the
+ * slot" nudge, distinct from generatePendingPaymentEmail's one-time notice
+ * at creation time.
+ */
+export function generatePaymentReminderEmail(
+  bookingRef: string,
+  arenaName: string,
+  arenaAddress: string,
+  bookingDate: string,
+  timeSlots: string[],
+  customerName: string,
+  totalAmount: number,
+  loginUrl: string
+): { subject: string; html: string; text: string } {
+  const subject = `Starting Soon: Pay Now to Keep Your Slot - ${arenaName}`;
+  const mergedSlots = timeSlots.join(', ');
+  const arenaRowValue = arenaAddress ? `${arenaName}<br><span style="font-weight: 400; color: #999; font-size: 12px;">${arenaAddress}</span>` : arenaName;
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: #ef4444; padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 900;">AGNEL<span style="color: #ffffff;">ARENA</span></h1>
+        <p style="color: #ffffff; margin: 10px 0 0; font-size: 14px; font-weight: 700;">Your Slot Starts In About 1 Hour</p>
+      </div>
+      <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e5e5; border-top: none; border-radius: 0 0 12px 12px;">
+        <h2 style="color: #1a1a1a; margin-top: 0;">Hi ${customerName},</h2>
+        <p>Your reserved slot below starts in about an hour and <strong>payment is still pending</strong>. Complete payment now to keep it — it may be released to someone else if it isn't paid for in time.</p>
+
+        <div style="background: #f5f5f5; border-radius: 8px; padding: 20px; margin: 20px 0;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr><td style="padding: 8px 0; color: #666; font-size: 14px;">Booking Reference</td><td style="padding: 8px 0; font-weight: 700; text-align: right;">${bookingRef}</td></tr>
+            <tr><td style="padding: 8px 0; color: #666; font-size: 14px; vertical-align: top;">Arena</td><td style="padding: 8px 0; font-weight: 700; text-align: right;">${arenaRowValue}</td></tr>
+            <tr><td style="padding: 8px 0; color: #666; font-size: 14px;">Date</td><td style="padding: 8px 0; font-weight: 700; text-align: right;">${new Date(bookingDate).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</td></tr>
+            <tr><td style="padding: 8px 0; color: #666; font-size: 14px;">Time Slots</td><td style="padding: 8px 0; font-weight: 700; text-align: right; color: #ef4444;">${mergedSlots}</td></tr>
+            <tr><td style="padding: 8px 0; color: #666; font-size: 14px;">Amount Due</td><td style="padding: 8px 0; font-weight: 700; text-align: right;">₹${totalAmount.toFixed(2)}</td></tr>
+          </table>
+        </div>
+
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${loginUrl}" style="display: inline-block; background: #0df220; color: #050505; font-weight: 900; font-size: 14px; text-decoration: none; padding: 14px 28px; border-radius: 8px;">LOG IN &amp; PAY NOW</a>
+        </div>
+
+        <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 20px 0;">
+        <p style="color: #999; font-size: 12px; text-align: center;">AgnelArena - Premium Turf Booking in Goa</p>
+      </div>
+    </body>
+    </html>
+  `;
+  const text = `Reminder: your slot at ${arenaName} on ${bookingDate} for ${mergedSlots} (Ref: ${bookingRef}) starts in about 1 hour and payment is still pending (₹${totalAmount.toFixed(2)}). Log in and pay: ${loginUrl}`;
+  return { subject, html, text };
+}
+
 export interface DigestBookingRow {
   arena_name: string;
   time_slot: string;

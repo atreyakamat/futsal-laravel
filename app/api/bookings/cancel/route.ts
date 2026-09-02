@@ -29,6 +29,22 @@ export async function POST(req: NextRequest) {
 
     const firstBooking = bookings[0];
 
+    // Staff booked this on the customer's behalf (see
+    // app/api/fg-admin/platform/bookings/route.ts) — self-service
+    // cancellation/refund is off the table regardless of status; only staff
+    // can cancel it, via app/api/fg-admin/platform/bookings/cancel.
+    if (firstBooking.admin_created) {
+      return NextResponse.json(
+        {
+          success: false,
+          code: 'STAFF_BOOKING',
+          message: 'This booking was made on your behalf by our team. Contact the arena or support to cancel or change it.',
+          refundEligible: false,
+        },
+        { status: 403 }
+      );
+    }
+
     // Rule: Reject duplicate cancellation requests
     if (firstBooking.cancellation_requested || firstBooking.payment_status === 'cancelled' || firstBooking.payment_status === 'refunded') {
       return NextResponse.json(

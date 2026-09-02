@@ -190,11 +190,40 @@ export class AiSensyProvider implements SmsProvider {
       let ticketNumber = '';
       let isOtp = false;
       let isReschedule = false;
+      let isPaymentReminder = false;
 
       const otpMatch = message.match(/\b\d{6}\b/);
       const otp = otpMatch ? otpMatch[0] : '';
 
-      if (message.startsWith('RESCHEDULED|')) {
+      // A payment reminder has no approved WhatsApp template out of the box
+      // — unlike CONFIRMED/RESCHEDULED/OTP, Meta requires every outbound
+      // template to be pre-approved, and there's no reason to assume one
+      // exists yet for this. Fail loud and early rather than either
+      // silently no-op'ing or misusing the booking-confirmation template's
+      // approved content for an unrelated message.
+      if (message.startsWith('PAYMENT_REMINDER|') && !process.env.AISENSY_CAMPAIGN_NAME_PAYMENT_REMINDER) {
+        const errMsg = '[AiSensyProvider] AISENSY_CAMPAIGN_NAME_PAYMENT_REMINDER is not set — no approved WhatsApp template configured for payment reminders. Skipping send.';
+        console.error(errMsg);
+        logToPublic(errMsg);
+        return false;
+      }
+
+      if (message.startsWith('PAYMENT_REMINDER|')) {
+        isPaymentReminder = true;
+        const parts = message.split('|');
+        const dateStr = parts[1] || '';
+        const timeRange = parts[2] || '';
+        ticketNumber = parts[3] || ''; // booking ref, not a TKT- ticket number — no ticket exists yet for an unpaid booking
+        const customerName = parts[4] || 'Player';
+        const amountDue = parts[5] || '';
+
+        let formattedDate = dateStr;
+        try {
+          formattedDate = new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+        } catch (_) {}
+
+        templateParams = [customerName, formattedDate, timeRange, amountDue];
+      } else if (message.startsWith('RESCHEDULED|')) {
         isReschedule = true;
         const parts = message.split('|');
         const oldDateStr = parts[1] || '';
@@ -255,7 +284,7 @@ export class AiSensyProvider implements SmsProvider {
       }
 
       // Try to extract dynamic ticket number if present (starts with TKT-)
-      if (!ticketNumber && !isOtp && !isReschedule) {
+      if (!ticketNumber && !isOtp && !isReschedule && !isPaymentReminder) {
         const ticketMatch = message.match(/\bTKT-[A-Z0-9-]+\b/i);
         ticketNumber = ticketMatch ? ticketMatch[0] : '';
       }
@@ -276,7 +305,11 @@ export class AiSensyProvider implements SmsProvider {
       // dynamic button.
       const bookingCampaignName = process.env.AISENSY_CAMPAIGN_NAME_BOOKING || 'agnelarena_cofirm';
       const rescheduleCampaignName = process.env.AISENSY_CAMPAIGN_NAME_RESCHEDULE || 'agnelarena_reschedule';
-      const useDynamicButton = Boolean(process.env.AISENSY_CAMPAIGN_NAME_BOOKING) && !isOtp && !isReschedule;
+      // No fallback default here (unlike the other campaign names above) —
+      // guarded earlier: a PAYMENT_REMINDER message never reaches this line
+      // unless the env var is actually set.
+      const paymentReminderCampaignName = process.env.AISENSY_CAMPAIGN_NAME_PAYMENT_REMINDER || '';
+      const useDynamicButton = Boolean(process.env.AISENSY_CAMPAIGN_NAME_BOOKING) && !isOtp && !isReschedule && !isPaymentReminder;
 
       const payload: any = {
         apiKey: this.apiKey,
@@ -284,12 +317,14 @@ export class AiSensyProvider implements SmsProvider {
           ? (process.env.AISENSY_CAMPAIGN_NAME_OTP || 'agnel_arena_otp')
           : isReschedule
             ? rescheduleCampaignName
-            : bookingCampaignName,
+            : isPaymentReminder
+              ? paymentReminderCampaignName
+              : bookingCampaignName,
         destination: destination,
         userName: this.userName,
         templateParams: templateParams,
         source: this.source,
-        media: (isOtp || isReschedule) ? {} : {
+        media: (isOtp || isReschedule || isPaymentReminder) ? {} : {
           url: pdfUrl,
           filename: ticketNumber ? `ticket-${ticketNumber}.pdf` : "booking_confirmation.pdf"
         },
@@ -330,6 +365,15 @@ export class AiSensyProvider implements SmsProvider {
                     },
                   ]
                 : [])
+          : isPaymentReminder
+            ? [
+                {
+                  type: "button",
+                  sub_type: "url",
+                  index: 0,
+                  parameters: [{ type: "text", text: ticketNumber || 'N/A' }],
+                },
+              ]
           : useDynamicButton
             ? [
                 {

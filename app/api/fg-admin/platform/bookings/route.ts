@@ -4,6 +4,7 @@ import { createApprovalRequest, getAdminContext, hasArenaAccess } from '@/lib/ad
 import { createBookingBatch, query } from '@/lib/domain';
 import { readAuthUserId } from '@/lib/session';
 import { sendTicketEmail } from '@/lib/ticket';
+import { sendPendingPaymentEmail } from '@/lib/payment-reminder';
 import { issueTaxInvoice } from '@/lib/gst-documents';
 import { normalizePhoneNumber } from '@/lib/phone';
 
@@ -86,6 +87,15 @@ export async function POST(request: Request) {
   }
 
   const isDiscounted = payload.discounted_price_per_slot !== undefined;
+
+  // The plain (not free, not discounted) path is the "book on behalf of a
+  // customer, they pay online later" flow — email matters there since it's
+  // the only correspondence channel before the customer ever logs in. Free
+  // and discounted walk-in bookings keep email optional, unchanged.
+  if (!payload.free_booking && !isDiscounted && !payload.customer_email) {
+    return NextResponse.json({ success: false, message: 'Customer email is required for a pay-later booking.' }, { status: 400 });
+  }
+
   const needsApproval = (payload.free_booking || isDiscounted) && context.role !== 'super_admin' && context.role !== 'arena_admin';
 
   if (needsApproval) {
@@ -136,6 +146,11 @@ export async function POST(request: Request) {
     // 'pending' and waiting for a PayU payment that will never happen.
     offlinePayment: isDiscounted,
     discountedSlotPrice: payload.discounted_price_per_slot,
+    // Only the plain path is left 'pending' for the customer to pay online
+    // later — exempts it from the 15-minute abandoned-checkout expiry (see
+    // expirePendingBookings). Free/discounted bookings resolve immediately
+    // either way, so the flag is meaningless for them.
+    adminCreated: !payload.free_booking && !isDiscounted,
   });
 
   // Cash/UPI payment collected for a discounted booking is the point of
@@ -156,19 +171,28 @@ export async function POST(request: Request) {
     await issueTaxInvoice(booking.bookingRef);
   }
 
+  const proto = request.headers.get('x-forwarded-proto') || 'http';
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'localhost:3000';
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `${proto}://${host}`;
+
   // Free and discounted bookings both skip the payment gateway — the admin
   // applying them is the "payment" (an offline decision), not the customer
   // paying online, so this always goes straight to the success page.
   if (payload.free_booking || isDiscounted) {
-    const proto = request.headers.get('x-forwarded-proto') || 'http';
-    const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'localhost:3000';
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `${proto}://${host}`;
     await sendTicketEmail(booking.bookingRef, baseUrl);
+  } else {
+    // Plain path — the customer pays online later. This is their only
+    // notice before then; the 1-hour-before reminder (email + WhatsApp) is
+    // handled separately by lib/payment-reminder-cron.ts.
+    await sendPendingPaymentEmail(booking.bookingRef, baseUrl);
   }
 
+  // The plain path leaves payment to the customer, not whoever's logged in
+  // here as staff right now — sending THIS browser to PayU would be wrong.
+  // Back to the bookings list with a plain confirmation instead.
   const redirectTarget = (payload.free_booking || isDiscounted)
     ? `/booking/success/${booking.bookingRef}`
-    : `/payment/checkout/${booking.bookingRef}`;
+    : `/fg-admin/platform/bookings?created=${booking.bookingRef}`;
 
   if (!isJson) {
     return NextResponse.redirect(new URL(redirectTarget, request.url));

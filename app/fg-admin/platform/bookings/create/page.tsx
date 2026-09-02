@@ -2,6 +2,7 @@ import { readAuthUserId } from '@/lib/session';
 import { getAdminContext, listArenas } from '@/lib/admin';
 import { getArenaById } from '@/lib/domain';
 import { redirect } from 'next/navigation';
+import StaffBookingForm from '@/components/StaffBookingForm';
 
 export default async function AdminBookingCreatePage() {
   const userId = await readAuthUserId();
@@ -26,88 +27,11 @@ export default async function AdminBookingCreatePage() {
         <p className="label-classic !ml-0">Backend booking form for admin operations</p>
       </div>
 
-      <form action="/api/fg-admin/platform/bookings" method="POST" className="glass-card space-y-6">
-        <div className="grid md:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <label className="label-classic">Arena</label>
-            {context.role !== 'manager' ? (
-              <select name="arena_id" className="input-field" defaultValue={arenas[0]?.id ?? ''}>
-                {arenas.map((arena) => (
-                  <option key={arena.id} value={arena.id}>{arena.name}</option>
-                ))}
-              </select>
-            ) : (
-              <>
-                <input type="hidden" name="arena_id" value={scopedArenaId ?? ''} />
-                <input className="input-field" value={scopedArena?.name ?? 'No arena assigned'} readOnly />
-              </>
-            )}
-          </div>
-          <div className="space-y-2">
-            <label className="label-classic">Booking Date</label>
-            <input type="date" name="date" className="input-field" />
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <label className="label-classic">Slots (one per line: 18:00-19:00)</label>
-          <textarea name="slots" rows={6} className="input-field" placeholder={`18:00-19:00\n19:00-20:00`} />
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <label className="label-classic">Customer Name</label>
-            <input name="customer_name" className="input-field" />
-          </div>
-          <div className="space-y-2">
-            <label className="label-classic">Customer Mobile</label>
-            <input name="customer_mobile" className="input-field" />
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <label className="label-classic">Customer Email</label>
-          <input name="customer_email" type="email" className="input-field" />
-        </div>
-
-        <label className="inline-flex items-center gap-3 text-xs font-black uppercase tracking-widest">
-          <input type="checkbox" name="free_booking" value="true" className="w-4 h-4 accent-primary" />
-          Free booking (managers need super admin/arena admin approval)
-        </label>
-
-        <div className="space-y-2">
-          <label className="label-classic">Discounted Price Per Slot (₹)</label>
-          <input name="discounted_price_per_slot" type="number" min="0" step="1" className="input-field" placeholder="Leave blank for normal price" />
-          <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest">
-            Optional — a reduced (but non-zero) price. Ignored if Free Booking is checked. Managers need approval; super admin/arena admin apply immediately.
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <label className="label-classic">Payment Method</label>
-            <select name="payment_method" className="input-field" defaultValue="">
-              <option value="">— Not collected yet —</option>
-              <option value="cash">Cash</option>
-              <option value="upi">UPI</option>
-            </select>
-          </div>
-          <div className="space-y-2">
-            <label className="label-classic">Payment Reference</label>
-            <input name="payment_reference" className="input-field" placeholder="UPI UTR / cash receipt no." />
-          </div>
-        </div>
-        <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest -mt-4">
-          Only used for a Discounted booking — record the cash/UPI payment collected from the customer to mark it paid and issue an invoice. Leave blank if payment hasn't been collected yet (you can confirm it later from Bookings). Ignored for a Free booking.
-        </p>
-
-        <div className="space-y-2">
-          <label className="label-classic">Notes</label>
-          <textarea name="notes" rows={3} className="input-field" />
-        </div>
-
-        <button className="btn-primary" type="submit">Submit Booking</button>
-      </form>
+      <StaffBookingForm
+        arenas={context.role !== 'manager' ? arenas : []}
+        scopedArenaId={scopedArenaId}
+        scopedArenaName={scopedArena?.name ?? null}
+      />
     </div>
   );
 }

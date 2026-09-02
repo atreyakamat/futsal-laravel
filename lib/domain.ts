@@ -18,6 +18,8 @@ export async function ensureSchemaColumns() {
     await dbQuery(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS refund_processed_at TIMESTAMP NULL`);
     await dbQuery(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payu_refund_request_id TEXT NULL`);
     await dbQuery(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS verification_method VARCHAR(50) DEFAULT 'qr'`);
+    await dbQuery(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS admin_created BOOLEAN DEFAULT FALSE`);
+    await dbQuery(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_reminder_sent_at TIMESTAMP NULL`);
   } catch {
     // Columns already exist or handled
   }
@@ -114,10 +116,21 @@ export async function getArenaPricingForDate(arenaId: number, dateStr: string) {
 }
 
 export async function expirePendingBookings() {
+  // Called from many places that don't otherwise call ensureSchemaColumns()
+  // first (getBookedSlots, lockSlots, etc.) — guarantee admin_created exists
+  // before referencing it below, regardless of call order.
+  await ensureSchemaColumns();
+  // admin_created bookings are staff booking a slot on a customer's behalf
+  // (see app/api/fg-admin/platform/bookings/route.ts) — left 'pending' on
+  // purpose until that customer logs in and pays, which may be hours or
+  // days later. This sweep exists for abandoned in-progress customer
+  // checkouts, not those — exempt them so they don't vanish before anyone
+  // gets a chance to pay.
   await dbQuery(
-    `UPDATE bookings 
-        SET payment_status = 'failed', updated_at = NOW() 
-      WHERE payment_status = 'pending' 
+    `UPDATE bookings
+        SET payment_status = 'failed', updated_at = NOW()
+      WHERE payment_status = 'pending'
+        AND admin_created = FALSE
         AND created_at < NOW() - INTERVAL '15 minutes'`
   );
 }
@@ -387,7 +400,14 @@ export async function createBookingBatch(params: {
   // approval request resolving) — takes priority over the normal pricing
   // lookup for every slot in this batch, same as freeBooking forcing 0.
   discountedSlotPrice?: number;
+  // Staff booked this on a customer's behalf (see
+  // app/api/fg-admin/platform/bookings/route.ts) and left it 'pending' for
+  // the customer to pay online later, rather than a customer's own
+  // in-progress checkout — exempts it from expirePendingBookings' 15-minute
+  // abandoned-checkout sweep (see there for why).
+  adminCreated?: boolean;
 }) {
+  await ensureSchemaColumns();
   await expirePendingBookings();
   const bookingRef = `REF-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
   // Date-aware: once day-specific pricing overrides exist, the flat
@@ -497,8 +517,8 @@ export async function createBookingBatch(params: {
         `INSERT INTO bookings (
           ticket_number, booking_ref, arena_id, user_id, booking_date, time_slot,
           customer_name, customer_mobile, customer_email, amount, payment_status,
-          payment_method, notes, checked_in, is_free_booking, venue_payment_status, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, FALSE, ?, ?, NOW(), NOW())`,
+          payment_method, notes, checked_in, is_free_booking, venue_payment_status, admin_created, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, FALSE, ?, ?, ?, NOW(), NOW())`,
         [
           ticketNumber,
           bookingRef,
@@ -514,6 +534,7 @@ export async function createBookingBatch(params: {
           paymentMethod,
           params.freeBooking ? true : false,
           venuePaymentStatus,
+          params.adminCreated ? true : false,
         ]
       );
 

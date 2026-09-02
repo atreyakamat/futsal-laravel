@@ -6,6 +6,7 @@ import Link from 'next/link';
 import SuperAdminRefundBtn from '@/components/SuperAdminRefundBtn';
 import MarkVenuePaidBtn from '@/components/MarkVenuePaidBtn';
 import CheckRefundStatusBtn from '@/components/CheckRefundStatusBtn';
+import StaffCancelBookingBtn from '@/components/StaffCancelBookingBtn';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +28,7 @@ interface BookingRow {
   cancellation_requested: boolean;
   refund_status: string | null;
   payu_refund_request_id: string | null;
+  admin_created: boolean;
 }
 
 /** A booking_ref group — all slots that share the same booking reference. */
@@ -46,12 +48,13 @@ interface BookingGroup {
   cancellation_requested: boolean;
   refund_status: string | null;
   payu_refund_request_id: string | null;
+  admin_created: boolean;
 }
 
 export default async function AdminBookingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ arena_id?: string; date?: string }>;
+  searchParams: Promise<{ arena_id?: string; date?: string; created?: string }>;
 }) {
   const userId = await readAuthUserId();
   const context = await getAdminContext(userId);
@@ -61,6 +64,7 @@ export default async function AdminBookingsPage({
   }
 
   const resolvedSearchParams = await searchParams;
+  const createdRef = resolvedSearchParams.created;
   // manager is scoped to their own arena below (via context.arenaId);
   // super_admin and the platform-wide arena_admin can filter by any arena
   // via the arena_id search param.
@@ -94,7 +98,7 @@ export default async function AdminBookingsPage({
     SELECT b.id, b.arena_id, a.name AS arena_name, b.ticket_number, b.booking_ref,
            b.customer_name, b.customer_mobile, b.booking_date, b.time_slot,
            b.payment_status, b.amount, b.created_at, b.payment_method, b.venue_payment_status,
-           b.cancellation_requested, b.refund_status, b.payu_refund_request_id
+           b.cancellation_requested, b.refund_status, b.payu_refund_request_id, b.admin_created
       FROM bookings b
       JOIN arenas a ON a.id = b.arena_id
       ${scopedClauses.length > 0 ? `WHERE ${scopedClauses.join(' AND ')}` : ''}
@@ -120,6 +124,7 @@ export default async function AdminBookingsPage({
         cancellation_requested: !!row.cancellation_requested,
         refund_status: row.refund_status,
         payu_refund_request_id: row.payu_refund_request_id,
+        admin_created: !!row.admin_created,
         slots: [],
         totalAmount: 0,
       });
@@ -151,6 +156,11 @@ export default async function AdminBookingsPage({
         <p className="label-classic !ml-0">
           {showAllDates ? 'All dates' : `Showing ${selectedDate}`}{context.role !== 'super_admin' ? ' in your arena' : ''} — multi-slot bookings are grouped
         </p>
+        {createdRef && (
+          <div className="mt-6 p-4 rounded-xl border border-primary/20 bg-primary/5 text-primary text-xs font-bold uppercase tracking-widest">
+            Booking {createdRef} created — payment is pending, the customer will see it and can pay once they log in.
+          </div>
+        )}
         <div className="mt-6 flex flex-wrap items-center gap-4">
           <Link href="/fg-admin/platform/bookings/create" className="btn-primary">CREATE BOOKING</Link>
           <form method="get" className="flex flex-wrap items-center gap-2">
@@ -238,6 +248,11 @@ export default async function AdminBookingsPage({
                           <span className={`pill-status text-[9px] mt-1 ${statusInfo(g).cls}`}>
                             {statusInfo(g).text}
                           </span>
+                          {g.admin_created && (
+                            <span className="pill-status text-[9px] mt-1 ml-1 border-blue-500/20 text-blue-400">
+                              STAFF BOOKED
+                            </span>
+                          )}
                         </div>
                       </div>
 
@@ -304,6 +319,9 @@ export default async function AdminBookingsPage({
                       )}
                       {['super_admin', 'arena_admin'].includes(context.role) && (
                         <CheckRefundStatusBtn bookingRef={g.booking_ref} refundStatus={g.refund_status} refundRequestId={g.payu_refund_request_id} />
+                      )}
+                      {g.admin_created && ['pending', 'confirmed'].includes(g.payment_status) && (
+                        <StaffCancelBookingBtn bookingRef={g.booking_ref} paymentStatus={g.payment_status} />
                       )}
                       <Link
                         href={`/booking/success/${g.booking_ref}`}

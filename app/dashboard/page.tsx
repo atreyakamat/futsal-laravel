@@ -179,9 +179,13 @@ export default async function DashboardPage() {
                   <span className="material-symbols-outlined text-xl">confirmation_number</span>
                 </Link>
               ) : firstBooking.payment_status === 'pending' ? (
-                <div className="w-full md:w-auto mt-8 px-6 py-3 rounded-xl border border-yellow-500/20 text-yellow-500 text-[10px] font-black uppercase tracking-widest text-center">
-                  PAYMENT PENDING
-                </div>
+                <Link
+                  href={`/payment/checkout/${ref}`}
+                  className="btn-primary w-full md:w-auto mt-8 flex items-center justify-center gap-3 !py-3 hover:scale-105 active:scale-95 !bg-yellow-500 hover:!bg-yellow-400 !text-black"
+                >
+                  COMPLETE PAYMENT
+                  <span className="material-symbols-outlined text-xl">arrow_forward</span>
+                </Link>
               ) : (
                 <div className="w-full md:w-auto mt-8 px-6 py-3 rounded-xl border border-red-500/20 text-red-400 text-[10px] font-black uppercase tracking-widest text-center flex items-center justify-center gap-2">
                   <span className="material-symbols-outlined text-sm">cancel</span>
@@ -209,6 +213,7 @@ export default async function DashboardPage() {
                 refundFeeValue={refundPolicyConfig.value}
                 refundsEnabled={refundsEnabledByArena[firstBooking.arena_id] ?? false}
                 rescheduleUsed={Boolean((firstBooking as any).reschedule_used)}
+                adminCreated={Boolean((firstBooking as any).admin_created)}
               />
             </div>
           </div>
