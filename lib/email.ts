@@ -475,7 +475,7 @@ export function generatePaymentReminderEmail(
       </div>
       <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e5e5; border-top: none; border-radius: 0 0 12px 12px;">
         <h2 style="color: #1a1a1a; margin-top: 0;">Hi ${customerName},</h2>
-        <p>Your reserved slot below starts in about an hour and <strong>payment is still pending</strong>. Complete payment now to keep it — it may be released to someone else if it isn't paid for in time.</p>
+        <p>Your reserved slot below starts in about an hour and <strong>payment is still pending</strong>. Kindly complete the payment on our portal.</p>
 
         <div style="background: #f5f5f5; border-radius: 8px; padding: 20px; margin: 20px 0;">
           <table style="width: 100%; border-collapse: collapse;">
@@ -497,7 +497,7 @@ export function generatePaymentReminderEmail(
     </body>
     </html>
   `;
-  const text = `Reminder: your slot at ${arenaName} on ${bookingDate} for ${mergedSlots} (Ref: ${bookingRef}) starts in about 1 hour and payment is still pending (₹${totalAmount.toFixed(2)}). Log in and pay: ${loginUrl}`;
+  const text = `Reminder: your slot at ${arenaName} on ${bookingDate} for ${mergedSlots} (Ref: ${bookingRef}) starts in about 1 hour and payment is still pending (₹${totalAmount.toFixed(2)}). Kindly complete the payment on our portal: ${loginUrl}`;
   return { subject, html, text };
 }
 
