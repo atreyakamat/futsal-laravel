@@ -26,6 +26,7 @@ interface BookingRow {
   venue_payment_status: string | null;
   cancellation_requested: boolean;
   refund_status: string | null;
+  payu_refund_request_id: string | null;
 }
 
 /** A booking_ref group — all slots that share the same booking reference. */
@@ -44,6 +45,7 @@ interface BookingGroup {
   venue_payment_status: string | null;
   cancellation_requested: boolean;
   refund_status: string | null;
+  payu_refund_request_id: string | null;
 }
 
 export default async function AdminBookingsPage({
@@ -92,7 +94,7 @@ export default async function AdminBookingsPage({
     SELECT b.id, b.arena_id, a.name AS arena_name, b.ticket_number, b.booking_ref,
            b.customer_name, b.customer_mobile, b.booking_date, b.time_slot,
            b.payment_status, b.amount, b.created_at, b.payment_method, b.venue_payment_status,
-           b.cancellation_requested, b.refund_status
+           b.cancellation_requested, b.refund_status, b.payu_refund_request_id
       FROM bookings b
       JOIN arenas a ON a.id = b.arena_id
       ${scopedClauses.length > 0 ? `WHERE ${scopedClauses.join(' AND ')}` : ''}
@@ -117,6 +119,7 @@ export default async function AdminBookingsPage({
         venue_payment_status: row.venue_payment_status,
         cancellation_requested: !!row.cancellation_requested,
         refund_status: row.refund_status,
+        payu_refund_request_id: row.payu_refund_request_id,
         slots: [],
         totalAmount: 0,
       });
@@ -300,7 +303,7 @@ export default async function AdminBookingsPage({
                         />
                       )}
                       {['super_admin', 'arena_admin'].includes(context.role) && (
-                        <CheckRefundStatusBtn bookingRef={g.booking_ref} refundStatus={g.refund_status} />
+                        <CheckRefundStatusBtn bookingRef={g.booking_ref} refundStatus={g.refund_status} refundRequestId={g.payu_refund_request_id} />
                       )}
                       <Link
                         href={`/booking/success/${g.booking_ref}`}

@@ -51,9 +51,12 @@ export default function SuperAdminRefundBtn({
 
   // Cancelling now frees the slot immediately (payment_status flips to
   // 'cancelled' right away), so payment_status alone can't tell us whether a
-  // refund is still actionable — refund_status is authoritative. A 'pending'
-  // booking has no money to refund yet either way.
-  if (paymentStatus === 'pending' || (refundStatus && TERMINAL_REFUND_STATES.includes(refundStatus))) return null;
+  // refund is still actionable — refund_status is authoritative. 'pending'
+  // and 'failed'/'expired' bookings all have no money collected — the API
+  // (app/api/fg-admin/super-admin/refund/route.ts) only accepts 'confirmed'
+  // or 'cancelled', so mirror that here instead of showing a button that can
+  // only ever dead-end in a server error.
+  if (!['confirmed', 'cancelled'].includes(paymentStatus) || (refundStatus && TERMINAL_REFUND_STATES.includes(refundStatus))) return null;
 
   const totalGross = parseFloat(slots.reduce((s, sl) => s + sl.amount, 0).toFixed(2));
   const { serviceFee: autoFee, refundAmount: autoRefund } = calculateRefundAmount(totalGross, { mode: feeMode, value: feeValue }, slots.length);

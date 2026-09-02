@@ -154,15 +154,32 @@ export async function initiatePayuRefund(params: {
   amount: number;
   reason?: string;
 }): Promise<PayuRefundResult> {
+  // var1 must be PayU's own transaction id (mihpayid) — falling back to our
+  // bookingRef here used to send PayU a value it can never recognize,
+  // guaranteeing a "Transaction Not Found" (error 116) response. Fail fast
+  // locally instead of making a request that can only ever be rejected.
+  if (!params.mihpayid) {
+    return {
+      success: false,
+      message: 'No PayU transaction id (mihpayid) on this booking — cannot request a refund without it.',
+      environmentLimitation: false,
+    };
+  }
+
   const { merchantKey, merchantSalt } = getPayuConfig();
   const isProd = process.env.PAYU_ENV === 'production' || process.env.PAYU_TEST_MODE === 'false';
-  const postserviceUrl = isProd 
+  const postserviceUrl = isProd
     ? 'https://info.payu.in/merchant/postservice.php?form=2'
     : 'https://test.payu.in/merchant/postservice.php?form=2';
 
   const command = 'cancel_refund_transaction';
-  const var1 = params.mihpayid || params.bookingRef;
-  const tokenId = `REF-${params.bookingRef}-${Date.now().toString().slice(-6)}`;
+  const var1 = params.mihpayid;
+  // PayU caps this merchant-generated token at 23 chars and requires it be
+  // unique per refund request. bookingRef already carries an 8-char unique
+  // suffix ("REF-XXXXXXXX") — reuse just that instead of the full ref, plus
+  // a base36 timestamp so retrying a refund on the same booking still gets
+  // a fresh token. ("RFD" + 8 + "-" + up to 9 base36 digits = well under 23.)
+  const tokenId = `RFD${params.bookingRef.replace(/^REF-/, '')}-${Date.now().toString(36)}`;
   const amountStr = params.amount.toFixed(2);
 
   const hashString = `${merchantKey}|${command}|${var1}|${merchantSalt}`;
@@ -184,8 +201,13 @@ export async function initiatePayuRefund(params: {
     });
 
     const data = await res.json();
+    // PayU documents error_code 102 ("Refund Queued") as a success case
+    // regardless of what `status` says — a queued refund is still a
+    // successfully-accepted one, just not yet sent to the bank.
+    const errorCode = Number(data.error_code);
+    const isQueued = errorCode === 102;
 
-    if (data.status === 1 || data.status === '1' || data.msg?.toLowerCase().includes('success') || data.msg?.toLowerCase().includes('initiated')) {
+    if (isQueued || data.status === 1 || data.status === '1' || data.msg?.toLowerCase().includes('success') || data.msg?.toLowerCase().includes('initiated') || data.msg?.toLowerCase().includes('queued')) {
       return {
         success: true,
         refundRequestId: tokenId,
@@ -240,6 +262,9 @@ export async function checkPayuRefundStatus(refundRequestId: string): Promise<{
   formData.append('hash', hash);
   formData.append('var1', refundRequestId);
 
+  // PayU's documented refund-state values for check_action_status.
+  const KNOWN_STATES = ['QUEUED', 'SUCCESS', 'FAILURE', 'IN PROGRESS', 'REQUESTED', 'OD_HIT'];
+
   try {
     const res = await fetch(postserviceUrl, {
       method: 'POST',
@@ -247,11 +272,22 @@ export async function checkPayuRefundStatus(refundRequestId: string): Promise<{
       body: formData.toString(),
     });
     const data = await res.json();
-    return {
-      success: data.status === 1 || data.status === '1',
-      status: data.action_status || data.status_msg || (data.status === 1 ? 'SUCCESS' : 'PENDING'),
-      response: data,
-    };
+
+    // The docs are inconsistent about which field carries the actual refund
+    // state (QUEUED/SUCCESS/FAILURE/IN PROGRESS/REQUESTED/od_hit) versus the
+    // generic 1/0 "did the API call succeed" flag — both have shown up under
+    // the same field name in different examples. Check every plausible field
+    // for a recognized state token first; only fall back to the numeric
+    // status guess if none of them match.
+    const candidates = [data.status, data.action_status, data.status_msg, data.refund_status];
+    const matchedState = candidates
+      .map((c) => String(c ?? '').toUpperCase().trim())
+      .find((c) => KNOWN_STATES.includes(c));
+
+    const status = matchedState || (data.status === 1 || data.status === '1' ? 'SUCCESS' : 'PENDING');
+    const success = matchedState ? matchedState === 'SUCCESS' : (data.status === 1 || data.status === '1');
+
+    return { success, status, response: data };
   } catch (err: any) {
     return {
       success: false,

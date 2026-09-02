@@ -20,6 +20,7 @@ interface CancellationRow {
   updated_at: string;
   cancellation_reason: string | null;
   payment_method: string | null;
+  payu_refund_request_id: string | null;
 }
 
 interface CancellationGroup {
@@ -33,6 +34,7 @@ interface CancellationGroup {
   slots: { timeSlot: string; amount: number }[];
   totalAmount: number;
   payment_method: string | null;
+  payu_refund_request_id: string | null;
 }
 
 /**
@@ -57,7 +59,7 @@ export default async function CancellationsQueuePage() {
   const rows = await query<CancellationRow>(`
     SELECT b.id, b.arena_id, a.name AS arena_name, b.booking_ref,
            b.customer_name, b.customer_mobile, b.booking_date, b.time_slot,
-           b.amount, b.updated_at, b.cancellation_reason, b.payment_method
+           b.amount, b.updated_at, b.cancellation_reason, b.payment_method, b.payu_refund_request_id
       FROM bookings b
       JOIN arenas a ON a.id = b.arena_id
      WHERE b.refund_status = 'PENDING_REVIEW'
@@ -79,6 +81,7 @@ export default async function CancellationsQueuePage() {
         slots: [],
         totalAmount: 0,
         payment_method: row.payment_method,
+        payu_refund_request_id: row.payu_refund_request_id,
       });
     }
     const group = groupMap.get(row.booking_ref)!;
@@ -186,7 +189,7 @@ export default async function CancellationsQueuePage() {
                         refundStatus="PENDING_REVIEW"
                         paymentMethod={g.payment_method}
                       />
-                      <CheckRefundStatusBtn bookingRef={g.booking_ref} refundStatus="PENDING_REVIEW" />
+                      <CheckRefundStatusBtn bookingRef={g.booking_ref} refundStatus="PENDING_REVIEW" refundRequestId={g.payu_refund_request_id} />
                     </div>
                   </div>
                 </div>

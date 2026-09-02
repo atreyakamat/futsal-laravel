@@ -7,13 +7,19 @@ const CHECKABLE_STATES = ['PROCESSING', 'INITIATED', 'PENDING_REVIEW'];
 interface CheckRefundStatusBtnProps {
   bookingRef: string;
   refundStatus?: string | null;
+  refundRequestId?: string | null;
 }
 
-export default function CheckRefundStatusBtn({ bookingRef, refundStatus }: CheckRefundStatusBtnProps) {
+export default function CheckRefundStatusBtn({ bookingRef, refundStatus, refundRequestId }: CheckRefundStatusBtnProps) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState('');
 
-  if (!refundStatus || !CHECKABLE_STATES.includes(refundStatus)) return null;
+  // PENDING_REVIEW covers two different situations: a customer just
+  // self-cancelled (cancelBookingGroup sets this directly, no PayU call
+  // ever made — payu_refund_request_id is still null) or an admin's force
+  // refund reached PayU but it came back unsuccessful (a request id WAS
+  // generated either way). Only the second case has anything to check.
+  if (!refundRequestId || !refundStatus || !CHECKABLE_STATES.includes(refundStatus)) return null;
 
   const handleCheck = async () => {
     setLoading(true);
