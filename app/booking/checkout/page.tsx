@@ -1,5 +1,5 @@
 import { getArenaById, getArenaPricingForDate, queryOne, query, getRefundPolicyConfig, formatRefundPolicyText, isPlaceholderEmail } from '@/lib/domain';
-import { readGuestIdentifier, readAuthUserId } from '@/lib/session';
+import { readGuestIdentifier, readAuthUserId, readAuthChannel } from '@/lib/session';
 import { mergeSlots, getDurationText } from '@/lib/slot-merge';
 import { getPayuConfig } from '@/lib/payment';
 import { getArenaEntryMode, getArenaPaymentMode, getCustomerRefundEnabled } from '@/lib/admin';
@@ -47,6 +47,8 @@ export default async function CheckoutPage({ searchParams }: Props) {
     }
     redirect(`/login?next=${encodeURIComponent(`/booking/checkout?${qs.toString()}`)}`);
   }
+
+  const authChannel = await readAuthChannel();
 
   const currentUser = await queryOne<{ name?: string; email?: string; customer_mobile?: string }>('SELECT name, email, customer_mobile FROM users WHERE id = ?', [userId]);
   if (currentUser) {
@@ -248,6 +250,7 @@ export default async function CheckoutPage({ searchParams }: Props) {
               paymentMode={paymentMode}
               refundsEnabled={refundsEnabled}
               refundDeadlineText={refundDeadlineText}
+              lockedField={authChannel}
             />
           </div>
         </div>

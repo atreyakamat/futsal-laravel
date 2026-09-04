@@ -22,6 +22,7 @@ export async function POST(request: Request) {
   const response = NextResponse.json({ success: true });
   response.cookies.delete(AUTH_COOKIE);
   response.cookies.delete('fg_auth_role');
+  response.cookies.delete('fg_auth_channel');
   response.cookies.delete('fg_arena_id');
   response.cookies.delete(GUEST_COOKIE);
   response.cookies.delete(SESSION_COOKIE);
@@ -31,6 +32,7 @@ export async function POST(request: Request) {
     const redirectResponse = NextResponse.redirect(new URL('/', baseUrl));
     redirectResponse.cookies.delete(AUTH_COOKIE);
     redirectResponse.cookies.delete('fg_auth_role');
+    redirectResponse.cookies.delete('fg_auth_channel');
     redirectResponse.cookies.delete('fg_arena_id');
     redirectResponse.cookies.delete(GUEST_COOKIE);
     redirectResponse.cookies.delete(SESSION_COOKIE);

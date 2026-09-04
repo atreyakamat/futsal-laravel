@@ -17,6 +17,7 @@ interface TaxInvoiceData {
   customer_name: string;
   customer_mobile: string;
   customer_email: string | null;
+  customer_gstin?: string | null;
   description: string;
 }
 
@@ -79,6 +80,7 @@ export async function generateTaxInvoicePdfBuffer(invoice: TaxInvoiceData): Prom
     doc.fillColor('#888888').fontSize(8).font('Helvetica-Bold').text('CUSTOMER', 40, y);
     y += 14;
     y = drawRow(doc, y, 'Name', invoice.customer_name);
+    if (invoice.customer_gstin) y = drawRow(doc, y, 'GSTIN', invoice.customer_gstin);
     y = drawRow(doc, y, 'Mobile', invoice.customer_mobile);
     if (invoice.customer_email) y = drawRow(doc, y, 'Email', invoice.customer_email);
     y = drawRow(doc, y, 'Booking Ref', invoice.booking_ref);

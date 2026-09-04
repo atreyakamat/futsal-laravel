@@ -214,12 +214,14 @@ export default async function ArenaPage({ params, searchParams }: Props) {
 
       <div className="relative z-10 -mt-4 sm:-mt-8">
         <BookingSystem
-          arenaId={arena.id} 
-          initialDate={selectedDate} 
-          csrfToken={csrfToken} 
+          arenaId={arena.id}
+          arenaSlug={arena.slug}
+          initialDate={selectedDate}
+          csrfToken={csrfToken}
           initialCustomerName={currentUser?.name || ''}
           initialCustomerMobile={currentUser?.customer_mobile || ''}
           initialCustomerEmail={(currentUser?.email && !isPlaceholderEmail(currentUser.email)) ? currentUser.email : ''}
+          isLoggedIn={!!userId}
         />
       </div>
 

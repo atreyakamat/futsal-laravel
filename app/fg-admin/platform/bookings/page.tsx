@@ -7,6 +7,7 @@ import SuperAdminRefundBtn from '@/components/SuperAdminRefundBtn';
 import MarkVenuePaidBtn from '@/components/MarkVenuePaidBtn';
 import CheckRefundStatusBtn from '@/components/CheckRefundStatusBtn';
 import StaffCancelBookingBtn from '@/components/StaffCancelBookingBtn';
+import RescheduleBookingBtn from '@/components/RescheduleBookingBtn';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,6 +35,7 @@ interface BookingRow {
 /** A booking_ref group — all slots that share the same booking reference. */
 interface BookingGroup {
   booking_ref: string;
+  arena_id: number;
   arena_name: string;
   customer_name: string;
   customer_mobile: string;
@@ -112,6 +114,7 @@ export default async function AdminBookingsPage({
     if (!groupMap.has(row.booking_ref)) {
       groupMap.set(row.booking_ref, {
         booking_ref: row.booking_ref,
+        arena_id: row.arena_id,
         arena_name: row.arena_name,
         customer_name: row.customer_name,
         customer_mobile: row.customer_mobile,
@@ -322,6 +325,15 @@ export default async function AdminBookingsPage({
                       )}
                       {g.admin_created && ['pending', 'confirmed'].includes(g.payment_status) && (
                         <StaffCancelBookingBtn bookingRef={g.booking_ref} paymentStatus={g.payment_status} />
+                      )}
+                      {['super_admin', 'arena_admin'].includes(context.role) && g.payment_status !== 'cancelled' && (
+                        <RescheduleBookingBtn
+                          bookingRef={g.booking_ref}
+                          arenaId={g.arena_id}
+                          currentDate={g.booking_date}
+                          currentSlot={g.slots[0]?.timeSlot || ''}
+                          paymentStatus={g.payment_status}
+                        />
                       )}
                       <Link
                         href={`/booking/success/${g.booking_ref}`}

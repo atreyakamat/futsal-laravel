@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { getArenaById, getArenaPricingForDate, getBookedSlots, getLockedSlots, getMyLockedSlots, query } from '@/lib/domain';
+import { getArenaById, getArenaPricingForDate, getBookedSlots, getLockedSlots, getMyLockedSlots, getMaxBookableDate, query } from '@/lib/domain';
 import { getCookieValueFromRequest, getWritableSessionId, persistSessionCookie, SESSION_COOKIE } from '@/lib/session';
 
 export async function GET(request: NextRequest) {
@@ -13,6 +13,22 @@ export async function GET(request: NextRequest) {
   const arena = await getArenaById(arenaId);
   const bookingDate = date;
   const sessionId = getCookieValueFromRequest(request, SESSION_COOKIE) ?? getWritableSessionId(request);
+
+  const maxBookableDate = await getMaxBookableDate();
+  if (bookingDate > maxBookableDate) {
+    const response = NextResponse.json({
+      success: true,
+      arena: arena?.name ?? null,
+      date: bookingDate,
+      holiday: false,
+      outsideBookingWindow: true,
+      slots: [],
+    });
+    if (!request.headers.get('cookie')?.includes(SESSION_COOKIE)) {
+      persistSessionCookie(response, sessionId);
+    }
+    return response;
+  }
 
   const holiday = await query<{ reason: string | null }>(
     `SELECT reason FROM arena_holidays WHERE arena_id = ? AND date = ? LIMIT 1`,

@@ -20,6 +20,8 @@ export async function ensureSchemaColumns() {
     await dbQuery(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS verification_method VARCHAR(50) DEFAULT 'qr'`);
     await dbQuery(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS admin_created BOOLEAN DEFAULT FALSE`);
     await dbQuery(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_reminder_sent_at TIMESTAMP NULL`);
+    await dbQuery(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_gstin TEXT NULL`);
+    await dbQuery(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_company_name TEXT NULL`);
   } catch {
     // Columns already exist or handled
   }
@@ -406,9 +408,23 @@ export async function createBookingBatch(params: {
   // in-progress checkout — exempts it from expirePendingBookings' 15-minute
   // abandoned-checkout sweep (see there for why).
   adminCreated?: boolean;
+  // Optional buyer GST details captured at checkout — stored as-is, no
+  // format validation, and used as the tax invoice's buyer GSTIN/name when
+  // present (see lib/gst-documents.ts).
+  customerGstin?: string | null;
+  customerCompanyName?: string | null;
 }) {
   await ensureSchemaColumns();
   await expirePendingBookings();
+
+  // Enforced here independent of what the client sent — /api/slots/status
+  // already hides dates beyond the window, but a request could still be
+  // crafted directly against this path.
+  const maxBookableDate = await getMaxBookableDate();
+  if (params.bookingDate > maxBookableDate) {
+    throw new Error(`Bookings are only open up to ${maxBookableDate}.`);
+  }
+
   const bookingRef = `REF-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
   // Date-aware: once day-specific pricing overrides exist, the flat
   // getArenaPricing() list can return more than one row for the same
@@ -517,8 +533,9 @@ export async function createBookingBatch(params: {
         `INSERT INTO bookings (
           ticket_number, booking_ref, arena_id, user_id, booking_date, time_slot,
           customer_name, customer_mobile, customer_email, amount, payment_status,
-          payment_method, notes, checked_in, is_free_booking, venue_payment_status, admin_created, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, FALSE, ?, ?, ?, NOW(), NOW())`,
+          payment_method, notes, checked_in, is_free_booking, venue_payment_status, admin_created,
+          customer_gstin, customer_company_name, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, FALSE, ?, ?, ?, ?, ?, NOW(), NOW())`,
         [
           ticketNumber,
           bookingRef,
@@ -535,6 +552,8 @@ export async function createBookingBatch(params: {
           params.freeBooking ? true : false,
           venuePaymentStatus,
           params.adminCreated ? true : false,
+          params.customerGstin || null,
+          params.customerCompanyName || null,
         ]
       );
 
@@ -776,6 +795,29 @@ export async function setSetting(key: string, value: string | null) {
      DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
     [key, value]
   );
+}
+
+const DEFAULT_BOOKING_WINDOW_DAYS = 15;
+
+// Days ahead (inclusive of today) bookings can be made — super-admin
+// configurable via app/api/fg-admin/super-admin/settings (UPDATE_BOOKING_WINDOW),
+// same settings-table pattern as cancellation_cutoff_hours. Enforced in both
+// /api/slots/status (what's offered) and createBookingBatch (what's actually
+// allowed to be booked), independent of what the client requested.
+export async function getBookingWindowDays(): Promise<number> {
+  const setting = await getSetting('booking_window_days');
+  if (!setting?.value) return DEFAULT_BOOKING_WINDOW_DAYS;
+  const parsed = parseInt(setting.value, 10);
+  return !isNaN(parsed) && parsed >= 1 && parsed <= 365 ? parsed : DEFAULT_BOOKING_WINDOW_DAYS;
+}
+
+// Last bookable date (inclusive) in IST, as YYYY-MM-DD — window of N days
+// means today + (N-1) more days, so day 0 (today) through day N-1 inclusive.
+export async function getMaxBookableDate(): Promise<string> {
+  const windowDays = await getBookingWindowDays();
+  const nowIst = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+  nowIst.setUTCDate(nowIst.getUTCDate() + (windowDays - 1));
+  return nowIst.toISOString().slice(0, 10);
 }
 
 export async function getBooleanSetting(key: string, defaultValue = true) {

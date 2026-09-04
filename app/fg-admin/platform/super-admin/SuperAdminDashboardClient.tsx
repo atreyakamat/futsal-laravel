@@ -12,6 +12,7 @@ interface SuperAdminSettings {
   cancellation_cutoff_hours?: number;
   refund_fee_mode?: string;
   refund_fee_value?: number;
+  booking_window_days?: number;
   gst_gstin?: string | null;
   gst_legal_name?: string | null;
   gst_registered_address?: string | null;
@@ -1688,6 +1689,44 @@ export default function SuperAdminDashboardClient() {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify({ action: 'UPDATE_CUTOFF', cutoff: settings.cancellation_cutoff_hours })
+                            });
+                            const data = await res.json();
+                            if (data.success) alert('Saved successfully!');
+                            else alert(data.message || 'Error saving setting');
+                          } catch (err) {
+                            alert('Network error while saving setting');
+                          }
+                        }}
+                        className="btn-primary !py-2 !px-6 !text-xs"
+                      >
+                        SAVE
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-white/10">
+                    <label className="block text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-2">Booking Window</label>
+                    <p className="text-xs text-gray-400 mb-3">How many days ahead (including today) customers and staff can book a slot for. Dates beyond this are not offered.</p>
+                    <div className="flex gap-4 items-center">
+                      <input
+                        type="number"
+                        min={1}
+                        max={365}
+                        className="bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-sm text-white font-bold outline-none focus:border-primary/50 transition-colors w-28"
+                        value={settings.booking_window_days ?? 15}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setSettings(prev => prev ? { ...prev, booking_window_days: parseInt(val) || 0 } : prev);
+                        }}
+                      />
+                      <span className="text-xs text-gray-500">days</span>
+                      <button
+                        onClick={async () => {
+                          try {
+                            const res = await fetch('/api/fg-admin/super-admin/settings', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ action: 'UPDATE_BOOKING_WINDOW', windowDays: settings.booking_window_days })
                             });
                             const data = await res.json();
                             if (data.success) alert('Saved successfully!');

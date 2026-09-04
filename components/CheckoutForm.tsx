@@ -21,6 +21,10 @@ interface CheckoutFormProps {
   paymentMode: 'online' | 'offline';
   refundsEnabled: boolean;
   refundDeadlineText: string;
+  // Which field was actually verified at login (mobile or email OTP) — that
+  // field is locked read-only here since it's a proven identity, not just
+  // typed text. null for a session predating this, or channel unknown.
+  lockedField?: 'mobile' | 'email' | null;
 }
 
 export default function CheckoutForm({
@@ -41,10 +45,13 @@ export default function CheckoutForm({
   paymentMode,
   refundsEnabled,
   refundDeadlineText,
+  lockedField,
 }: CheckoutFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const [showPolicyModal, setShowPolicyModal] = useState(false);
   const [agreed, setAgreed] = useState(false);
+  const [hasGstin, setHasGstin] = useState(false);
+  const [wantsCompanyName, setWantsCompanyName] = useState(false);
 
   // The visible button is a plain trigger (type="button"), not a submit
   // button — the form has no onSubmit interception, so the ONLY way it
@@ -93,19 +100,22 @@ export default function CheckoutForm({
             </div>
           </div>
           <div className="space-y-3">
-            <label htmlFor="customer_mobile" className="label-classic">Mobile Number</label>
+            <label htmlFor="customer_mobile" className="label-classic">
+              Mobile Number {lockedField === 'mobile' && <span className="text-primary normal-case">(verified)</span>}
+            </label>
             <div className="relative group">
               <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-primary transition-colors text-xl">
-                phone_iphone
+                {lockedField === 'mobile' ? 'lock' : 'phone_iphone'}
               </span>
               <input
                 id="customer_mobile"
                 type="tel"
                 name="customer_mobile"
                 required
+                readOnly={lockedField === 'mobile'}
                 defaultValue={effectiveMobile}
                 placeholder="+91 98765 43210"
-                className="input-field pl-12"
+                className={`input-field pl-12 ${lockedField === 'mobile' ? 'opacity-60 cursor-not-allowed' : ''}`}
               />
             </div>
           </div>
@@ -113,22 +123,63 @@ export default function CheckoutForm({
 
         <div className="space-y-3">
           <label htmlFor="customer_email" className="label-classic">
-            Email Address
+            Email Address {lockedField === 'email' && <span className="text-primary normal-case">(verified)</span>}
           </label>
           <div className="relative group">
             <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-primary transition-colors text-xl">
-              mail
+              {lockedField === 'email' ? 'lock' : 'mail'}
             </span>
             <input
               id="customer_email"
               type="email"
               name="customer_email"
               required
+              readOnly={lockedField === 'email'}
               defaultValue={paramEmail}
               placeholder="john@example.com"
-              className="input-field pl-12"
+              className={`input-field pl-12 ${lockedField === 'email' ? 'opacity-60 cursor-not-allowed' : ''}`}
             />
           </div>
+        </div>
+
+        <div className="space-y-4 pt-2">
+          <label className="flex items-center gap-3 text-xs font-black uppercase tracking-widest cursor-pointer">
+            <input
+              type="checkbox"
+              checked={hasGstin}
+              onChange={(e) => setHasGstin(e.target.checked)}
+              className="w-4 h-4 accent-primary"
+            />
+            Do you have a GST number?
+          </label>
+          {hasGstin && (
+            <input
+              type="text"
+              name="customer_gstin"
+              required
+              placeholder="GSTIN"
+              className="input-field"
+            />
+          )}
+
+          <label className="flex items-center gap-3 text-xs font-black uppercase tracking-widest cursor-pointer">
+            <input
+              type="checkbox"
+              checked={wantsCompanyName}
+              onChange={(e) => setWantsCompanyName(e.target.checked)}
+              className="w-4 h-4 accent-primary"
+            />
+            Should the invoice show a company name?
+          </label>
+          {wantsCompanyName && (
+            <input
+              type="text"
+              name="customer_company_name"
+              required
+              placeholder="Company Name"
+              className="input-field"
+            />
+          )}
         </div>
 
         <div className="pt-6 sm:pt-10 space-y-6 sm:space-y-8">

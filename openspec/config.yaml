@@ -1,0 +1,87 @@
+schema: spec-driven
+
+context: |
+  AgnelArena (futsal-laravel) — Next.js (App Router, TypeScript) turf/futsal
+  booking platform for arenas in Goa. Despite the repo's name and Prisma
+  being present, everyday queries go through a raw SQL layer
+  (lib/domain.ts, lib/db.ts), not Prisma's query API — Prisma is present
+  but not the primary query path.
+
+  Schema changes are NOT done via Prisma migrations. lib/domain.ts's
+  ensureSchemaColumns() runs defensive `ALTER TABLE ... ADD COLUMN IF NOT
+  EXISTS` statements at the top of the functions that need a given column,
+  called liberally since it's cheap and idempotent. New columns follow
+  that pattern, not a new migration file.
+
+  Domain model: an `arenas` table (turfs); `bookings` has one row per
+  time_slot, grouped into a logical booking by shared `booking_ref`
+  (format `REF-XXXXXXXX`). payment_status lifecycle: pending -> confirmed
+  (PayU success) or failed (PayU failure / abandoned / expired), and
+  confirmed -> cancelled -> (refund_status tracks REFUNDED/PENDING_REVIEW/
+  etc. separately). `admin_created` flags a booking staff made on a
+  customer's behalf, which changes several rules (see the
+  staff-created-bookings capability) — always check that flag before
+  assuming a booking behaves like an ordinary customer checkout.
+
+  Staff roles (lib/admin.ts's getAdminContext / AdminRole type):
+  super_admin, admin, arena_admin, manager, security, accountant,
+  customer. See the admin-rbac capability for scoping rules. Admin UI
+  lives under app/fg-admin/**; hasArenaAccess() is the server-side arena
+  scoping check — never trust a client-hidden option as the real gate.
+
+  Payments: PayU, via lib/payment.ts. Two real base URLs — test.payu.in
+  (test/sandbox) and secure.payu.in for the payment form, but
+  info.payu.in (not secure.payu.in) for the postservice refund/verify
+  API in production. PAYU_TEST_MODE / PAYU_ENV picks the branch. Refund
+  API quirks are documented inline in lib/payment.ts — PayU's own docs
+  are inconsistent about a couple of response field names, handled
+  defensively there.
+
+  Notifications: AWS SES for email (lib/email.ts has one
+  generate*Email function per message type), AiSensy for WhatsApp
+  (lib/sms.ts's AiSensyProvider) with the hard constraint that every
+  WhatsApp template must be pre-approved by Meta per message type —
+  never invent new WhatsApp copy without a matching approved template
+  and campaign-name env var; the code fails loudly and skips the send
+  when one isn't configured rather than misusing an unrelated approved
+  template. Web push via lib/push.ts (VAPID).
+
+  Scheduled work is in-process node-cron, registered in
+  instrumentation.ts (refund-cron, booking-reminder-cron,
+  payment-reminder-cron, daily-digest-cron) — add new scheduled jobs the
+  same way, not via an external cron service.
+
+  Testing: Vitest. On this dev machine the default test pool flakes
+  under load when running the full suite (spurious "Cannot read
+  properties of undefined" import errors across every file) — that's a
+  known local resource-contention issue, not a real failure; re-run with
+  `--pool=forks` to get a trustworthy result.
+
+  General conventions observed in this codebase: liberal, specific
+  inline comments explaining *why* (a past bug, a subtle invariant, a
+  business rule), not what; defensive server-side checks even when a
+  client already enforces the same rule; avoid scope creep — fix what
+  was asked, flag adjacent issues rather than silently fixing them too
+  unless they're clearly in-scope.
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
+
+# Per-operation guidance (optional)
+# Add advisory guidance for how apply and archive work should be conducted.
+# This is separate from artifact rules above.
+# Example:
+#   operations:
+#     apply:
+#       guidance:
+#         - Keep test summaries concise
+#     archive:
+#       guidance:
+#         - Summarize the archive outcome before finishing

@@ -111,11 +111,12 @@ export async function GET(request: Request) {
     // Fetch cutoff hours and refund policy settings
     const { query } = await import('@/lib/domain');
     const settingsRows = await query<{ key: string; value: string }>(
-      `SELECT key, value FROM settings WHERE key IN ('cancellation_cutoff_hours', 'refund_fee_mode', 'refund_fee_value')`
+      `SELECT key, value FROM settings WHERE key IN ('cancellation_cutoff_hours', 'refund_fee_mode', 'refund_fee_value', 'booking_window_days')`
     );
     let cancellation_cutoff_hours = 24;
     let refund_fee_mode = 'FIXED';
     let refund_fee_value = 300;
+    let booking_window_days = 15;
 
     for (const row of settingsRows) {
       if (row.key === 'cancellation_cutoff_hours') {
@@ -125,6 +126,9 @@ export async function GET(request: Request) {
       } else if (row.key === 'refund_fee_value') {
         const val = parseFloat(row.value);
         if (!isNaN(val) && val >= 0) refund_fee_value = val;
+      } else if (row.key === 'booking_window_days') {
+        const val = parseInt(row.value, 10);
+        if (!isNaN(val) && val >= 1 && val <= 365) booking_window_days = val;
       }
     }
 
@@ -141,6 +145,7 @@ export async function GET(request: Request) {
         cancellation_cutoff_hours,
         refund_fee_mode,
         refund_fee_value,
+        booking_window_days,
         gst_gstin: gstConfig.gstin,
         gst_legal_name: gstConfig.legalName,
         gst_registered_address: gstConfig.registeredAddress,
@@ -255,6 +260,34 @@ export async function POST(request: Request) {
         refund_fee_mode: mode,
         refund_fee_value: val
       });
+    }
+
+    if (payload.action === 'UPDATE_BOOKING_WINDOW') {
+      const windowDays = parseInt(payload.windowDays, 10);
+      if (isNaN(windowDays) || windowDays < 1 || windowDays > 365) {
+        return NextResponse.json({ success: false, message: 'Booking window must be an integer between 1 and 365 days' }, { status: 400 });
+      }
+
+      const prevSetting = await query<any>(`SELECT value FROM settings WHERE key = 'booking_window_days'`);
+      const prevValue = prevSetting && prevSetting.length > 0 ? prevSetting[0].value : '15';
+
+      await query(`
+        INSERT INTO settings (key, value, created_at, updated_at)
+        VALUES ('booking_window_days', ?, NOW(), NOW())
+        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+      `, [windowDays.toString()]);
+
+      await logAuditAction(
+        superAdminId,
+        'UPDATE_SETTING',
+        'setting',
+        0,
+        { key: 'booking_window_days', old_value: prevValue, new_value: windowDays.toString() },
+        request.headers.get('x-forwarded-for') || 'unknown',
+        request.headers.get('user-agent') || 'unknown'
+      );
+
+      return NextResponse.json({ success: true, message: 'Booking window updated successfully', windowDays });
     }
 
     if (payload.action === 'UPDATE_GST_CONFIG') {

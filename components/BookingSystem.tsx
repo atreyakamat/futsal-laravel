@@ -44,18 +44,22 @@ function formatDayLabel(dateStr: string) {
 
 export default function BookingSystem({
   arenaId,
+  arenaSlug,
   initialDate,
   csrfToken,
   initialCustomerName = '',
   initialCustomerMobile = '',
-  initialCustomerEmail = ''
+  initialCustomerEmail = '',
+  isLoggedIn,
 }: {
   arenaId: number;
+  arenaSlug: string;
   initialDate: string;
   csrfToken: string;
   initialCustomerName?: string;
   initialCustomerMobile?: string;
   initialCustomerEmail?: string;
+  isLoggedIn: boolean;
 }) {
   // 1. All State declarations at the top
   // `date` is the "active" column — the one selectedSlots belongs to, and
@@ -278,6 +282,13 @@ export default function BookingSystem({
       const data = await response.json();
 
       if (data.success) {
+        if (!isLoggedIn) {
+          // Slots are locked (held for 10 minutes) so they survive the trip
+          // through login — customer details are never collected from a
+          // guest, only once we actually know who they are.
+          router.push(`/login?next=${encodeURIComponent(`/arena/${arenaSlug}?date=${date}`)}`);
+          return;
+        }
         let checkoutUrl = `/booking/checkout?arena_id=${arenaId}&date=${date}&slots=${encodeURIComponent(JSON.stringify(slotsArr))}`;
         if (customerName) checkoutUrl += `&name=${encodeURIComponent(customerName)}`;
         if (customerMobile) checkoutUrl += `&mobile=${encodeURIComponent(customerMobile)}`;
@@ -615,8 +626,28 @@ export default function BookingSystem({
             )}
           </div>
 
-          {/* Step 3: Customer Details Section — rendered when slots are selected */}
-          {selectedSlots.length > 0 && (
+          {/* Step 3: Customer Details Section — rendered when slots are selected,
+              but the actual name/mobile/email fields only once logged in. A
+              guest used to see (and could fill in) these fields before ever
+              proving who they are, so nothing typed here was tied to a
+              verified identity — see the login-gated prompt below instead. */}
+          {selectedSlots.length > 0 && !isLoggedIn && (
+            <div ref={customerDetailsRef} id="customer-details-section" className="pt-6 border-t border-white/10 transition-all duration-300 animate-fadeIn">
+              <div className="bg-white/[0.03] border border-primary/20 rounded-[1.5rem] sm:rounded-[2.5rem] !p-6 sm:!p-8 space-y-4 text-center">
+                <span className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-inner mx-auto">
+                  <span className="material-symbols-outlined text-2xl">lock</span>
+                </span>
+                <h2 className="text-lg sm:text-xl font-black uppercase tracking-tight italic">
+                  Log In To <span className="text-primary text-stroke">Continue</span>
+                </h2>
+                <p className="text-xs sm:text-sm text-white/50 max-w-md mx-auto">
+                  Your slot is held. Log in to enter your details and complete this booking — your name, mobile, and email are only collected once we know it&apos;s really you.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {selectedSlots.length > 0 && isLoggedIn && (
             <div ref={customerDetailsRef} id="customer-details-section" className="pt-6 border-t border-white/10 transition-all duration-300 animate-fadeIn">
               <div className="flex items-center justify-between mb-8">
                 <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight flex items-center gap-3 sm:gap-4 italic">

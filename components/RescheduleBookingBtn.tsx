@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 
 interface RescheduleBookingBtnProps {
   bookingRef: string;
+  arenaId: number;
   currentDate: string;
   currentSlot: string;
   paymentStatus: string;
@@ -12,6 +13,7 @@ interface RescheduleBookingBtnProps {
 
 export default function RescheduleBookingBtn({
   bookingRef,
+  arenaId,
   currentDate,
   currentSlot,
   paymentStatus,
@@ -38,7 +40,7 @@ export default function RescheduleBookingBtn({
       const res = await fetch('/api/fg-admin/arena/reschedule', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ref: bookingRef, newDate, newSlot }),
+        body: JSON.stringify({ ref: bookingRef, arena_id: arenaId, newDate, newSlot }),
       });
       const data = await res.json();
       if (data.success) {

@@ -14,6 +14,8 @@ const bodySchema = z.object({
   customer_name: z.string().min(1).max(100),
   customer_mobile: z.string().min(5).max(15),
   customer_email: z.string().min(1, 'Email is required').email(),
+  customer_gstin: z.string().max(20).nullable().optional(),
+  customer_company_name: z.string().max(200).nullable().optional(),
 });
 
 async function readPayload(request: Request) {
@@ -47,6 +49,8 @@ export async function POST(request: Request) {
     customer_name: String(payloadObject.customer_name),
     customer_mobile: normalizePhoneNumber(String(payloadObject.customer_mobile)),
     customer_email: payloadObject.customer_email ? String(payloadObject.customer_email) : '',
+    customer_gstin: payloadObject.customer_gstin ? String(payloadObject.customer_gstin) : null,
+    customer_company_name: payloadObject.customer_company_name ? String(payloadObject.customer_company_name) : null,
   });
 
   const sessionId = getWritableSessionId(request);
@@ -92,6 +96,8 @@ export async function POST(request: Request) {
       sessionId,
       freeBooking: entryMode === 'free',
       offlinePayment,
+      customerGstin: payload.customer_gstin,
+      customerCompanyName: payload.customer_company_name,
     });
   } catch (error) {
     console.error('[Booking Process Error]:', error);

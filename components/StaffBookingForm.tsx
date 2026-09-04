@@ -32,6 +32,10 @@ export default function StaffBookingForm({ arenas, scopedArenaId, scopedArenaNam
   const [customerName, setCustomerName] = useState('');
   const [customerMobile, setCustomerMobile] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
+  const [hasGstin, setHasGstin] = useState(false);
+  const [customerGstin, setCustomerGstin] = useState('');
+  const [wantsCompanyName, setWantsCompanyName] = useState(false);
+  const [customerCompanyName, setCustomerCompanyName] = useState('');
 
   const [freeBooking, setFreeBooking] = useState(false);
   const [discountedPrice, setDiscountedPrice] = useState('');
@@ -99,6 +103,8 @@ export default function StaffBookingForm({ arenas, scopedArenaId, scopedArenaNam
           customer_name: customerName.trim(),
           customer_mobile: customerMobile.trim(),
           customer_email: customerEmail.trim() || null,
+          customer_gstin: hasGstin ? customerGstin.trim() || null : null,
+          customer_company_name: wantsCompanyName ? customerCompanyName.trim() || null : null,
           free_booking: freeBooking,
           discounted_price_per_slot: isDiscounted ? Number(discountedPrice) : undefined,
           payment_method: paymentMethod || undefined,
@@ -203,6 +209,24 @@ export default function StaffBookingForm({ arenas, scopedArenaId, scopedArenaNam
           Customer Email {emailRequired ? <span className="text-red-400">*</span> : <span className="text-white/20 italic lowercase">(optional)</span>}
         </label>
         <input type="email" className="input-field" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} />
+      </div>
+
+      <div className="space-y-3">
+        <label className="flex items-center gap-3 text-xs font-black uppercase tracking-widest cursor-pointer">
+          <input type="checkbox" checked={hasGstin} onChange={(e) => setHasGstin(e.target.checked)} className="w-4 h-4 accent-primary" />
+          Does the customer have a GST number?
+        </label>
+        {hasGstin && (
+          <input type="text" className="input-field" placeholder="GSTIN" value={customerGstin} onChange={(e) => setCustomerGstin(e.target.value)} />
+        )}
+
+        <label className="flex items-center gap-3 text-xs font-black uppercase tracking-widest cursor-pointer">
+          <input type="checkbox" checked={wantsCompanyName} onChange={(e) => setWantsCompanyName(e.target.checked)} className="w-4 h-4 accent-primary" />
+          Should the invoice show a company name?
+        </label>
+        {wantsCompanyName && (
+          <input type="text" className="input-field" placeholder="Company Name" value={customerCompanyName} onChange={(e) => setCustomerCompanyName(e.target.value)} />
+        )}
       </div>
 
       <label className="inline-flex items-center gap-3 text-xs font-black uppercase tracking-widest">

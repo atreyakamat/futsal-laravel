@@ -87,10 +87,13 @@ export async function POST(request: Request) {
   if (user) {
     const signedUserId = await signValue(String(user.id));
     const signedRole = await signValue(String(user.role));
+    const signedChannel = await signValue(isMobileNum ? 'mobile' : 'email');
     response.cookies.set(AUTH_COOKIE, signedUserId, cookieOpts);
     response.cookies.set('fg_auth_role', signedRole, cookieOpts);
+    response.cookies.set('fg_auth_channel', signedChannel, cookieOpts);
     redirectResponse.cookies.set(AUTH_COOKIE, signedUserId, cookieOpts);
     redirectResponse.cookies.set('fg_auth_role', signedRole, cookieOpts);
+    redirectResponse.cookies.set('fg_auth_channel', signedChannel, cookieOpts);
     redirectResponse.cookies.delete(GUEST_COOKIE);
   } else {
     response.cookies.set(GUEST_COOKIE, payload.identifier, cookieOpts);

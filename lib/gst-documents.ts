@@ -14,6 +14,18 @@ import { allocateDocumentNumber } from '@/lib/gst-sequence';
  */
 export async function issueTaxInvoice(bookingRef: string): Promise<{ success: boolean; invoiceNo?: string; error?: string }> {
   try {
+    // tax_invoices was created via a Prisma migration, unlike bookings —
+    // but iterative column additions here still follow bookings' own
+    // ensureSchemaColumns() pattern rather than a new formal migration,
+    // for consistency with how every other schema tweak in this codebase
+    // gets made.
+    try {
+      await query(`ALTER TABLE tax_invoices ADD COLUMN IF NOT EXISTS customer_gstin TEXT NULL`);
+      await query(`ALTER TABLE tax_invoices ADD COLUMN IF NOT EXISTS customer_company_name TEXT NULL`);
+    } catch {
+      // Columns already exist or handled
+    }
+
     const bookings = await getBookingsByRef(bookingRef);
     if (!bookings || bookings.length === 0) {
       throw new Error('Booking not found');
@@ -51,12 +63,18 @@ export async function issueTaxInvoice(bookingRef: string): Promise<{ success: bo
     const mergedSlots = bookings.map((b) => b.time_slot).join(', ');
     const invoiceNo = await allocateDocumentNumber('TI');
 
+    // The buyer's own name on the invoice is their company name when they
+    // asked for one at checkout, falling back to their personal name —
+    // distinct from gstConfig's gstin/legal_name above, which is the
+    // arena/platform's own (seller-side) GST registration.
+    const buyerName = (first as any).customer_company_name || first.customer_name;
+
     await query(
       `INSERT INTO tax_invoices (
         booking_ref, invoice_no, issue_datetime, gross_amount, taxable_value, cgst, sgst, igst,
         rate, hsn_sac, place_of_supply, gstin, legal_name, registered_address,
-        customer_name, customer_mobile, customer_email, description, created_at
-      ) VALUES (?, ?, NOW(), ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+        customer_name, customer_mobile, customer_email, customer_gstin, customer_company_name, description, created_at
+      ) VALUES (?, ?, NOW(), ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
       [
         bookingRef,
         invoiceNo,
@@ -70,9 +88,11 @@ export async function issueTaxInvoice(bookingRef: string): Promise<{ success: bo
         gstConfig.gstin,
         gstConfig.legalName,
         gstConfig.registeredAddress,
-        first.customer_name,
+        buyerName,
         first.customer_mobile,
         first.customer_email,
+        (first as any).customer_gstin || null,
+        (first as any).customer_company_name || null,
         `Turf booking — Slot ${first.booking_date} ${mergedSlots}`,
       ]
     );

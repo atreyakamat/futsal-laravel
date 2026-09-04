@@ -3,7 +3,6 @@ import { getAdminContext } from '@/lib/admin';
 import { getArenaById, query } from '@/lib/domain';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import RescheduleBookingBtn from '@/components/RescheduleBookingBtn';
 import MarkVenuePaidBtn from '@/components/MarkVenuePaidBtn';
 
 export const dynamic = 'force-dynamic';
@@ -264,12 +263,6 @@ export default async function ArenaAdminBookingsPage({
                         totalAmount={g.totalAmount}
                         paymentMethod={g.payment_method}
                         venuePaymentStatus={g.venue_payment_status}
-                      />
-                      <RescheduleBookingBtn
-                        bookingRef={g.booking_ref}
-                        currentDate={g.booking_date}
-                        currentSlot={g.slots[0]?.timeSlot || ''}
-                        paymentStatus={g.payment_status}
                       />
                       <Link
                         href={`/booking/success/${g.booking_ref}`}

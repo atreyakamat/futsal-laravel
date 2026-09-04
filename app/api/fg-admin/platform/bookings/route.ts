@@ -25,6 +25,8 @@ const bodySchema = z.object({
   payment_method: z.enum(['cash', 'upi']).optional(),
   payment_reference: z.string().max(120).optional(),
   notes: z.string().max(500).optional().nullable(),
+  customer_gstin: z.string().max(20).nullable().optional(),
+  customer_company_name: z.string().max(200).nullable().optional(),
 });
 
 async function readPayload(request: Request) {
@@ -60,6 +62,8 @@ export async function POST(request: Request) {
     payment_method: payloadObject.payment_method ? String(payloadObject.payment_method) : undefined,
     payment_reference: payloadObject.payment_reference ? String(payloadObject.payment_reference) : undefined,
     notes: payloadObject.notes ? String(payloadObject.notes) : null,
+    customer_gstin: payloadObject.customer_gstin ? String(payloadObject.customer_gstin) : null,
+    customer_company_name: payloadObject.customer_company_name ? String(payloadObject.customer_company_name) : null,
   });
 
   const userId = await readAuthUserId();
@@ -151,6 +155,8 @@ export async function POST(request: Request) {
     // expirePendingBookings). Free/discounted bookings resolve immediately
     // either way, so the flag is meaningless for them.
     adminCreated: !payload.free_booking && !isDiscounted,
+    customerGstin: payload.customer_gstin,
+    customerCompanyName: payload.customer_company_name,
   });
 
   // Cash/UPI payment collected for a discounted booking is the point of

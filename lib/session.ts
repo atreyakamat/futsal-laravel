@@ -99,6 +99,18 @@ export async function readAuthRole() {
   return unsignValue(value);
 }
 
+// Which identifier the customer actually verified at login (mobile or email
+// OTP) — set once at app/api/auth/verify-otp/route.ts. Used at checkout to
+// lock the field that was actually proven, not just typed in. Returns null
+// for a session that predates this cookie (nothing gets locked, same as
+// today's behavior) rather than guessing.
+export async function readAuthChannel(): Promise<'mobile' | 'email' | null> {
+  const value = (await cookies()).get('fg_auth_channel')?.value;
+  if (!value) return null;
+  const unsigned = unsignValue(value);
+  return unsigned === 'mobile' || unsigned === 'email' ? unsigned : null;
+}
+
 export async function readArenaId() {
   const value = (await cookies()).get('fg_arena_id')?.value;
   if (!value) return null;

@@ -213,7 +213,6 @@ export default async function DashboardPage() {
                 refundFeeValue={refundPolicyConfig.value}
                 refundsEnabled={refundsEnabledByArena[firstBooking.arena_id] ?? false}
                 rescheduleUsed={Boolean((firstBooking as any).reschedule_used)}
-                adminCreated={Boolean((firstBooking as any).admin_created)}
               />
             </div>
           </div>
