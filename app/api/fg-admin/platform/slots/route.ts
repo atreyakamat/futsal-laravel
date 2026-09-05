@@ -13,6 +13,38 @@ import { getArenaPricing, query, queryOne } from '@/lib/domain';
 import { readAuthUserId } from '@/lib/session';
 import { reportServerError } from '@/lib/error-log';
 
+// Hourly marks only (00:00..24:00) — matches the whole-hour slot
+// granularity every other part of the app (booking, availability, pricing)
+// already assumes.
+const HOURS = Array.from({ length: 25 }, (_, h) => `${String(h).padStart(2, '0')}:00`);
+
+function expandHourlySlots(fromHour: string, toHour: string): string[] {
+  const fromIdx = HOURS.indexOf(fromHour);
+  const toIdx = HOURS.indexOf(toHour);
+  if (fromIdx === -1 || toIdx === -1 || toIdx <= fromIdx) return [];
+  const result: string[] = [];
+  for (let h = fromIdx; h < toIdx; h++) {
+    result.push(`${HOURS[h]}-${HOURS[h + 1]}`);
+  }
+  return result;
+}
+
+// Pure UTC date-only arithmetic (no local-timezone midnight rollover),
+// same technique BookingSystem.tsx's addDays uses on the client.
+function expandDateRange(startDate: string, endDate: string): string[] {
+  const [sy, sm, sd] = startDate.split('-').map(Number);
+  const [ey, em, ed] = endDate.split('-').map(Number);
+  if (!sy || !sm || !sd || !ey || !em || !ed) return [];
+  const start = Date.UTC(sy, sm - 1, sd);
+  const end = Date.UTC(ey, em - 1, ed);
+  if (Number.isNaN(start) || Number.isNaN(end) || end < start) return [];
+  const dates: string[] = [];
+  for (let t = start; t <= end; t += 86400000) {
+    dates.push(new Date(t).toISOString().split('T')[0]);
+  }
+  return dates;
+}
+
 function parseSlotRows(value: string) {
   return value
     .split('\n')
@@ -113,11 +145,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
   }
 
-  // Manager is scoped to entry-mode and holiday requests only — pricing,
-  // slot structure, timings, images, and blocking stay super_admin/
-  // arena_admin territory even as a request (unlike free/discounted
-  // bookings, which Manager may request approval for).
-  const MANAGER_ALLOWED_ACTIONS = ['entry_mode', 'holiday_add', 'holiday_delete'];
+  // Manager is scoped to entry-mode, holiday, and slot-block requests —
+  // pricing, slot structure, timings, and images stay super_admin/
+  // arena_admin territory even as a request. Blocks let a manager flag
+  // dates/slots the ground can't be used (maintenance etc.); like holidays,
+  // a manager's block request goes through approval rather than applying
+  // immediately (block_delete is the one exception, handled below: it only
+  // ever removes a restriction, never adds one, so it's a direct action
+  // scoped to the manager's own arena).
+  const MANAGER_ALLOWED_ACTIONS = ['entry_mode', 'holiday_add', 'holiday_delete', 'block_add', 'block_delete'];
   if (context.role === 'manager' && !MANAGER_ALLOWED_ACTIONS.includes(action)) {
     return NextResponse.json({ success: false, message: 'Managers may only request entry-mode changes or manage holidays.' }, { status: 403 });
   }
@@ -405,31 +441,43 @@ export async function POST(request: Request) {
 
   if (action === 'block_add') {
     const bookingDate = String((form as Record<string, string>).booking_date ?? '');
-    const timeSlot = String((form as Record<string, string>).time_slot ?? '');
+    const endDate = String((form as Record<string, string>).end_date ?? '') || bookingDate;
+    const fromHour = String((form as Record<string, string>).from_hour ?? '');
+    const toHour = String((form as Record<string, string>).to_hour ?? '');
     const reason = String((form as Record<string, string>).reason ?? '') || 'Blocked';
 
-    if (!bookingDate || !timeSlot) {
-      return NextResponse.json({ success: false, message: 'A date and time slot are required.' }, { status: 400 });
+    const dates = expandDateRange(bookingDate, endDate);
+    const timeSlots = expandHourlySlots(fromHour, toHour);
+
+    if (dates.length === 0) {
+      return NextResponse.json({ success: false, message: 'A valid date (and end date on or after it) is required.' }, { status: 400 });
+    }
+    if (timeSlots.length === 0) {
+      return NextResponse.json({ success: false, message: 'End time must be after start time.' }, { status: 400 });
     }
 
     if ((context.role === 'super_admin' || context.role === 'arena_admin')) {
-      await query(
-        `INSERT INTO admin_slot_blocks (super_admin_id, arena_id, booking_date, time_slot, reason, status, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, 'confirmed', NOW(), NOW())`,
-        [context.id, arenaId, bookingDate, timeSlot, reason]
-      );
+      for (const date of dates) {
+        for (const timeSlot of timeSlots) {
+          await query(
+            `INSERT INTO admin_slot_blocks (super_admin_id, arena_id, booking_date, time_slot, reason, status, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, 'confirmed', NOW(), NOW())`,
+            [context.id, arenaId, date, timeSlot, reason]
+          );
+        }
+      }
       await createAdminAuditLog({
         action: 'slot_blocked',
         approvedBy: context.id,
         arenaId,
-        newValue: { bookingDate, timeSlot, reason },
+        newValue: { dates, slots: timeSlots, reason },
       });
     } else {
       await createApprovalRequest({
         arenaId,
         requestedBy: context.id,
         requestType: 'BLOCK_SLOT_REQUEST',
-        payload: { bookingDate, slots: [timeSlot], reason },
+        payload: { dates, slots: timeSlots, reason },
         notes: reason,
       });
     }

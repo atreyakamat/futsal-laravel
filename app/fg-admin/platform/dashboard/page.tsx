@@ -166,17 +166,10 @@ export default async function AdminDashboardPage() {
             </div>
           </Link>
 
-          <Link
-            href="/fg-admin/platform/reports"
-            className="glass-card !p-8 group hover:border-primary/50 transition-all"
-          >
-            <div className="flex items-center gap-6">
-              <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <span className="material-symbols-outlined text-primary text-2xl">analytics</span>
-              </div>
-              <span className="font-black text-sm uppercase tracking-widest italic group-hover:text-primary transition-colors">Reports</span>
-            </div>
-          </Link>
+          {/* Reports was an unconditional tile here duplicating arena_admin's
+              Header nav "Reports" link (the only role that both reaches this
+              page and has Reports in their own nav, since super_admin
+              redirects away above) — removed. */}
 
           {adminRole === 'super_admin' && (
             <Link
@@ -248,19 +241,9 @@ export default async function AdminDashboardPage() {
             </Link>
           )}
 
-          {isUnscoped && (
-            <Link
-              href="/fg-admin/platform/approvals"
-              className="glass-card !p-8 group hover:border-primary/50 transition-all"
-            >
-              <div className="flex items-center gap-6">
-                <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <span className="material-symbols-outlined text-primary text-2xl">fact_check</span>
-                </div>
-                <span className="font-black text-sm uppercase tracking-widest italic group-hover:text-primary transition-colors">Approvals</span>
-              </div>
-            </Link>
-          )}
+          {/* Approvals was gated the same as isUnscoped, i.e. effectively
+              arena_admin-only here (super_admin redirects away above) —
+              duplicated arena_admin's Header nav "Approvals" link, removed. */}
 
           <form action="/api/auth/logout" method="POST" className="group">
             <button

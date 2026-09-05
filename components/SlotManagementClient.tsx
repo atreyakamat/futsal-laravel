@@ -57,6 +57,7 @@ export default function SlotManagementClient({ arenaId, isSuperAdmin }: Props) {
   const [holidayReason, setHolidayReason] = useState('');
 
   const [blockDate, setBlockDate] = useState('');
+  const [blockEndDate, setBlockEndDate] = useState('');
   const [blockFromHour, setBlockFromHour] = useState('18:00');
   const [blockToHour, setBlockToHour] = useState('19:00');
   const [blockReason, setBlockReason] = useState('');
@@ -197,6 +198,10 @@ export default function SlotManagementClient({ arenaId, isSuperAdmin }: Props) {
     await post({ action: 'holiday_delete', holiday_id: holidayId, notes: `Delete holiday #${holidayId}` });
   };
 
+  // Display-only preview of the hourly slots one day of this range covers —
+  // actual expansion across both the date range and the hour range happens
+  // server-side (see block_add in app/api/fg-admin/platform/slots/route.ts),
+  // so a multi-day request is still a single submission / approval record.
   const blockHourlySlots = splitIntoHourlySlots(blockFromHour, blockToHour);
 
   const handleAddBlock = async (e: React.FormEvent) => {
@@ -208,29 +213,24 @@ export default function SlotManagementClient({ arenaId, isSuperAdmin }: Props) {
     setError('');
     setMessage('');
 
-    // Blocks are matched against real hourly slot strings in the
-    // availability check (app/api/slots/status/route.ts), so a multi-hour
-    // range has to become one block per hour, same as adding slots —
-    // otherwise a "18:00-21:00" block would never match any actual
-    // 1-hour slot and silently block nothing.
-    const failures: string[] = [];
-    for (const timeSlot of blockHourlySlots) {
-      const result = await postOnce({ action: 'block_add', booking_date: blockDate, time_slot: timeSlot, reason: blockReason || 'Blocked' });
-      if (!result.ok) failures.push(`${timeSlot}: ${result.message || 'failed'}`);
-    }
+    const result = await postOnce({
+      action: 'block_add',
+      booking_date: blockDate,
+      end_date: blockEndDate || blockDate,
+      from_hour: blockFromHour,
+      to_hour: blockToHour,
+      reason: blockReason || 'Blocked',
+    });
 
     await refresh();
 
-    if (failures.length === 0) {
-      setMessage(
-        isSuperAdmin
-          ? `Applied — ${blockHourlySlots.length} slot${blockHourlySlots.length > 1 ? 's' : ''} blocked.`
-          : `Request submitted for approval — ${blockHourlySlots.length} slot${blockHourlySlots.length > 1 ? 's' : ''}.`
-      );
+    if (result.ok) {
+      setMessage(isSuperAdmin ? 'Applied — slots blocked.' : 'Request submitted for approval.');
       setBlockDate('');
+      setBlockEndDate('');
       setBlockReason('');
     } else {
-      setError(`${failures.length} of ${blockHourlySlots.length} block(s) failed: ${failures.join('; ')}`);
+      setError(result.message || 'Something went wrong.');
     }
   };
 
@@ -389,10 +389,19 @@ export default function SlotManagementClient({ arenaId, isSuperAdmin }: Props) {
         <div className="glass-card space-y-4">
           <h2 className="text-2xl font-black uppercase italic">Blocked Slots</h2>
           <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest">
-            {isSuperAdmin ? 'Blocks apply immediately.' : 'Block requests need super admin approval.'}
+            {isSuperAdmin ? 'Blocks apply immediately.' : 'Block requests need super admin approval.'} Leave End Date blank to block a single day, or set it to block the same slot(s) across a range of days — for example, a maintenance closure, even beyond the normal booking window.
           </p>
           <form onSubmit={handleAddBlock} className="space-y-3">
-            <input required type="date" className="input-field" value={blockDate} onChange={(e) => setBlockDate(e.target.value)} />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-[9px] font-black uppercase tracking-widest text-white/30">Start Date</label>
+                <input required type="date" className="input-field" value={blockDate} onChange={(e) => setBlockDate(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[9px] font-black uppercase tracking-widest text-white/30">End Date (optional)</label>
+                <input type="date" className="input-field" min={blockDate || undefined} value={blockEndDate} onChange={(e) => setBlockEndDate(e.target.value)} />
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <select required className="input-field" value={blockFromHour} onChange={(e) => setBlockFromHour(e.target.value)}>
                 {HOURS.slice(0, -1).map((h) => <option key={h} value={h}>{h}</option>)}
@@ -404,7 +413,8 @@ export default function SlotManagementClient({ arenaId, isSuperAdmin }: Props) {
             <input className="input-field" placeholder="Reason (optional)" value={blockReason} onChange={(e) => setBlockReason(e.target.value)} />
             {blockHourlySlots.length > 0 ? (
               <p className="text-[10px] font-bold text-amber-400 uppercase tracking-widest">
-                This blocks {blockHourlySlots.length} slot{blockHourlySlots.length > 1 ? 's' : ''}: {blockHourlySlots.join(', ')}
+                This blocks {blockHourlySlots.length} slot{blockHourlySlots.length > 1 ? 's' : ''} per day: {blockHourlySlots.join(', ')}
+                {blockEndDate && blockEndDate !== blockDate ? ` — from ${blockDate} through ${blockEndDate}` : ''}
               </p>
             ) : (
               <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest">End time must be after start time.</p>

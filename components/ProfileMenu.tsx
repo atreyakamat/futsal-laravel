@@ -38,8 +38,6 @@ export default function ProfileMenu({ userId, role, arenaId, userName }: Profile
 
   if (!userId) return null;
 
-  const isAdmin = role === 'super_admin' || role === 'arena_admin' || role === 'manager' || role === 'security';
-
   return (
     <div className="relative" ref={dropdownRef}>
       <button
@@ -91,129 +89,12 @@ export default function ProfileMenu({ userId, role, arenaId, userName }: Profile
               </>
             )}
 
-            {role === 'super_admin' && (
-              <>
-                <Link
-                  href="/fg-admin/platform/super-admin"
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-white/80 hover:bg-white/[0.04] hover:text-primary transition-colors"
-                  onClick={() => setOpen(false)}
-                >
-                  <span className="material-symbols-outlined text-primary text-lg">admin_panel_settings</span>
-                  Platform Dashboard
-                </Link>
-                <Link
-                  href="/fg-admin/platform/arenas"
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-white/80 hover:bg-white/[0.04] hover:text-primary transition-colors"
-                  onClick={() => setOpen(false)}
-                >
-                  <span className="material-symbols-outlined text-white/60 text-lg">stadium</span>
-                  Manage Arenas
-                </Link>
-                <Link
-                  href="/fg-admin/platform/approvals"
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-white/80 hover:bg-white/[0.04] hover:text-primary transition-colors"
-                  onClick={() => setOpen(false)}
-                >
-                  <span className="material-symbols-outlined text-white/60 text-lg">fact_check</span>
-                  Approvals
-                </Link>
-                <Link
-                  href="/fg-admin/platform/users"
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-white/80 hover:bg-white/[0.04] hover:text-primary transition-colors"
-                  onClick={() => setOpen(false)}
-                >
-                  <span className="material-symbols-outlined text-white/60 text-lg">people</span>
-                  Team Management
-                </Link>
-              </>
-            )}
-
-            {role === 'manager' && (
-              <>
-                <Link
-                  href="/fg-admin/arena/dashboard"
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-white/80 hover:bg-white/[0.04] hover:text-primary transition-colors"
-                  onClick={() => setOpen(false)}
-                >
-                  <span className="material-symbols-outlined text-primary text-lg">dashboard</span>
-                  Arena Dashboard
-                </Link>
-                <Link
-                  href="/fg-admin/arena/bookings"
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-white/80 hover:bg-white/[0.04] hover:text-primary transition-colors"
-                  onClick={() => setOpen(false)}
-                >
-                  <span className="material-symbols-outlined text-white/60 text-lg">book_online</span>
-                  Bookings
-                </Link>
-                <Link
-                  href="/fg-admin/arena/slots"
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-white/80 hover:bg-white/[0.04] hover:text-primary transition-colors"
-                  onClick={() => setOpen(false)}
-                >
-                  <span className="material-symbols-outlined text-white/60 text-lg">schedule</span>
-                  Slots & Pricing
-                </Link>
-                <Link
-                  href="/fg-admin/arena/settings"
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-white/80 hover:bg-white/[0.04] hover:text-primary transition-colors"
-                  onClick={() => setOpen(false)}
-                >
-                  <span className="material-symbols-outlined text-white/60 text-lg">settings</span>
-                  Settings
-                </Link>
-              </>
-            )}
-
-            {role === 'arena_admin' && (
-              <>
-                <Link
-                  href="/fg-admin/platform/dashboard"
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-white/80 hover:bg-white/[0.04] hover:text-primary transition-colors"
-                  onClick={() => setOpen(false)}
-                >
-                  <span className="material-symbols-outlined text-primary text-lg">dashboard</span>
-                  Dashboard
-                </Link>
-                <Link
-                  href="/fg-admin/platform/slots"
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-white/80 hover:bg-white/[0.04] hover:text-primary transition-colors"
-                  onClick={() => setOpen(false)}
-                >
-                  <span className="material-symbols-outlined text-white/60 text-lg">schedule</span>
-                  Slots & Pricing
-                </Link>
-                <Link
-                  href="/fg-admin/platform/approvals"
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-white/80 hover:bg-white/[0.04] hover:text-primary transition-colors"
-                  onClick={() => setOpen(false)}
-                >
-                  <span className="material-symbols-outlined text-white/60 text-lg">fact_check</span>
-                  Approvals
-                </Link>
-              </>
-            )}
-
-            {role === 'security' && (
-              <>
-                <Link
-                  href="/fg-admin/security/scan"
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-white/80 hover:bg-white/[0.04] hover:text-primary transition-colors"
-                  onClick={() => setOpen(false)}
-                >
-                  <span className="material-symbols-outlined text-primary text-lg">qr_code_scanner</span>
-                  Scan Ticket
-                </Link>
-                <Link
-                  href="/fg-admin/security/verify"
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-white/80 hover:bg-white/[0.04] hover:text-primary transition-colors"
-                  onClick={() => setOpen(false)}
-                >
-                  <span className="material-symbols-outlined text-white/60 text-lg">verified</span>
-                  Verify Entry
-                </Link>
-              </>
-            )}
+            {/* Staff roles (super_admin, manager, arena_admin, security) have
+                no role-specific links here — the admin Header now shows
+                their full nav on every page (see components/Header.tsx), so
+                repeating those destinations in this dropdown would just be
+                the same links twice. This menu stays account-only for them:
+                "Signed in as" above, Logout below. */}
 
             <hr className="border-white/5 my-2" />
 

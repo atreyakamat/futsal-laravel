@@ -487,7 +487,9 @@ function summarizeApprovalPayload(requestType: string, payload: Record<string, u
   }
   if (requestType === 'BLOCK_SLOT_REQUEST') {
     const slots = Array.isArray(p.slots) ? p.slots.join(', ') : '';
-    return `Block slot(s) on ${p.bookingDate || '?'} — ${slots}`;
+    const dates: string[] = Array.isArray(p.dates) ? p.dates : p.bookingDate ? [p.bookingDate] : [];
+    const dateLabel = dates.length > 1 ? `${dates[0]} → ${dates[dates.length - 1]} (${dates.length} days)` : (dates[0] || '?');
+    return `Block slot(s) on ${dateLabel} — ${slots}`;
   }
   if (requestType === 'slot_add' || requestType === 'slot_edit' || requestType === 'slot_delete') {
     return `${requestType.replace('slot_', 'Slot ')}: ${p.time_slot || ''} ${p.price !== undefined ? `— ₹${p.price}` : ''}`.trim();
@@ -951,16 +953,25 @@ export async function resolveApprovalRequest(input: {
 
     if (request.request_type === 'BLOCK_SLOT_REQUEST') {
       const arenaId = request.arena_id;
-      const bookingDate = String(payload.bookingDate ?? '');
+      // Older requests (created before dates became an array) still carry a
+      // single `bookingDate` — fall back to that so a pending pre-existing
+      // request can still be approved correctly.
+      const dates = Array.isArray(payload.dates)
+        ? (payload.dates as string[])
+        : payload.bookingDate
+        ? [String(payload.bookingDate)]
+        : [];
       const slots = Array.isArray(payload.slots) ? (payload.slots as string[]) : [];
-      if (!arenaId || !bookingDate || slots.length === 0) throw new Error('Missing block details.');
-      
-      for (const slot of slots) {
-        await query(
-          `INSERT INTO admin_slot_blocks (super_admin_id, arena_id, booking_date, time_slot, number_of_rounds, reason, status, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, 'confirmed', NOW(), NOW())`,
-          [input.decisionBy, arenaId, bookingDate, slot, 1, payload.reason ?? 'Blocked']
-        );
+      if (!arenaId || dates.length === 0 || slots.length === 0) throw new Error('Missing block details.');
+
+      for (const date of dates) {
+        for (const slot of slots) {
+          await query(
+            `INSERT INTO admin_slot_blocks (super_admin_id, arena_id, booking_date, time_slot, number_of_rounds, reason, status, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, 'confirmed', NOW(), NOW())`,
+            [input.decisionBy, arenaId, date, slot, 1, payload.reason ?? 'Blocked']
+          );
+        }
       }
 
       await createAdminAuditLog({

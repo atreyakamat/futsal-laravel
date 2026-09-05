@@ -7,6 +7,7 @@ export default function CustomerProfilePage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [mobile, setMobile] = useState('');
+  const [lockedField, setLockedField] = useState<'email' | 'mobile' | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState('');
@@ -24,6 +25,7 @@ export default function CustomerProfilePage() {
           setName(result.data.name);
           setEmail(result.data.email);
           setMobile(result.data.customer_mobile || '');
+          setLockedField(result.data.authChannel === 'email' || result.data.authChannel === 'mobile' ? result.data.authChannel : null);
         } else {
           throw new Error(result.message || 'Failed to parse profile data');
         }
@@ -146,27 +148,33 @@ export default function CustomerProfilePage() {
             </div>
 
             <div className="space-y-2">
-              <label className="label-classic">Email Address</label>
+              <label className="label-classic">
+                Email Address {lockedField === 'email' && <span className="text-primary normal-case">(verified)</span>}
+              </label>
               <input
                 type="email"
-                className="input-field"
+                className={`input-field ${lockedField === 'email' ? 'opacity-60 cursor-not-allowed' : ''}`}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="user@example.com"
                 required
+                readOnly={lockedField === 'email'}
                 disabled={updating}
               />
             </div>
 
             <div className="space-y-2">
-              <label className="label-classic">Mobile Number</label>
+              <label className="label-classic">
+                Mobile Number {lockedField === 'mobile' && <span className="text-primary normal-case">(verified)</span>}
+              </label>
               <input
                 type="tel"
-                className="input-field"
+                className={`input-field ${lockedField === 'mobile' ? 'opacity-60 cursor-not-allowed' : ''}`}
                 value={mobile}
                 onChange={(e) => setMobile(e.target.value)}
                 placeholder="+919999999999"
                 required
+                readOnly={lockedField === 'mobile'}
                 disabled={updating}
               />
             </div>

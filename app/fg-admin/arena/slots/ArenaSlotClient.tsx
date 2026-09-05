@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import ManagerHolidayClient from '@/components/ManagerHolidayClient';
+import ManagerBlockClient from '@/components/ManagerBlockClient';
 
 type Timing = { id: number; time_slot: string; start_time: string; end_time: string; day_of_week: number | null };
 type ApprovalRequest = {
@@ -48,6 +49,7 @@ function RequestTypeBadge({ type }: { type: string }) {
     holiday_delete: 'Delete Holiday',
     admin_free_booking: 'Free / Discounted Booking',
     FREE_BOOKING_REQUEST: 'Free Booking',
+    BLOCK_SLOT_REQUEST: 'Block Slots',
   };
   return <span className="text-[9px] font-black uppercase tracking-widest text-white/40">{labels[type] ?? type.replace(/_/g, ' ')}</span>;
 }
@@ -65,6 +67,11 @@ function RequestDetail({ request }: { request: ApprovalRequest }) {
     const slots = Array.isArray(payload.slots) ? (payload.slots as string[]).join(', ') : '';
     const price = typeof payload.discountedSlotPrice === 'number' ? ` — ₹${payload.discountedSlotPrice}/slot` : ' — Free';
     detail = `${payload.bookingDate ?? ''} — ${slots}${price}`;
+  } else if (request.request_type === 'BLOCK_SLOT_REQUEST') {
+    const dates = Array.isArray(payload.dates) ? (payload.dates as string[]) : [];
+    const slots = Array.isArray(payload.slots) ? (payload.slots as string[]).join(', ') : '';
+    const dateLabel = dates.length > 1 ? `${dates[0]} → ${dates[dates.length - 1]}` : (dates[0] ?? '');
+    detail = `${dateLabel} — ${slots}${payload.reason ? ` — ${payload.reason}` : ''}`;
   }
   return detail ? <p className="text-xs text-white/50 italic mt-0.5 truncate max-w-xs">{detail}</p> : null;
 }
@@ -130,6 +137,11 @@ export default function ArenaAdminSlotsClient({
         {/* Holidays */}
         <ManagerHolidayClient arenaId={arenaId} />
       </div>
+
+      {/* Block Slots — ground unusable for maintenance etc., a single day
+          or a slot range across several days, including beyond the normal
+          booking window. */}
+      <ManagerBlockClient arenaId={arenaId} />
 
       {/* Free / Discounted Booking — customer details, discount, and
           cash/UPI payment capture all live on the shared admin booking

@@ -105,50 +105,10 @@ export default async function ArenaAdminDashboardPage() {
         </div>
       </div>
 
-      {/* Action panel */}
-      <div className="glass-card">
-        <h2 className="text-2xl font-black mb-8 uppercase tracking-tighter italic">
-          Manager <span className="text-primary">Operations</span>
-        </h2>
-
-        <div className="grid md:grid-cols-4 gap-6">
-          <Link href="/fg-admin/arena/bookings" className="glass-card !p-8 group hover:border-primary/50 transition-all">
-            <div className="flex flex-col items-center gap-4 text-center">
-              <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <span className="material-symbols-outlined text-primary text-2xl">book_online</span>
-              </div>
-              <span className="font-black text-xs uppercase tracking-widest italic group-hover:text-primary transition-colors">Bookings List</span>
-            </div>
-          </Link>
-
-          <Link href="/fg-admin/arena/slots" className="glass-card !p-8 group hover:border-primary/50 transition-all">
-            <div className="flex flex-col items-center gap-4 text-center">
-              <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <span className="material-symbols-outlined text-primary text-2xl">schedule</span>
-              </div>
-              <span className="font-black text-xs uppercase tracking-widest italic group-hover:text-primary transition-colors">Slot & Mode</span>
-            </div>
-          </Link>
-
-          <Link href="/fg-admin/arena/settings" className="glass-card !p-8 group hover:border-primary/50 transition-all">
-            <div className="flex flex-col items-center gap-4 text-center">
-              <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <span className="material-symbols-outlined text-primary text-2xl">settings</span>
-              </div>
-              <span className="font-black text-xs uppercase tracking-widest italic group-hover:text-primary transition-colors">Password & Profile</span>
-            </div>
-          </Link>
-
-          <Link href="/fg-admin/arena/notifications" className="glass-card !p-8 group hover:border-primary/50 transition-all">
-            <div className="flex flex-col items-center gap-4 text-center">
-              <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <span className="material-symbols-outlined text-primary text-2xl">notifications</span>
-              </div>
-              <span className="font-black text-xs uppercase tracking-widest italic group-hover:text-primary transition-colors">Notifications</span>
-            </div>
-          </Link>
-        </div>
-      </div>
+      {/* The former "Manager Operations" action panel (Bookings List, Slot &
+          Mode, Password & Profile, Notifications) duplicated the admin
+          Header's manager nav one-for-one — the Header now shows on every
+          page, so those tiles were pure duplication and were removed. */}
     </div>
   );
 }

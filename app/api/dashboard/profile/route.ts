@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { readAuthUserId, readAuthRole } from '@/lib/session';
+import { readAuthUserId, readAuthRole, readAuthChannel } from '@/lib/session';
 import { query, queryOne } from '@/lib/db';
 import { normalizePhoneNumber } from '@/lib/phone';
 import { isPlaceholderEmail } from '@/lib/domain';
@@ -19,13 +19,18 @@ export async function GET() {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
   }
 
+  // Which contact field (if any) the customer's current session verified via
+  // OTP at login — that field is locked for editing here, same as checkout.
+  // `null` for a session that predates the fg_auth_channel cookie.
+  const authChannel = await readAuthChannel();
+
   if (role === 'super_admin') {
     const admin = await queryOne<{ id: number; email: string; first_name: string; last_name: string }>(
       'SELECT id, email, first_name, last_name FROM super_admins WHERE id = ? OR user_id = ? LIMIT 1',
       [userId, userId]
     );
     if (!admin) return NextResponse.json({ success: false, message: 'User not found' }, { status: 404 });
-    
+
     return NextResponse.json({
       success: true,
       data: {
@@ -33,7 +38,8 @@ export async function GET() {
         name: `${admin.first_name || ''} ${admin.last_name || ''}`.trim() || 'Super Admin',
         email: admin.email,
         customer_mobile: '',
-        role: 'super_admin'
+        role: 'super_admin',
+        authChannel,
       },
     });
   }
@@ -55,7 +61,7 @@ export async function GET() {
 
   return NextResponse.json({
     success: true,
-    data: { ...user, email: isPlaceholderEmail(user.email) ? '' : user.email },
+    data: { ...user, email: isPlaceholderEmail(user.email) ? '' : user.email, authChannel },
   });
 }
 
@@ -77,6 +83,9 @@ export async function PUT(request: Request) {
     }
     const payload = profileSchema.parse(body);
     const newEmail = payload.email;
+    // Defense in depth: the UI already renders the OTP-verified field
+    // read-only, but a direct API call must not be able to change it either.
+    const authChannel = await readAuthChannel();
 
     if (role === 'super_admin') {
       const admin = await queryOne<{ id: number; user_id: number | null; email: string }>(
@@ -84,6 +93,10 @@ export async function PUT(request: Request) {
         [userId, userId]
       );
       if (!admin) return NextResponse.json({ success: false, message: 'User not found' }, { status: 404 });
+
+      if (authChannel === 'email' && newEmail !== admin.email.toLowerCase()) {
+        return NextResponse.json({ success: false, message: 'This email was verified via OTP login and cannot be changed.' }, { status: 400 });
+      }
 
       const previousEmail = admin.email;
       if (newEmail !== previousEmail.toLowerCase()) {
@@ -119,13 +132,20 @@ export async function PUT(request: Request) {
       });
     }
 
-    const currentUser = await queryOne<{ id: number; role: string; email: string }>(
-      'SELECT id, role, email FROM users WHERE id = ? LIMIT 1',
+    const currentUser = await queryOne<{ id: number; role: string; email: string; customer_mobile: string | null }>(
+      'SELECT id, role, email, customer_mobile FROM users WHERE id = ? LIMIT 1',
       [userId]
     );
 
     if (!currentUser) {
       return NextResponse.json({ success: false, message: 'User not found' }, { status: 404 });
+    }
+
+    if (authChannel === 'email' && newEmail !== currentUser.email.toLowerCase()) {
+      return NextResponse.json({ success: false, message: 'This email was verified via OTP login and cannot be changed.' }, { status: 400 });
+    }
+    if (authChannel === 'mobile' && payload.customer_mobile !== (currentUser.customer_mobile || '')) {
+      return NextResponse.json({ success: false, message: 'This mobile number was verified via OTP login and cannot be changed.' }, { status: 400 });
     }
 
     const previousEmail = currentUser.email;

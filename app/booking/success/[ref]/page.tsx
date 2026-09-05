@@ -8,6 +8,7 @@ import { getTicketQrUrl } from '@/lib/ticket';
 import { generateQrDataUrl, buildUpiPaymentUri } from '@/lib/qr';
 import { generateTicketDownloadToken } from '@/lib/ticket-token';
 import GetHelpButton from '@/components/GetHelpButton';
+import { readAuthRole } from '@/lib/session';
 
 type Props = {
   params: Promise<{ ref: string }>;
@@ -27,6 +28,17 @@ export default async function BookingSuccessPage({ params }: Props) {
   const arena = await getArenaById(firstBooking.arena_id);
   const refundPolicy = await getRefundPolicyConfig();
   if (!arena) redirect('/');
+
+  // A staff member (manager/arena_admin/super_admin) can land here from an
+  // admin bookings list to view a customer's ticket/QR — the customer-facing
+  // "Book Again"/"My Bookings" actions don't make sense for them, so they get
+  // a link back to their own bookings list instead.
+  const viewerRole = await readAuthRole();
+  const staffBookingsLink = viewerRole === 'manager'
+    ? '/fg-admin/arena/bookings'
+    : viewerRole === 'super_admin' || viewerRole === 'arena_admin'
+    ? '/fg-admin/platform/bookings'
+    : null;
 
   // Guard: only show the ticket for confirmed bookings (including free bookings).
   // A cancelled booking DID succeed at some point — it's not a payment
@@ -76,8 +88,14 @@ export default async function BookingSuccessPage({ params }: Props) {
           </div>
         </div>
         <div className="flex gap-6 mt-10">
-          <Link href={`/arena/${arena.slug}`} className="btn-primary flex-1 text-center">BOOK AGAIN</Link>
-          <Link href="/dashboard" className="btn-secondary flex-1 text-center">MY BOOKINGS</Link>
+          {staffBookingsLink ? (
+            <Link href={staffBookingsLink} className="btn-primary flex-1 text-center">BACK TO BOOKINGS</Link>
+          ) : (
+            <>
+              <Link href={`/arena/${arena.slug}`} className="btn-primary flex-1 text-center">BOOK AGAIN</Link>
+              <Link href="/dashboard" className="btn-secondary flex-1 text-center">MY BOOKINGS</Link>
+            </>
+          )}
         </div>
         <div className="mt-6 flex justify-center">
           <GetHelpButton
@@ -281,18 +299,29 @@ export default async function BookingSuccessPage({ params }: Props) {
           </div>
 
           <div className="flex gap-6">
-            <Link
-              href={`/arena/${arena.slug}`}
-              className="btn-primary flex-1 text-center"
-            >
-              BOOK AGAIN
-            </Link>
-            <Link
-              href="/dashboard"
-              className="btn-secondary flex-1 text-center"
-            >
-              MY BOOKINGS
-            </Link>
+            {staffBookingsLink ? (
+              <Link
+                href={staffBookingsLink}
+                className="btn-primary flex-1 text-center"
+              >
+                BACK TO BOOKINGS
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href={`/arena/${arena.slug}`}
+                  className="btn-primary flex-1 text-center"
+                >
+                  BOOK AGAIN
+                </Link>
+                <Link
+                  href="/dashboard"
+                  className="btn-secondary flex-1 text-center"
+                >
+                  MY BOOKINGS
+                </Link>
+              </>
+            )}
           </div>
           <div className="flex justify-center">
             <GetHelpButton

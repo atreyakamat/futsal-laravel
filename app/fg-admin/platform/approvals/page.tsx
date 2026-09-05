@@ -158,13 +158,25 @@ function PayloadSummary({ requestType, payloadJson }: { requestType: string; pay
 
   if (requestType === 'BLOCK_SLOT_REQUEST') {
     const slots = Array.isArray(payload.slots) ? (payload.slots as string[]).join(', ') : '';
+    // Older requests (created before dates became an array) still carry a
+    // single `bookingDate` — fall back to that so pre-existing pending
+    // requests keep rendering correctly.
+    const dates = Array.isArray(payload.dates)
+      ? (payload.dates as string[])
+      : payload.bookingDate
+      ? [String(payload.bookingDate)]
+      : [];
     return (
       <div className="mt-4 grid grid-cols-2 gap-3">
-        <div className="p-3 rounded-xl bg-white/5 border border-white/5">
-          <p className="text-[9px] text-white/40 uppercase tracking-widest font-bold">Date</p>
-          <p className="text-sm font-black text-white mt-0.5">{String(payload.bookingDate ?? '—')}</p>
+        <div className="p-3 rounded-xl bg-white/5 border border-white/5 col-span-2">
+          <p className="text-[9px] text-white/40 uppercase tracking-widest font-bold">
+            Date{dates.length > 1 ? `s (${dates.length})` : ''}
+          </p>
+          <p className="text-sm font-black text-white mt-0.5">
+            {dates.length > 1 ? `${dates[0]} → ${dates[dates.length - 1]}` : (dates[0] ?? '—')}
+          </p>
         </div>
-        <div className="p-3 rounded-xl bg-white/5 border border-white/5">
+        <div className="p-3 rounded-xl bg-white/5 border border-white/5 col-span-2">
           <p className="text-[9px] text-white/40 uppercase tracking-widest font-bold">Slots</p>
           <p className="text-sm font-black text-white mt-0.5">{slots || '—'}</p>
         </div>

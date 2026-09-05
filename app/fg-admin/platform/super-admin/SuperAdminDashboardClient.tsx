@@ -694,50 +694,15 @@ export default function SuperAdminDashboardClient() {
             ))}
             
             <hr className="border-white/10 my-4" />
-            
-            <a href="/fg-admin/platform/bookings" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-colors text-gray-400 hover:text-white hover:bg-white/5">
-              <span className="material-symbols-outlined text-lg">book_online</span>
-              All Bookings
-            </a>
 
-            <a href="/fg-admin/platform/cancellations" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-colors text-gray-400 hover:text-white hover:bg-white/5">
-              <span className="material-symbols-outlined text-lg">pending_actions</span>
-              Cancellations Review
-            </a>
-
-            <a href="/fg-admin/platform/reviews" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-colors text-gray-400 hover:text-white hover:bg-white/5">
-              <span className="material-symbols-outlined text-lg">star</span>
-              Reviews Moderation
-            </a>
-
-            <a href="/fg-admin/platform/slots" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-colors text-gray-400 hover:text-white hover:bg-white/5">
-              <span className="material-symbols-outlined text-lg">payments</span>
-              Slot Pricing
-            </a>
-
-            <a href="/fg-admin/platform/reports" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-colors text-gray-400 hover:text-white hover:bg-white/5">
-              <span className="material-symbols-outlined text-lg">assessment</span>
-              Reports
-            </a>
-
-            <a href="/fg-admin/platform/gst-documents" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-colors text-gray-400 hover:text-white hover:bg-white/5">
-              <span className="material-symbols-outlined text-lg">receipt_long</span>
-              GST Documents
-            </a>
-
+            {/* Bookings, Cancellations, Reviews, Slot Pricing, Reports, GST
+                Documents, Audit Logs, and Notifications are already in the
+                global admin Header nav on every /fg-admin/platform page —
+                repeating them here was pure duplication. Accountants stays:
+                it isn't in the Header nav. */}
             <a href="/fg-admin/platform/accountants" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-colors text-gray-400 hover:text-white hover:bg-white/5">
               <span className="material-symbols-outlined text-lg">account_balance</span>
               Accountants
-            </a>
-
-            <a href="/fg-admin/platform/audit-logs" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-colors text-gray-400 hover:text-white hover:bg-white/5">
-              <span className="material-symbols-outlined text-lg">history</span>
-              Audit Logs
-            </a>
-            
-            <a href="/fg-admin/platform/notifications" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-colors text-gray-400 hover:text-white hover:bg-white/5">
-              <span className="material-symbols-outlined text-lg">notifications</span>
-              Notifications
             </a>
           </nav>
         </aside>

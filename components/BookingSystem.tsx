@@ -134,12 +134,24 @@ export default function BookingSystem({
       // it only needs the freshest value at call time, not to be recreated
       // (and re-trigger the fetch effect) every time the active column
       // changes independently of the visible window.
+      //
+      // Both directions matter here, not just dropping stale entries: a
+      // slot the server reports as 'selected' (locked by this session, via
+      // the fg_session_id cookie) but that isn't in local state yet must be
+      // added back in. That's what re-hydrates the selection after a fresh
+      // mount — e.g. returning from the login redirect, or a plain page
+      // refresh — where local state starts empty even though the hold is
+      // still active server-side.
       const activeSlots = nextSlotsByDate[dateRef.current] || [];
-      setSelectedSlots((prev) =>
-        prev.filter((ps) =>
+      setSelectedSlots((prev) => {
+        const kept = prev.filter((ps) =>
           activeSlots.some((s) => s.time_slot === ps.time_slot && (s.status === 'available' || s.status === 'selected'))
-        )
-      );
+        );
+        const reclaimed = activeSlots.filter(
+          (s) => s.status === 'selected' && !kept.some((ps) => ps.time_slot === s.time_slot)
+        );
+        return reclaimed.length > 0 ? [...kept, ...reclaimed] : kept;
+      });
     } catch (e) {
       console.error('Fetch slots error:', e);
       setRetryCount((prev) => prev + 1);
