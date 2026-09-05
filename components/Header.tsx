@@ -39,132 +39,25 @@ export default function Header({ userId, role, arenaId, userName }: HeaderProps)
     }
   };
 
-  // Render Admin Header
+  // Render Admin Header — slim: branding + account menu only. All admin
+  // navigation now lives in the persistent left sidebar (components/
+  // AdminSidebar.tsx, rendered from app/fg-admin/layout.tsx) rather than
+  // here, so there's exactly one nav surface instead of two.
   if (isAdminPath) {
-    // One list drives both the desktop nav and the mobile drawer below, so
-    // the two never drift out of sync with each other.
-    type AdminNavItem = { href: string; label: string; match: string };
-    let adminNavItems: AdminNavItem[] = [];
-    if (role === 'super_admin') {
-      adminNavItems = [
-        { href: '/fg-admin/platform/super-admin', label: 'Dashboard', match: '/super-admin' },
-        { href: '/fg-admin/platform/arenas', label: 'Arenas', match: '/arenas' },
-        { href: '/fg-admin/platform/bookings', label: 'Bookings', match: '/bookings' },
-        { href: '/fg-admin/platform/cancellations', label: 'Cancellations', match: '/cancellations' },
-        { href: '/fg-admin/platform/reviews', label: 'Reviews', match: '/reviews' },
-        { href: '/fg-admin/platform/slots', label: 'Pricing', match: '/slots' },
-        { href: '/fg-admin/platform/reports', label: 'Reports', match: '/reports' },
-        { href: '/fg-admin/platform/approvals', label: 'Approvals', match: '/approvals' },
-        { href: '/fg-admin/platform/audit-logs', label: 'Audit Logs', match: '/audit-logs' },
-        { href: '/fg-admin/platform/users', label: 'Users', match: '/users' },
-        { href: '/fg-admin/platform/notifications', label: 'Notifications', match: '/notifications' },
-        { href: '/fg-admin/platform/gst-documents', label: 'GST Docs', match: '/gst-documents' },
-        { href: '/fg-admin/platform/credentials', label: 'Credentials', match: '/credentials' },
-        { href: '/fg-admin/platform/settings', label: 'Settings', match: '/settings' },
-      ];
-    } else if (role === 'arena_admin') {
-      adminNavItems = [
-        { href: '/fg-admin/platform/dashboard', label: 'Dashboard', match: '/dashboard' },
-        { href: '/fg-admin/platform/bookings', label: 'Bookings', match: '/bookings' },
-        { href: '/fg-admin/platform/cancellations', label: 'Cancellations', match: '/cancellations' },
-        { href: '/fg-admin/platform/slots', label: 'Pricing', match: '/slots' },
-        { href: '/fg-admin/platform/reports', label: 'Reports', match: '/reports' },
-        { href: '/fg-admin/platform/approvals', label: 'Approvals', match: '/approvals' },
-      ];
-    } else if (role === 'manager') {
-      adminNavItems = [
-        { href: '/fg-admin/arena/dashboard', label: 'Dashboard', match: '/dashboard' },
-        { href: '/fg-admin/arena/bookings', label: 'Bookings', match: '/bookings' },
-        { href: '/fg-admin/arena/slots', label: 'Slots', match: '/slots' },
-        { href: '/fg-admin/arena/notifications', label: 'Notifications', match: '/notifications' },
-        { href: '/fg-admin/arena/settings', label: 'Settings', match: '/settings' },
-      ];
-    } else if (role === 'security') {
-      adminNavItems = [
-        { href: '/fg-admin/security/scan', label: 'Scan Ticket', match: '/scan' },
-        { href: '/fg-admin/security/verify', label: 'Verify', match: '/verify' },
-      ];
-    } else if (role === 'accountant') {
-      adminNavItems = [{ href: '/fg-admin/accountant/dashboard', label: 'Dashboard', match: '/accountant' }];
-    }
-
     return (
       <header className="sticky top-0 z-50 w-full border-b border-white/5 bg-dark/80 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-8">
-            <Link href="/" className="flex items-center gap-2 group">
-              <span className="text-xl font-black italic tracking-tighter text-white group-hover:text-primary transition-colors">
-                AGNEL<span className="text-primary">ARENA</span>
-                <span className="text-[9px] uppercase tracking-widest bg-primary/10 border border-primary/20 text-primary px-2 py-0.5 rounded-md ml-2 not-italic font-bold">
-                  ADMIN
-                </span>
+          <Link href="/" className="flex items-center gap-2 group">
+            <span className="text-xl font-black italic tracking-tighter text-white group-hover:text-primary transition-colors">
+              AGNEL<span className="text-primary">ARENA</span>
+              <span className="text-[9px] uppercase tracking-widest bg-primary/10 border border-primary/20 text-primary px-2 py-0.5 rounded-md ml-2 not-italic font-bold">
+                ADMIN
               </span>
-            </Link>
-
-            {/* Admin Nav Desktop */}
-            <nav className="hidden md:flex items-center gap-6 flex-wrap">
-              {adminNavItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`text-xs font-black uppercase tracking-widest hover:text-primary transition-colors ${pathname.includes(item.match) ? 'text-primary' : 'text-white/60'}`}
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
-          </div>
-
-          <div className="hidden md:flex items-center gap-4">
-            <ProfileMenu userId={userId} role={role} arenaId={arenaId} userName={userName} />
-          </div>
-
-          {/* Mobile Menu Button */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden w-10 h-10 rounded-xl bg-white/[0.02] border border-white/10 flex items-center justify-center text-white"
-          >
-            <span className="material-symbols-outlined">
-              {mobileMenuOpen ? 'close' : 'menu'}
             </span>
-          </button>
+          </Link>
+
+          <ProfileMenu userId={userId} role={role} arenaId={arenaId} userName={userName} />
         </div>
-
-        {/* Mobile Drawer */}
-        {mobileMenuOpen && (
-          <div className="md:hidden border-t border-white/5 bg-dark-soft px-6 py-8 space-y-6 animate-fadeIn">
-            <nav className="flex flex-col gap-6">
-              {adminNavItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="text-sm font-black uppercase tracking-widest text-white/80 hover:text-primary"
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
-
-            <div className="pt-6 border-t border-white/5 space-y-3">
-              <div className="px-2 py-2 rounded-xl bg-white/[0.02] border border-white/5">
-                <p className="text-xs font-black text-white/40 uppercase tracking-widest">Signed in as</p>
-                <p className="text-sm font-black text-white truncate capitalize">{userName || role?.replace('_', ' ')}</p>
-                {arenaId && <p className="text-[10px] text-white/30 uppercase tracking-widest">Arena ID: {arenaId}</p>}
-              </div>
-              <button
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  handleLogout();
-                }}
-                className="btn-secondary w-full !py-3 !rounded-xl text-center flex items-center justify-center gap-2 hover:!border-red-500/50 hover:!text-red-500"
-              >
-                LOGOUT
-                <span className="material-symbols-outlined text-sm">logout</span>
-              </button>
-            </div>
-          </div>
-        )}
       </header>
     );
   }

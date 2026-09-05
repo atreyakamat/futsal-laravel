@@ -1,11 +1,14 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import ChangeSuperAdminEmailForm from '@/components/ChangeSuperAdminEmailForm';
 
 interface SuperAdminSettings {
   id: number;
   email: string;
+  first_name?: string | null;
+  last_name?: string | null;
   permissions: string[];
   is_active: boolean;
   last_login: string | null;
@@ -62,9 +65,12 @@ export default function SuperAdminDashboardClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [activeTab, setActiveTab] = useState('overview');
-  const [approvals, setApprovals] = useState<any[]>([]);
-  const [approvalsLoading, setApprovalsLoading] = useState(false);
+  const searchParams = useSearchParams();
+  // Lets AdminSidebar's "Settings" entry deep-link straight to that tab via
+  // /fg-admin/platform/super-admin?tab=settings — read once on initial
+  // render; subsequent clicks just update local state, no need to push the
+  // tab into the URL on every change.
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'overview');
   const [stats, setStats] = useState<any>(null);
   const router = useRouter();
 
@@ -121,27 +127,6 @@ export default function SuperAdminDashboardClient() {
   const [bookingReason, setBookingReason] = useState('');
 
   
-  const fetchApprovals = useCallback(async () => {
-    try {
-      setApprovalsLoading(true);
-      const res = await fetch('/api/fg-admin/platform/approvals');
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setApprovals(data.requests);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setApprovalsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (activeTab === 'approvals') {
-      fetchApprovals();
-    }
-  }, [activeTab, fetchApprovals]);
-
   const handleRemoveAdmin = async (id: number) => {
     if (!selectedArenaId) return;
     if (!confirm('Are you sure you want to remove this admin?')) return;
@@ -165,24 +150,6 @@ export default function SuperAdminDashboardClient() {
       if (res.ok) fetchArenaDetails(selectedArenaId);
     } catch (err) {
       console.error('Failed to remove security:', err);
-    }
-  };
-
-  const handleResolveRequest = async (id: number, decision: 'approved' | 'rejected') => {
-    try {
-      const res = await fetch(`/api/fg-admin/platform/approvals/${id}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ decision, reason: `${decision.toUpperCase()} by Super Admin` })
-      });
-      if (res.ok) {
-        setSuccess(`Request ${decision} successfully`);
-        fetchApprovals();
-      } else {
-        setError('Failed to resolve request');
-      }
-    } catch (e) {
-      setError('Error resolving request');
     }
   };
 
@@ -616,15 +583,15 @@ export default function SuperAdminDashboardClient() {
           </div>
           <div className="w-24 h-8 bg-white/5 animate-pulse rounded-lg" />
         </header>
-        <div className="flex flex-1">
-          {/* Skeleton Sidebar */}
-          <aside className="w-64 border-r border-white/10 p-4 space-y-4">
-            {[1, 2, 3, 4, 5, 6, 7].map(i => (
-              <div key={i} className="w-full h-10 bg-white/5 animate-pulse rounded-lg" />
+        <div className="flex-1">
+          {/* Skeleton tab bar */}
+          <div className="flex gap-2 p-8 pb-0">
+            {[1, 2, 3, 4, 5].map(i => (
+              <div key={i} className="w-28 h-9 bg-white/5 animate-pulse rounded-lg" />
             ))}
-          </aside>
+          </div>
           {/* Skeleton Main */}
-          <main className="flex-1 p-8">
+          <main className="p-8">
             <div className="w-48 h-8 bg-white/5 animate-pulse rounded mb-8" />
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {[1, 2, 3, 4].map(i => (
@@ -661,55 +628,39 @@ export default function SuperAdminDashboardClient() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-950">
-      {/* No page-local header here — the global admin top nav (components/Header.tsx)
-          already covers branding/logout for every /fg-admin/platform page. A second,
-          page-local header here used to render underneath it, which is exactly the
-          "nav on top AND on the left, at the same time" confusion reported by users. */}
+      {/* No page-local header here — the global admin top bar (components/
+          Header.tsx) covers branding/account menu for every /fg-admin page,
+          and the persistent left sidebar (components/AdminSidebar.tsx,
+          rendered from app/fg-admin/layout.tsx) covers navigation between
+          pages. What follows is this page's own sub-section switcher —
+          a horizontal tab bar, not a second left-hand menu. */}
 
-      {/* Sidebar + Main */}
-      <div className="flex">
-        {/* Sidebar */}
-        <aside className="w-64 border-r border-white/10 min-h-screen">
-          <nav className="sticky top-0 space-y-1 p-4">
-            {[
-              { id: 'overview', label: 'Overview', icon: 'dashboard' },
-              { id: 'arenas', label: 'Arena & Staff', icon: 'location_on' },
-              { id: 'timings', label: 'Timings', icon: 'schedule' },
-              { id: 'blocks', label: 'Block Slots', icon: 'block' },
-              { id: 'approvals', label: 'Approvals', icon: 'check_circle' },
-              { id: 'settings', label: 'Settings', icon: 'settings' },
-            ].map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-colors ${
-                  activeTab === item.id
-                    ? 'bg-primary/20 text-primary'
-                    : 'text-gray-400 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <span className="material-symbols-outlined text-lg">{item.icon}</span>
-                {item.label}
-              </button>
-            ))}
-            
-            <hr className="border-white/10 my-4" />
+      <main className="p-8">
+        {/* Sub-section tabs */}
+        <nav className="flex gap-2 overflow-x-auto pb-4 mb-6 border-b border-white/10">
+          {[
+            { id: 'overview', label: 'Overview', icon: 'dashboard' },
+            { id: 'arenas', label: 'Arena & Staff', icon: 'location_on' },
+            { id: 'timings', label: 'Timings', icon: 'schedule' },
+            { id: 'blocks', label: 'Block Slots', icon: 'block' },
+            { id: 'settings', label: 'Settings', icon: 'settings' },
+          ].map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              className={`shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+                activeTab === item.id
+                  ? 'bg-primary/20 text-primary'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <span className="material-symbols-outlined text-lg">{item.icon}</span>
+              {item.label}
+            </button>
+          ))}
+        </nav>
 
-            {/* Bookings, Cancellations, Reviews, Slot Pricing, Reports, GST
-                Documents, Audit Logs, and Notifications are already in the
-                global admin Header nav on every /fg-admin/platform page —
-                repeating them here was pure duplication. Accountants stays:
-                it isn't in the Header nav. */}
-            <a href="/fg-admin/platform/accountants" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-colors text-gray-400 hover:text-white hover:bg-white/5">
-              <span className="material-symbols-outlined text-lg">account_balance</span>
-              Accountants
-            </a>
-          </nav>
-        </aside>
-
-        {/* Main Content */}
-        <main className="flex-1 p-8">
-          {error && (
+        {error && (
             <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm font-bold">
               {error}
             </div>
@@ -1554,80 +1505,21 @@ export default function SuperAdminDashboardClient() {
             </div>
           )}
 
-          {activeTab === 'approvals' && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-3xl font-bold italic tracking-tighter uppercase">Approval <span className="text-primary">Requests</span></h2>
-                  <p className="text-gray-400 text-xs mt-1 uppercase tracking-widest">Manage pending requests from Arena Admins</p>
-                </div>
-                <button onClick={fetchApprovals} className="btn-secondary !py-2 !px-4 !rounded-xl text-[10px]">REFRESH</button>
-              </div>
-
-              {approvalsLoading ? (
-                <div className="space-y-4">
-                  {[1, 2, 3].map(i => (
-                    <div key={i} className="glass-card p-6 flex justify-between items-center animate-pulse">
-                      <div className="space-y-3 flex-1">
-                        <div className="w-32 h-4 bg-white/10 rounded" />
-                        <div className="w-48 h-3 bg-white/10 rounded" />
-                        <div className="w-64 h-3 bg-white/5 rounded" />
-                      </div>
-                      <div className="flex gap-3">
-                        <div className="w-24 h-10 bg-white/10 rounded" />
-                        <div className="w-24 h-10 bg-white/10 rounded" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : approvals.length === 0 ? (
-                <div className="text-center py-12 text-gray-400">
-                  <span className="material-symbols-outlined text-4xl mb-4 block">check_circle</span>
-                  <p className="text-sm uppercase tracking-widest font-bold">No pending requests</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {approvals.map(req => (
-                    <div key={req.id} className="glass-card p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <span className="text-xs font-bold bg-primary/20 text-primary px-2 py-1 rounded border border-primary/30 uppercase tracking-widest">
-                            {req.request_type.replace(/_/g, ' ')}
-                          </span>
-                          <span className="text-[10px] text-gray-400 uppercase tracking-widest">
-                            {new Date(req.created_at).toLocaleString()}
-                          </span>
-                        </div>
-                        <p className="text-white text-sm font-semibold mb-1">Requested by Admin #{req.requested_by}</p>
-                        <p className="text-gray-400 text-xs italic">{req.notes || 'No notes provided.'}</p>
-                        <div className="mt-4 bg-black/20 p-3 rounded text-xs font-mono text-gray-300 break-all">
-                          {req.payload_json}
-                        </div>
-                      </div>
-                      <div className="flex gap-3 w-full md:w-auto">
-                        <button 
-                          onClick={() => handleResolveRequest(req.id, 'approved')} 
-                          className="flex-1 md:flex-none px-6 py-2 bg-green-500/20 text-green-400 border border-green-500/30 rounded font-bold uppercase tracking-widest hover:bg-green-500/40 transition-colors"
-                        >
-                          Approve
-                        </button>
-                        <button 
-                          onClick={() => handleResolveRequest(req.id, 'rejected')} 
-                          className="flex-1 md:flex-none px-6 py-2 bg-red-500/20 text-red-400 border border-red-500/30 rounded font-bold uppercase tracking-widest hover:bg-red-500/40 transition-colors"
-                        >
-                          Reject
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+          {/* The in-page Approvals tab was removed — it duplicated
+              /fg-admin/platform/approvals with a worse raw-JSON rendering.
+              The sidebar's Approvals entry now points at that page instead. */}
 
           {activeTab === 'settings' && (
             <div className="space-y-6 max-w-2xl">
               <h2 className="text-3xl font-bold italic tracking-tighter uppercase">Global <span className="text-primary">Settings</span></h2>
+
+              <div className="glass-card !p-0 overflow-hidden">
+                <ChangeSuperAdminEmailForm
+                  currentName={`${settings.first_name ?? ''} ${settings.last_name ?? ''}`.trim()}
+                  currentEmail={settings.email}
+                />
+              </div>
+
               <div className="glass-card">
                 <h3 className="text-sm font-black italic uppercase mb-4 border-b border-white/10 pb-2">Platform Configuration</h3>
                 <div className="space-y-4">
@@ -1878,8 +1770,7 @@ export default function SuperAdminDashboardClient() {
               </div>
             </div>
           )}
-        </main>
-      </div>
+      </main>
     </div>
   );
 }

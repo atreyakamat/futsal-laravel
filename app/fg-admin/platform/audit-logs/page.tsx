@@ -11,7 +11,7 @@ export default async function AuditLogsPage() {
   // never-verified `fg_auth_user` cookie) redirected every admin to login,
   // every time, regardless of whether their session was valid. Replaced
   // with the same readAuthUserId()/getAdminContext() check used by every
-  // other working admin page (e.g. app/fg-admin/platform/settings/page.tsx).
+  // other working admin page (e.g. app/fg-admin/platform/credentials/page.tsx).
   const userId = await readAuthUserId();
   const context = await getAdminContext(userId);
 

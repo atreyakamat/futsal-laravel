@@ -139,6 +139,8 @@ export async function GET(request: Request) {
       data: {
         id: superAdmin.id,
         email: superAdmin.email,
+        first_name: superAdmin.first_name,
+        last_name: superAdmin.last_name,
         role: 'super_admin',
         is_active: superAdmin.is_active,
         last_login: superAdmin.last_login,

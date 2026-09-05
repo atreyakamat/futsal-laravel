@@ -55,8 +55,8 @@ export async function verifySuperAdminCredentials(email: string, password: strin
  * Get super admin by ID
  */
 export async function getSuperAdmin(id: number) {
-  return queryOne<{ id: number; email: string; password_hash: string; is_active: boolean; last_login: string | null }>(
-    'SELECT id, email, password_hash, is_active, last_login FROM super_admins WHERE id = ?',
+  return queryOne<{ id: number; email: string; password_hash: string; first_name: string | null; last_name: string | null; is_active: boolean; last_login: string | null }>(
+    'SELECT id, email, password_hash, first_name, last_name, is_active, last_login FROM super_admins WHERE id = ?',
     [id]
   );
 }

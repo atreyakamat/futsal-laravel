@@ -171,19 +171,9 @@ export default async function AdminDashboardPage() {
               page and has Reports in their own nav, since super_admin
               redirects away above) — removed. */}
 
-          {adminRole === 'super_admin' && (
-            <Link
-              href="/fg-admin/platform/settings"
-              className="glass-card !p-8 group hover:border-primary/50 transition-all"
-            >
-              <div className="flex items-center gap-6">
-                <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <span className="material-symbols-outlined text-primary text-2xl">settings</span>
-                </div>
-                <span className="font-black text-sm uppercase tracking-widest italic group-hover:text-primary transition-colors">Settings</span>
-              </div>
-            </Link>
-          )}
+          {/* Settings tile linking to /fg-admin/platform/settings was already
+              unreachable dead code (super_admin redirects away from this
+              page above) and that route has since been deleted — removed. */}
 
           {adminRole === 'super_admin' && (
             <Link
