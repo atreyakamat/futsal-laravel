@@ -1,112 +1,160 @@
 import cron from 'node-cron';
 import { query } from '@/lib/db';
-import { sendEmail, generateDailyDigestEmail, DigestArenaSummary, DigestBookingRow } from '@/lib/email';
+import {
+  sendEmail,
+  generateBookingRecapEmail,
+  generateMorningBookingListEmail,
+  DigestArenaCounts,
+  DigestBookingRow,
+} from '@/lib/email';
 import { reportServerError } from '@/lib/error-log';
 
-/** "Today"/"tomorrow" as YYYY-MM-DD strings in IST, independent of the
- * server's own timezone (the container runs in UTC). */
-function istDateString(offsetDays: number): string {
+/** "Today" as a YYYY-MM-DD string in IST, independent of the server's own
+ * timezone (the container runs in UTC). */
+function istDateString(offsetDays: number = 0): string {
   const now = new Date();
   const istMs = now.getTime() + 5.5 * 60 * 60 * 1000 + offsetDays * 24 * 60 * 60 * 1000;
   return new Date(istMs).toISOString().slice(0, 10);
 }
 
-async function getBookingsForDate(date: string): Promise<DigestBookingRow[]> {
+async function getBookingsForDate(date: string, arenaId: number): Promise<DigestBookingRow[]> {
   return query<DigestBookingRow>(
     `SELECT a.name as arena_name, b.time_slot, b.customer_name, b.customer_mobile, b.amount
        FROM bookings b
        JOIN arenas a ON a.id = b.arena_id
       WHERE b.payment_status = 'confirmed'
         AND b.booking_date = ?
-      ORDER BY a.name ASC, b.time_slot ASC`,
+        AND b.arena_id = ?
+      ORDER BY b.time_slot ASC`,
+    [date, arenaId]
+  );
+}
+
+/** Per-arena confirmed/cancelled/played counts for a date, one row per
+ * arena that had at least one booking that day. "Played" = confirmed AND
+ * checked_in — the existing venue check-in signal used by security/ticket
+ * scanning elsewhere in the codebase. */
+async function getBookingCountsByArena(date: string): Promise<DigestArenaCounts[]> {
+  return query<DigestArenaCounts>(
+    `SELECT a.id as arena_id, a.name as arena_name,
+            COUNT(*) FILTER (WHERE b.payment_status = 'confirmed')::int AS confirmed,
+            COUNT(*) FILTER (WHERE b.payment_status = 'cancelled')::int AS cancelled,
+            COUNT(*) FILTER (WHERE b.payment_status = 'confirmed' AND b.checked_in = true)::int AS played
+       FROM bookings b
+       JOIN arenas a ON a.id = b.arena_id
+      WHERE b.booking_date = ?
+      GROUP BY a.id, a.name
+      ORDER BY a.name ASC`,
     [date]
   );
 }
 
-function summarizeByArena(rows: DigestBookingRow[]): DigestArenaSummary[] {
-  const map = new Map<string, DigestArenaSummary>();
-  for (const r of rows) {
-    const existing = map.get(r.arena_name) || { arena_name: r.arena_name, count: 0, revenue: 0 };
-    existing.count += 1;
-    existing.revenue += Number(r.amount);
-    map.set(r.arena_name, existing);
-  }
-  return Array.from(map.values()).sort((a, b) => b.revenue - a.revenue);
-}
-
-/** Sends the 8pm IST digest to super admins/accountants (all turfs) and to
- * each arena's managers (their own turf only). */
+/** Sends the 8pm IST end-of-day recap (today's confirmed/cancelled/played
+ * counts) to super admins + platform-wide turf admins (one consolidated
+ * all-turfs email each) and to each arena's managers (arena-scoped).
+ * Accountants receive nothing. */
 export async function sendDailyDigest() {
   const todayDate = istDateString(0);
-  const tomorrowDate = istDateString(1);
 
-  const [todayBookings, tomorrowBookings] = await Promise.all([
-    getBookingsForDate(todayDate),
-    getBookingsForDate(tomorrowDate),
-  ]);
+  const arenaBreakdown = await getBookingCountsByArena(todayDate);
+  const totals = arenaBreakdown.reduce(
+    (acc, a) => ({
+      confirmed: acc.confirmed + a.confirmed,
+      cancelled: acc.cancelled + a.cancelled,
+      played: acc.played + a.played,
+    }),
+    { confirmed: 0, cancelled: 0, played: 0 }
+  );
 
-  // Global digest — super admins + accountants
-  const globalEmail = generateDailyDigestEmail({
+  const globalEmail = generateBookingRecapEmail({
     scopeLabel: 'All Turfs',
-    todayDate,
-    tomorrowDate,
-    todaySummary: summarizeByArena(todayBookings),
-    tomorrowSummary: summarizeByArena(tomorrowBookings),
-    todayBookings,
-    tomorrowBookings,
+    date: todayDate,
+    ...totals,
+    arenaBreakdown,
   });
 
-  const [superAdmins, accountants] = await Promise.all([
+  const [superAdmins, turfAdmins] = await Promise.all([
     query<{ email: string }>(`SELECT email FROM super_admins WHERE is_active = true`),
-    query<{ email: string }>(`SELECT email FROM accountants WHERE is_active = true`),
+    query<{ email: string }>(`SELECT email FROM arena_admins WHERE arena_id IS NULL AND is_active = true`),
   ]);
 
-  for (const recipient of [...superAdmins, ...accountants]) {
+  for (const recipient of [...superAdmins, ...turfAdmins]) {
     try {
       await sendEmail({ to: recipient.email, ...globalEmail });
     } catch (err) {
-      reportServerError(err, { route: 'daily-digest-cron', step: 'send_global', recipient: recipient.email });
+      reportServerError(err, { route: 'daily-digest-cron', step: 'send_global_recap', recipient: recipient.email });
     }
   }
 
-  // Per-arena digest — that arena's managers only
+  const breakdownByArenaId = new Map(arenaBreakdown.map((a) => [a.arena_id, a]));
   const arenas = await query<{ id: number; name: string }>(`SELECT id, name FROM arenas WHERE status = 'active'`);
+
   for (const arena of arenas) {
-    const arenaAdmins = await query<{ email: string }>(
+    const managers = await query<{ email: string }>(
       `SELECT email FROM arena_admins WHERE arena_id = ? AND is_active = true`,
       [arena.id]
     );
-    if (arenaAdmins.length === 0) continue;
+    if (managers.length === 0) continue;
 
-    const arenaToday = todayBookings.filter((b) => b.arena_name === arena.name);
-    const arenaTomorrow = tomorrowBookings.filter((b) => b.arena_name === arena.name);
-    const arenaEmail = generateDailyDigestEmail({
+    const counts = breakdownByArenaId.get(arena.id) ?? { confirmed: 0, cancelled: 0, played: 0 };
+    const arenaEmail = generateBookingRecapEmail({
       scopeLabel: arena.name,
-      todayDate,
-      tomorrowDate,
-      todaySummary: summarizeByArena(arenaToday),
-      tomorrowSummary: summarizeByArena(arenaTomorrow),
-      todayBookings: arenaToday,
-      tomorrowBookings: arenaTomorrow,
+      date: todayDate,
+      confirmed: counts.confirmed,
+      cancelled: counts.cancelled,
+      played: counts.played,
     });
 
-    for (const recipient of arenaAdmins) {
+    for (const recipient of managers) {
       try {
         await sendEmail({ to: recipient.email, ...arenaEmail });
       } catch (err) {
-        reportServerError(err, { route: 'daily-digest-cron', step: 'send_arena', arenaId: arena.id, recipient: recipient.email });
+        reportServerError(err, { route: 'daily-digest-cron', step: 'send_arena_recap', arenaId: arena.id, recipient: recipient.email });
       }
     }
   }
 }
 
-let started = false;
+/** Sends the 5am IST same-day booking list (time slot, customer, amount) to
+ * each arena's managers only — super admins, turf admins, and accountants
+ * receive nothing from this job. Gives managers the day's schedule before
+ * it starts, distinct from the 8pm end-of-day recap. */
+export async function sendMorningBookingList() {
+  const todayDate = istDateString(0);
 
-/** Registers the 8:00 PM IST daily digest job. Guarded to start once per
+  const arenas = await query<{ id: number; name: string }>(`SELECT id, name FROM arenas WHERE status = 'active'`);
+
+  for (const arena of arenas) {
+    const managers = await query<{ email: string }>(
+      `SELECT email FROM arena_admins WHERE arena_id = ? AND is_active = true`,
+      [arena.id]
+    );
+    if (managers.length === 0) continue;
+
+    const bookings = await getBookingsForDate(todayDate, arena.id);
+    const arenaEmail = generateMorningBookingListEmail({
+      scopeLabel: arena.name,
+      date: todayDate,
+      bookings,
+    });
+
+    for (const recipient of managers) {
+      try {
+        await sendEmail({ to: recipient.email, ...arenaEmail });
+      } catch (err) {
+        reportServerError(err, { route: 'morning-booking-list-cron', step: 'send_arena_list', arenaId: arena.id, recipient: recipient.email });
+      }
+    }
+  }
+}
+
+let dailyDigestStarted = false;
+
+/** Registers the 8:00 PM IST daily recap job. Guarded to start once per
  * server process (see lib/refund-cron.ts for the same pattern). */
 export function startDailyDigestCron() {
-  if (started) return;
-  started = true;
+  if (dailyDigestStarted) return;
+  dailyDigestStarted = true;
 
   cron.schedule(
     '0 20 * * *',
@@ -120,5 +168,28 @@ export function startDailyDigestCron() {
     { timezone: 'Asia/Kolkata' }
   );
 
-  console.info('[daily-digest-cron] Scheduled daily booking digest for 8:00 PM IST.');
+  console.info('[daily-digest-cron] Scheduled daily booking recap for 8:00 PM IST.');
+}
+
+let morningBookingListStarted = false;
+
+/** Registers the 5:00 AM IST morning booking-list job. Guarded to start
+ * once per server process (see lib/refund-cron.ts for the same pattern). */
+export function startMorningBookingListCron() {
+  if (morningBookingListStarted) return;
+  morningBookingListStarted = true;
+
+  cron.schedule(
+    '0 5 * * *',
+    async () => {
+      try {
+        await sendMorningBookingList();
+      } catch (err) {
+        reportServerError(err, { route: 'morning-booking-list-cron', step: 'send_morning_booking_list' });
+      }
+    },
+    { timezone: 'Asia/Kolkata' }
+  );
+
+  console.info('[morning-booking-list-cron] Scheduled morning booking list for 5:00 AM IST.');
 }

@@ -509,44 +509,45 @@ export interface DigestBookingRow {
   amount: number;
 }
 
-export interface DigestArenaSummary {
+export interface DigestArenaCounts {
+  arena_id: number;
   arena_name: string;
-  count: number;
-  revenue: number;
+  confirmed: number;
+  cancelled: number;
+  played: number;
 }
 
-export function generateDailyDigestEmail(params: {
+/**
+ * The 8pm end-of-day recap: counts only (confirmed/cancelled/played for
+ * today), sent to super admins + platform-wide turf admins (consolidated,
+ * with arenaBreakdown) and to each arena's managers (arena-scoped, no
+ * breakdown). See lib/daily-digest-cron.ts's sendDailyDigest.
+ */
+export function generateBookingRecapEmail(params: {
   scopeLabel: string; // e.g. "All Turfs" or a specific arena name
-  todayDate: string;
-  tomorrowDate: string;
-  todaySummary: DigestArenaSummary[];
-  tomorrowSummary: DigestArenaSummary[];
-  todayBookings: DigestBookingRow[];
-  tomorrowBookings: DigestBookingRow[];
+  date: string;
+  confirmed: number;
+  cancelled: number;
+  played: number;
+  arenaBreakdown?: DigestArenaCounts[]; // only for the consolidated "All Turfs" email
 }): { subject: string; html: string; text: string } {
-  const { scopeLabel, todayDate, tomorrowDate, todaySummary, tomorrowSummary, todayBookings, tomorrowBookings } = params;
-  const subject = `Daily Booking Digest (${scopeLabel}) — ${todayDate}`;
+  const { scopeLabel, date, confirmed, cancelled, played, arenaBreakdown } = params;
+  const subject = `Booking Recap (${scopeLabel}) — ${date}`;
 
-  const summaryRow = (s: DigestArenaSummary) =>
-    `<tr><td style="padding: 6px 0; color: #666; font-size: 13px;">${s.arena_name}</td><td style="padding: 6px 0; text-align: right; font-weight: 700;">${s.count} bookings</td><td style="padding: 6px 0; text-align: right; font-weight: 700; color: #0d9f1a;">₹${s.revenue.toFixed(2)}</td></tr>`;
+  const statCard = (label: string, value: number, color: string) =>
+    `<td style="padding: 16px; text-align: center;"><div style="font-size: 28px; font-weight: 900; color: ${color};">${value}</div><div style="font-size: 12px; color: #666; margin-top: 4px;">${label}</div></td>`;
 
-  const bookingRow = (b: DigestBookingRow) =>
-    `<tr><td style="padding: 5px 0; font-size: 12px;">${b.time_slot}</td><td style="padding: 5px 0; font-size: 12px;">${b.arena_name}</td><td style="padding: 5px 0; font-size: 12px;">${b.customer_name} (${b.customer_mobile})</td><td style="padding: 5px 0; font-size: 12px; text-align: right;">₹${b.amount.toFixed(2)}</td></tr>`;
+  const breakdownRow = (a: DigestArenaCounts) =>
+    `<tr><td style="padding: 6px 0; color: #333; font-size: 13px;">${a.arena_name}</td><td style="padding: 6px 0; text-align: right; font-weight: 700;">${a.confirmed}</td><td style="padding: 6px 0; text-align: right; font-weight: 700; color: #ef4444;">${a.cancelled}</td><td style="padding: 6px 0; text-align: right; font-weight: 700; color: #0d9f1a;">${a.played}</td></tr>`;
 
-  const section = (label: string, date: string, summary: DigestArenaSummary[], bookings: DigestBookingRow[]) => {
-    const totalCount = summary.reduce((s, r) => s + r.count, 0);
-    const totalRevenue = summary.reduce((s, r) => s + r.revenue, 0);
-    if (totalCount === 0) {
-      return `<h3 style="color: #1a1a1a; margin: 24px 0 8px;">${label} — ${date}</h3><p style="color: #999; font-size: 13px;">No confirmed bookings.</p>`;
-    }
-    return `
-      <h3 style="color: #1a1a1a; margin: 24px 0 8px;">${label} — ${date} (${totalCount} bookings, ₹${totalRevenue.toFixed(2)})</h3>
-      <table style="width: 100%; border-collapse: collapse; margin-bottom: 12px;">${summary.map(summaryRow).join('')}</table>
-      <table style="width: 100%; border-collapse: collapse; border-top: 1px solid #e5e5e5; padding-top: 8px;">
-        <tr><th style="text-align:left; font-size: 11px; color: #999; padding: 6px 0;">SLOT</th><th style="text-align:left; font-size: 11px; color: #999;">TURF</th><th style="text-align:left; font-size: 11px; color: #999;">CUSTOMER</th><th style="text-align:right; font-size: 11px; color: #999;">AMOUNT</th></tr>
-        ${bookings.map(bookingRow).join('')}
-      </table>`;
-  };
+  const breakdownHtml = arenaBreakdown && arenaBreakdown.length > 0
+    ? `
+      <h3 style="color: #1a1a1a; margin: 24px 0 8px;">By Turf</h3>
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr><th style="text-align:left; font-size: 11px; color: #999; padding: 6px 0;">TURF</th><th style="text-align:right; font-size: 11px; color: #999;">CONFIRMED</th><th style="text-align:right; font-size: 11px; color: #999;">CANCELLED</th><th style="text-align:right; font-size: 11px; color: #999;">PLAYED</th></tr>
+        ${arenaBreakdown.map(breakdownRow).join('')}
+      </table>`
+    : '';
 
   const html = `
     <!DOCTYPE html>
@@ -558,18 +559,70 @@ export function generateDailyDigestEmail(params: {
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 700px; margin: 0 auto; padding: 20px;">
       <div style="background: #0df220; padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
         <h1 style="color: #050505; margin: 0; font-size: 28px; font-weight: 900;">AGNEL<span style="color: #050505;">ARENA</span></h1>
-        <p style="color: #050505; margin: 10px 0 0; font-size: 14px;">Daily Booking Digest — ${scopeLabel}</p>
+        <p style="color: #050505; margin: 10px 0 0; font-size: 14px;">Booking Recap — ${scopeLabel}</p>
       </div>
       <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e5e5; border-top: none; border-radius: 0 0 12px 12px;">
-        ${section('Today', todayDate, todaySummary, todayBookings)}
-        ${section('Tomorrow', tomorrowDate, tomorrowSummary, tomorrowBookings)}
+        <h3 style="color: #1a1a1a; margin: 0 0 8px;">${date}</h3>
+        <table style="width: 100%; border-collapse: collapse; background: #f5f5f5; border-radius: 8px;">
+          <tr>${statCard('Bookings', confirmed, '#0d9f1a')}${statCard('Cancelled', cancelled, '#ef4444')}${statCard('Played', played, '#1a1a1a')}</tr>
+        </table>
+        ${breakdownHtml}
         <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 24px 0 12px;">
-        <p style="color: #999; font-size: 12px; text-align: center;">AgnelArena — Automated Daily Digest, sent 8:00 PM IST</p>
+        <p style="color: #999; font-size: 12px; text-align: center;">AgnelArena — Automated Booking Recap, sent 8:00 PM IST</p>
       </div>
     </body>
     </html>
   `;
-  const text = `Daily Booking Digest (${scopeLabel}) — Today ${todayDate}: ${todaySummary.reduce((s, r) => s + r.count, 0)} bookings. Tomorrow ${tomorrowDate}: ${tomorrowSummary.reduce((s, r) => s + r.count, 0)} bookings.`;
+  const text = `Booking Recap (${scopeLabel}) — ${date}: ${confirmed} confirmed, ${cancelled} cancelled, ${played} played.`;
+  return { subject, html, text };
+}
+
+/**
+ * The 5am same-day booking list: the detailed per-slot table (time, customer,
+ * amount) for one arena's managers, so they see the day's schedule before it
+ * starts. See lib/daily-digest-cron.ts's sendMorningBookingList.
+ */
+export function generateMorningBookingListEmail(params: {
+  scopeLabel: string; // the arena's name
+  date: string;
+  bookings: DigestBookingRow[];
+}): { subject: string; html: string; text: string } {
+  const { scopeLabel, date, bookings } = params;
+  const subject = `Today's Bookings (${scopeLabel}) — ${date}`;
+
+  const bookingRow = (b: DigestBookingRow) =>
+    `<tr><td style="padding: 5px 0; font-size: 12px;">${b.time_slot}</td><td style="padding: 5px 0; font-size: 12px;">${b.customer_name} (${b.customer_mobile})</td><td style="padding: 5px 0; font-size: 12px; text-align: right;">₹${b.amount.toFixed(2)}</td></tr>`;
+
+  const bodyHtml = bookings.length === 0
+    ? `<p style="color: #999; font-size: 13px;">No confirmed bookings for today.</p>`
+    : `
+      <table style="width: 100%; border-collapse: collapse; border-top: 1px solid #e5e5e5; padding-top: 8px;">
+        <tr><th style="text-align:left; font-size: 11px; color: #999; padding: 6px 0;">SLOT</th><th style="text-align:left; font-size: 11px; color: #999;">CUSTOMER</th><th style="text-align:right; font-size: 11px; color: #999;">AMOUNT</th></tr>
+        ${bookings.map(bookingRow).join('')}
+      </table>`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 700px; margin: 0 auto; padding: 20px;">
+      <div style="background: #0df220; padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+        <h1 style="color: #050505; margin: 0; font-size: 28px; font-weight: 900;">AGNEL<span style="color: #050505;">ARENA</span></h1>
+        <p style="color: #050505; margin: 10px 0 0; font-size: 14px;">Today's Bookings — ${scopeLabel}</p>
+      </div>
+      <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e5e5; border-top: none; border-radius: 0 0 12px 12px;">
+        <h3 style="color: #1a1a1a; margin: 0 0 8px;">${date} (${bookings.length} bookings)</h3>
+        ${bodyHtml}
+        <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 24px 0 12px;">
+        <p style="color: #999; font-size: 12px; text-align: center;">AgnelArena — Automated Morning Booking List, sent 5:00 AM IST</p>
+      </div>
+    </body>
+    </html>
+  `;
+  const text = `Today's Bookings (${scopeLabel}) — ${date}: ${bookings.length} bookings.`;
   return { subject, html, text };
 }
 

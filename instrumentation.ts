@@ -7,8 +7,9 @@ export async function register() {
     const { startRefundCron } = await import('./lib/refund-cron');
     startRefundCron();
 
-    const { startDailyDigestCron } = await import('./lib/daily-digest-cron');
+    const { startDailyDigestCron, startMorningBookingListCron } = await import('./lib/daily-digest-cron');
     startDailyDigestCron();
+    startMorningBookingListCron();
 
     const { startBookingReminderCron } = await import('./lib/booking-reminder-cron');
     startBookingReminderCron();
