@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { readAuthUserId, readAuthRole, readAuthChannel } from '@/lib/session';
 import { query, queryOne } from '@/lib/db';
 import { normalizePhoneNumber } from '@/lib/phone';
-import { isPlaceholderEmail } from '@/lib/domain';
+import { isPlaceholderEmail, isPlaceholderName, updateCustomerProfile } from '@/lib/domain';
 
 const profileSchema = z.object({
   name: z.string().min(2).max(100),
@@ -61,7 +61,12 @@ export async function GET() {
 
   return NextResponse.json({
     success: true,
-    data: { ...user, email: isPlaceholderEmail(user.email) ? '' : user.email, authChannel },
+    data: {
+      ...user,
+      name: isPlaceholderName(user.name, user.email) ? '' : user.name,
+      email: isPlaceholderEmail(user.email) ? '' : user.email,
+      authChannel,
+    },
   });
 }
 
@@ -132,58 +137,20 @@ export async function PUT(request: Request) {
       });
     }
 
-    const currentUser = await queryOne<{ id: number; role: string; email: string; customer_mobile: string | null }>(
-      'SELECT id, role, email, customer_mobile FROM users WHERE id = ? LIMIT 1',
-      [userId]
+    const result = await updateCustomerProfile(
+      userId,
+      { name: payload.name, email: newEmail, customer_mobile: payload.customer_mobile || '' },
+      authChannel
     );
 
-    if (!currentUser) {
-      return NextResponse.json({ success: false, message: 'User not found' }, { status: 404 });
-    }
-
-    if (authChannel === 'email' && newEmail !== currentUser.email.toLowerCase()) {
-      return NextResponse.json({ success: false, message: 'This email was verified via OTP login and cannot be changed.' }, { status: 400 });
-    }
-    if (authChannel === 'mobile' && payload.customer_mobile !== (currentUser.customer_mobile || '')) {
-      return NextResponse.json({ success: false, message: 'This mobile number was verified via OTP login and cannot be changed.' }, { status: 400 });
-    }
-
-    const previousEmail = currentUser.email;
-
-    if (newEmail !== previousEmail.toLowerCase()) {
-      const existingUser = await queryOne<{ id: number }>(
-        'SELECT id FROM users WHERE LOWER(email) = ? AND id != ? LIMIT 1',
-        [newEmail, userId]
-      );
-      if (existingUser) {
-        return NextResponse.json({ success: false, message: 'Email address is already in use by another account.' }, { status: 400 });
-      }
-    }
-
-    await query(
-      'UPDATE users SET name = ?, email = ?, customer_mobile = ?, updated_at = NOW() WHERE id = ?',
-      [payload.name, newEmail, payload.customer_mobile, userId]
-    );
-
-    if (currentUser.role === 'manager' || currentUser.role === 'arena_admin') {
-      // Manager (per-turf) and arena_admin (platform-wide) are both rows in
-      // the same arena_admins table.
-      const names = payload.name.split(' ');
-      await query(
-        'UPDATE arena_admins SET email = ?, first_name = ?, last_name = ?, updated_at = NOW() WHERE id = ? OR LOWER(email) = ?',
-        [newEmail, names[0] || '', names.slice(1).join(' ') || '', userId, previousEmail.toLowerCase()]
-      );
-    } else if (currentUser.role === 'security') {
-      await query(
-        'UPDATE security_staff SET email = ?, updated_at = NOW() WHERE LOWER(email) = ?',
-        [newEmail, previousEmail.toLowerCase()]
-      );
+    if (!result.ok) {
+      return NextResponse.json({ success: false, message: result.message }, { status: result.status });
     }
 
     return NextResponse.json({
       success: true,
       message: 'Profile updated successfully',
-      data: { id: userId, name: payload.name, email: newEmail, customer_mobile: payload.customer_mobile, role: currentUser.role },
+      data: result.data,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

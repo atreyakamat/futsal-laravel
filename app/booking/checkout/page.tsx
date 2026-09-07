@@ -1,4 +1,4 @@
-import { getArenaById, getArenaPricingForDate, queryOne, query, getRefundPolicyConfig, formatRefundPolicyText, isPlaceholderEmail } from '@/lib/domain';
+import { getArenaById, getArenaPricingForDate, queryOne, query, getRefundPolicyConfig, formatRefundPolicyText, isPlaceholderEmail, isPlaceholderName } from '@/lib/domain';
 import { readGuestIdentifier, readAuthUserId, readAuthChannel } from '@/lib/session';
 import { mergeSlots, getDurationText } from '@/lib/slot-merge';
 import { getPayuConfig } from '@/lib/payment';
@@ -52,7 +52,7 @@ export default async function CheckoutPage({ searchParams }: Props) {
 
   const currentUser = await queryOne<{ name?: string; email?: string; customer_mobile?: string }>('SELECT name, email, customer_mobile FROM users WHERE id = ?', [userId]);
   if (currentUser) {
-    paramName = currentUser.name || paramName;
+    paramName = (currentUser.name && !isPlaceholderName(currentUser.name, currentUser.email)) ? currentUser.name : paramName;
     paramMobile = currentUser.customer_mobile || paramMobile;
     paramEmail = (currentUser.email && !isPlaceholderEmail(currentUser.email)) ? currentUser.email : paramEmail;
   }

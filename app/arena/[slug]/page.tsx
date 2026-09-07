@@ -1,4 +1,4 @@
-import { getArenaBySlug, getArenaPricing, queryOne, query, isPlaceholderEmail } from '@/lib/domain';
+import { getArenaBySlug, getArenaPricing, query } from '@/lib/domain';
 import BookingSystem from '@/components/BookingSystem';
 import { getOrCreateCsrfToken } from '@/lib/csrf';
 import { readAuthUserId } from '@/lib/session';
@@ -67,10 +67,6 @@ export default async function ArenaPage({ params, searchParams }: Props) {
   const csrfToken = await getOrCreateCsrfToken();
   
   const userId = await readAuthUserId();
-  let currentUser = null;
-  if (userId) {
-    currentUser = await queryOne<{ name?: string; email?: string; customer_mobile?: string }>('SELECT name, email, customer_mobile FROM users WHERE id = ?', [userId]);
-  }
 
   const [galleryImages, amenities, reviewAggregate, approvedReviews, canReview, existingReview] = await Promise.all([
     query<{ id: number; url: string }>('SELECT id, url FROM arena_images WHERE arena_id = ? ORDER BY sort_order ASC, id ASC', [arena.id]),
@@ -218,9 +214,6 @@ export default async function ArenaPage({ params, searchParams }: Props) {
           arenaSlug={arena.slug}
           initialDate={selectedDate}
           csrfToken={csrfToken}
-          initialCustomerName={currentUser?.name || ''}
-          initialCustomerMobile={currentUser?.customer_mobile || ''}
-          initialCustomerEmail={(currentUser?.email && !isPlaceholderEmail(currentUser.email)) ? currentUser.email : ''}
           isLoggedIn={!!userId}
         />
       </div>

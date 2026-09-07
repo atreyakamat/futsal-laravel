@@ -885,12 +885,31 @@ export function isPlaceholderEmail(email: string | null | undefined): boolean {
   return !!email && PLACEHOLDER_EMAIL_PATTERN.test(email);
 }
 
+/** True for a blank name, the generic `'Player'` default, or a name that's
+ * just the local part of the account's email — all signs no real name was
+ * ever entered (findOrCreateUserByIdentifier used to fabricate these; older
+ * accounts can still carry one). Never show this in the UI as a real name. */
+export function isPlaceholderName(name: string | null | undefined, email: string | null | undefined): boolean {
+  const trimmed = (name || '').trim();
+  if (!trimmed) return true;
+  if (trimmed.toLowerCase() === 'player') return true;
+  if (email && !isPlaceholderEmail(email)) {
+    const localPart = email.split('@')[0];
+    if (localPart && trimmed.toLowerCase() === localPart.toLowerCase()) return true;
+  }
+  return false;
+}
+
 export async function findOrCreateUserByIdentifier(identifier: string) {
   const existingUser = await findUserByIdentifier(identifier);
   if (existingUser) return existingUser;
 
   const isEmail = identifier.includes('@');
-  const name = isEmail ? identifier.split('@')[0] : 'Player';
+  // No fabricated name (used to be the email local-part / 'Player') — the
+  // customer is asked for their real name at checkout instead of being
+  // shown a wrong one. See isPlaceholderName() for how a blank name (and
+  // legacy fabricated ones) are treated at every read site.
+  const name = '';
   const email = isEmail ? identifier : `user-${crypto.randomUUID().slice(0, 8)}@agnelarena.com`;
   const mobile = isEmail ? null : identifier;
 
@@ -899,8 +918,81 @@ export async function findOrCreateUserByIdentifier(identifier: string) {
      VALUES (?, ?, ?, 'player', NOW(), NOW())`,
     [name, email, mobile]
   );
-  
+
   return findUserByIdentifier(identifier);
+}
+
+export type UpdateProfileResult =
+  | { ok: true; data: { id: number; name: string; email: string; customer_mobile: string; role: string } }
+  | { ok: false; status: number; message: string };
+
+/**
+ * Shared by the account profile page and checkout submission — both let a
+ * logged-in user correct their own name/email/mobile on the `users` row,
+ * subject to the same two rules: the field verified via OTP at login can't
+ * be changed (defense in depth — the UI already renders it read-only), and
+ * a new email can't collide with another account's. Also mirrors the change
+ * into arena_admins/security_staff for those roles, same as it always has.
+ */
+export async function updateCustomerProfile(
+  userId: number,
+  values: { name: string; email: string; customer_mobile: string },
+  authChannel: 'mobile' | 'email' | null
+): Promise<UpdateProfileResult> {
+  const newEmail = values.email.trim().toLowerCase();
+
+  const currentUser = await queryOne<{ id: number; role: string; email: string; customer_mobile: string | null }>(
+    'SELECT id, role, email, customer_mobile FROM users WHERE id = ? LIMIT 1',
+    [userId]
+  );
+
+  if (!currentUser) {
+    return { ok: false, status: 404, message: 'User not found' };
+  }
+
+  if (authChannel === 'email' && newEmail !== currentUser.email.toLowerCase()) {
+    return { ok: false, status: 400, message: 'This email was verified via OTP login and cannot be changed.' };
+  }
+  if (authChannel === 'mobile' && values.customer_mobile !== (currentUser.customer_mobile || '')) {
+    return { ok: false, status: 400, message: 'This mobile number was verified via OTP login and cannot be changed.' };
+  }
+
+  const previousEmail = currentUser.email;
+
+  if (newEmail !== previousEmail.toLowerCase()) {
+    const existingUser = await queryOne<{ id: number }>(
+      'SELECT id FROM users WHERE LOWER(email) = ? AND id != ? LIMIT 1',
+      [newEmail, userId]
+    );
+    if (existingUser) {
+      return { ok: false, status: 400, message: 'Email address is already in use by another account.' };
+    }
+  }
+
+  await query(
+    'UPDATE users SET name = ?, email = ?, customer_mobile = ?, updated_at = NOW() WHERE id = ?',
+    [values.name, newEmail, values.customer_mobile, userId]
+  );
+
+  if (currentUser.role === 'manager' || currentUser.role === 'arena_admin') {
+    // Manager (per-turf) and arena_admin (platform-wide) are both rows in
+    // the same arena_admins table.
+    const names = values.name.split(' ');
+    await query(
+      'UPDATE arena_admins SET email = ?, first_name = ?, last_name = ?, updated_at = NOW() WHERE id = ? OR LOWER(email) = ?',
+      [newEmail, names[0] || '', names.slice(1).join(' ') || '', userId, previousEmail.toLowerCase()]
+    );
+  } else if (currentUser.role === 'security') {
+    await query(
+      'UPDATE security_staff SET email = ?, updated_at = NOW() WHERE LOWER(email) = ?',
+      [newEmail, previousEmail.toLowerCase()]
+    );
+  }
+
+  return {
+    ok: true,
+    data: { id: userId, name: values.name, email: newEmail, customer_mobile: values.customer_mobile, role: currentUser.role },
+  };
 }
 
 export async function getSecurityBookings(ticketOrRef: string) {

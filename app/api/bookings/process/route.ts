@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { createBookingBatch, releaseLocks } from '@/lib/domain';
-import { getCookieValueFromRequest, getWritableSessionId, persistSessionCookie, AUTH_COOKIE, signValue, readAuthUserId, getCookieOptions, readAuthRole, PLAYER_AUTH_MAX_AGE } from '@/lib/session';
+import { createBookingBatch, releaseLocks, updateCustomerProfile } from '@/lib/domain';
+import { getCookieValueFromRequest, getWritableSessionId, persistSessionCookie, AUTH_COOKIE, signValue, readAuthUserId, getCookieOptions, readAuthRole, readAuthChannel, PLAYER_AUTH_MAX_AGE } from '@/lib/session';
 import { getArenaEntryMode, getArenaPaymentMode } from '@/lib/admin';
 import { sendTicketEmail } from '@/lib/ticket';
 import { verifyCsrfMiddleware } from '@/lib/csrf-middleware';
@@ -120,6 +120,27 @@ export async function POST(request: Request) {
   }
 
   await releaseLocks(sessionId, payload.arena_id, payload.date, payload.slots);
+
+  // Save a corrected name/mobile/email back onto the customer's own account
+  // so it's remembered for their next booking — never a staff-created
+  // booking (no real customer session to update), and never lets a booking
+  // that already succeeded fail because the sync hit the OTP-lock rule or
+  // an email conflict (updateCustomerProfile reports those, it doesn't throw).
+  if (!isStaffRole && authUserId) {
+    try {
+      const authChannel = await readAuthChannel();
+      const profileResult = await updateCustomerProfile(
+        authUserId,
+        { name: payload.customer_name, email: payload.customer_email, customer_mobile: payload.customer_mobile },
+        authChannel
+      );
+      if (!profileResult.ok) {
+        console.warn('[Booking Process] Customer profile sync skipped:', profileResult.message);
+      }
+    } catch (err) {
+      console.error('[Booking Process] Failed to sync customer profile:', err);
+    }
+  }
 
   if (entryMode === 'free' || offlinePayment) {
     const proto = request.headers.get('x-forwarded-proto') || 'http';

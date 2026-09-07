@@ -86,9 +86,9 @@ export default async function RootLayout({
     csrfToken = await getOrCreateCsrfToken();
 
     if (userId && role !== 'super_admin') {
-      const { findUserById } = await import('@/lib/domain');
+      const { findUserById, isPlaceholderName } = await import('@/lib/domain');
       const user = await findUserById(userId);
-      if (user) {
+      if (user && !isPlaceholderName(user.name, user.email)) {
         userName = user.name;
       }
     }

@@ -47,18 +47,12 @@ export default function BookingSystem({
   arenaSlug,
   initialDate,
   csrfToken,
-  initialCustomerName = '',
-  initialCustomerMobile = '',
-  initialCustomerEmail = '',
   isLoggedIn,
 }: {
   arenaId: number;
   arenaSlug: string;
   initialDate: string;
   csrfToken: string;
-  initialCustomerName?: string;
-  initialCustomerMobile?: string;
-  initialCustomerEmail?: string;
   isLoggedIn: boolean;
 }) {
   // 1. All State declarations at the top
@@ -79,11 +73,6 @@ export default function BookingSystem({
   const [processing, setProcessing] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
-
-  // Customer details state for quick inline mobile checkout
-  const [customerName, setCustomerName] = useState(initialCustomerName);
-  const [customerMobile, setCustomerMobile] = useState(initialCustomerMobile);
-  const [customerEmail, setCustomerEmail] = useState(initialCustomerEmail);
 
   const customerDetailsRef = useRef<HTMLDivElement>(null);
   const dateInputRef = useRef<HTMLInputElement>(null);
@@ -301,10 +290,7 @@ export default function BookingSystem({
           router.push(`/login?next=${encodeURIComponent(`/arena/${arenaSlug}?date=${date}`)}`);
           return;
         }
-        let checkoutUrl = `/booking/checkout?arena_id=${arenaId}&date=${date}&slots=${encodeURIComponent(JSON.stringify(slotsArr))}`;
-        if (customerName) checkoutUrl += `&name=${encodeURIComponent(customerName)}`;
-        if (customerMobile) checkoutUrl += `&mobile=${encodeURIComponent(customerMobile)}`;
-        if (customerEmail) checkoutUrl += `&email=${encodeURIComponent(customerEmail)}`;
+        const checkoutUrl = `/booking/checkout?arena_id=${arenaId}&date=${date}&slots=${encodeURIComponent(JSON.stringify(slotsArr))}`;
         router.push(checkoutUrl);
       } else {
         alert('Some selected slots were just taken. Refreshing...');
@@ -638,11 +624,13 @@ export default function BookingSystem({
             )}
           </div>
 
-          {/* Step 3: Customer Details Section — rendered when slots are selected,
-              but the actual name/mobile/email fields only once logged in. A
-              guest used to see (and could fill in) these fields before ever
-              proving who they are, so nothing typed here was tied to a
-              verified identity — see the login-gated prompt below instead. */}
+          {/* Step 3: Login gate — shown once slots are selected but before
+              login. Name/mobile/email are collected exactly once, at
+              checkout (not here) — see the booking-and-payment spec's
+              "Customer contact details are collected exactly once per
+              booking" requirement. Once logged in, the mobile sticky bar /
+              desktop sidebar CTA below take the customer straight to
+              checkout with no intermediate step. */}
           {selectedSlots.length > 0 && !isLoggedIn && (
             <div ref={customerDetailsRef} id="customer-details-section" className="pt-6 border-t border-white/10 transition-all duration-300 animate-fadeIn">
               <div className="bg-white/[0.03] border border-primary/20 rounded-[1.5rem] sm:rounded-[2.5rem] !p-6 sm:!p-8 space-y-4 text-center">
@@ -655,93 +643,6 @@ export default function BookingSystem({
                 <p className="text-xs sm:text-sm text-white/50 max-w-md mx-auto">
                   Your slot is held. Log in to enter your details and complete this booking — your name, mobile, and email are only collected once we know it&apos;s really you.
                 </p>
-              </div>
-            </div>
-          )}
-
-          {selectedSlots.length > 0 && isLoggedIn && (
-            <div ref={customerDetailsRef} id="customer-details-section" className="pt-6 border-t border-white/10 transition-all duration-300 animate-fadeIn">
-              <div className="flex items-center justify-between mb-8">
-                <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight flex items-center gap-3 sm:gap-4 italic">
-                  <span className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-inner">
-                    <span className="material-symbols-outlined text-lg sm:text-xl">person</span>
-                  </span>
-                  Customer <span className="text-primary text-stroke">Details</span>
-                </h2>
-                <span className="pill-status">
-                  <span className="material-symbols-outlined text-xs">lock</span>
-                  Secure Lock
-                </span>
-              </div>
-
-              {/* No .glass-card here (backdrop-blur-xl) — this section
-                  sits directly below an orange-selected slot card in
-                  normal scroll flow on mobile, and a backdrop-blur layer
-                  scrolling past a solid-color neighbor is exactly what
-                  flashes as a flat/empty colored bar during momentum
-                  scroll (same root cause as the checkout page and mobile
-                  sticky bar fixes). Same visual weight without the blur. */}
-              <div className="bg-white/[0.03] border border-white/10 rounded-[1.5rem] sm:rounded-[2.5rem] !p-6 sm:!p-8 space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label htmlFor="booking_customer_name" className="label-classic">Full Name</label>
-                    <div className="relative group">
-                      <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-primary transition-colors text-lg">
-                        person
-                      </span>
-                      <input
-                        id="booking_customer_name"
-                        type="text"
-                        value={customerName}
-                        onChange={(e) => setCustomerName(e.target.value)}
-                        placeholder="John Doe"
-                        className="input-field pl-11 !py-3.5 text-sm"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label htmlFor="booking_customer_mobile" className="label-classic">Mobile Number</label>
-                    <div className="relative group">
-                      <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-primary transition-colors text-lg">
-                        phone_iphone
-                      </span>
-                      <input
-                        id="booking_customer_mobile"
-                        type="tel"
-                        value={customerMobile}
-                        onChange={(e) => setCustomerMobile(e.target.value)}
-                        placeholder="+91 98765 43210"
-                        className="input-field pl-11 !py-3.5 text-sm"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label htmlFor="booking_customer_email" className="label-classic">
-                    Email Address
-                  </label>
-                  <div className="relative group">
-                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-primary transition-colors text-lg">
-                      mail
-                    </span>
-                    <input
-                      id="booking_customer_email"
-                      type="email"
-                      value={customerEmail}
-                      onChange={(e) => setCustomerEmail(e.target.value)}
-                      placeholder="john@example.com"
-                      className="input-field pl-11 !py-3.5 text-sm"
-                    />
-                  </div>
-                </div>
-                {/* No inline proceed button here — the desktop sidebar has
-                    its own always-visible one, and mobile has the fixed
-                    sticky action bar above; either way this section is only
-                    ever rendered while one of those two is already showing
-                    the same action, so a third copy here was just a
-                    duplicate CTA. */}
               </div>
             </div>
           )}
