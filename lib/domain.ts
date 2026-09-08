@@ -520,14 +520,30 @@ export async function createBookingBatch(params: {
         const updates: string[] = [];
         const paramsForUpdate: any[] = [];
 
-        // Name: update if provided and non-empty and different
-        if (params.customerName && params.customerName.trim() !== '' && params.customerName !== currentUser.name) {
+        // Name: only fill in if the account doesn't already have a real name on
+        // file. An existing real name must never be silently overwritten by
+        // whatever was typed into a later booking's checkout form (e.g.
+        // someone booking a slot on a friend's behalf types the friend's
+        // name — that must not rename the account holder).
+        if (
+          params.customerName &&
+          params.customerName.trim() !== '' &&
+          params.customerName !== currentUser.name &&
+          isPlaceholderName(currentUser.name, currentUser.email)
+        ) {
           updates.push('name = ?');
           paramsForUpdate.push(params.customerName);
         }
 
-        // Mobile: update if provided and non-empty and different
-        if (params.customerMobile && params.customerMobile.trim() !== '' && params.customerMobile !== currentUser.customer_mobile) {
+        // Mobile: only fill in if the account has none on file yet. Same
+        // reasoning as name — a booking made under a different mobile must
+        // not silently reassign the account's registered number.
+        if (
+          params.customerMobile &&
+          params.customerMobile.trim() !== '' &&
+          params.customerMobile !== currentUser.customer_mobile &&
+          !currentUser.customer_mobile
+        ) {
           updates.push('customer_mobile = ?');
           paramsForUpdate.push(params.customerMobile);
         }
