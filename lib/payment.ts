@@ -103,7 +103,17 @@ export function verifyPayuResponseHash(params: {
     hashString = `${params.additionalCharges}|${hashString}`;
   }
   const expectedHash = crypto.createHash('sha512').update(hashString).digest('hex').toLowerCase();
-  return expectedHash === params.hash.toLowerCase();
+  const actualHash = params.hash.toLowerCase();
+
+  // Constant-time comparison — this gates whether a payment is trusted, so
+  // it shouldn't leak how many leading bytes matched via response timing.
+  // timingSafeEqual throws on mismatched-length buffers rather than
+  // returning false, but the digest length itself isn't secret (SHA-512 hex
+  // is always 128 chars), so a plain length check up front is safe.
+  const expectedBuf = Buffer.from(expectedHash, 'utf8');
+  const actualBuf = Buffer.from(actualHash, 'utf8');
+  if (expectedBuf.length !== actualBuf.length) return false;
+  return crypto.timingSafeEqual(expectedBuf, actualBuf);
 }
 
 export async function verifyPaymentWithPayu(txnid: string) {

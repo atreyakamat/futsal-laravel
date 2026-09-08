@@ -43,5 +43,16 @@ describe('Payment Callback & Signature Validation', () => {
       hash: undefined,
     });
     expect(isMissing).toBe(false);
+
+    // Verify a same-length but wrong-content hash — exercises the
+    // timing-safe comparison path (crypto.timingSafeEqual) rather than the
+    // length-mismatch short-circuit the "modified" case above hits.
+    const flippedLastChar = validHash.slice(0, -1) + (validHash.at(-1) === '0' ? '1' : '0');
+    const isFlipped = verifyPayuResponseHash({
+      ...params,
+      hash: flippedLastChar,
+    });
+    expect(isFlipped).toBe(false);
+    expect(flippedLastChar.length).toBe(validHash.length);
   });
 });

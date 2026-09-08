@@ -22,6 +22,7 @@ export async function ensureSchemaColumns() {
     await dbQuery(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_reminder_sent_at TIMESTAMP NULL`);
     await dbQuery(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_gstin TEXT NULL`);
     await dbQuery(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_company_name TEXT NULL`);
+    await dbQuery(`ALTER TABLE slot_locks ADD COLUMN IF NOT EXISTS client_ip TEXT NULL`);
   } catch {
     // Columns already exist or handled
   }
@@ -286,13 +287,32 @@ export async function getMyLockedSlots(arenaId: number, bookingDate: string, ses
   return rows.map((row) => row.time_slot);
 }
 
-export async function lockSlots(arenaId: number, bookingDate: string, slots: string[], sessionId: string) {
+// A guest can lock slots with no login and a freely client-chosen
+// session_id, so nothing stops one actor from minting a new "session" per
+// request to dodge a per-session cap. This bounds how many slots a single
+// client IP may hold locked at once instead — generous for any real
+// booking, but bounds how much of an arena's availability one actor can
+// occupy. See openspec change fix-payment-replay-and-slot-lock-abuse.
+export const MAX_ACTIVE_LOCKS_PER_IP = 30;
+
+export async function lockSlots(arenaId: number, bookingDate: string, slots: string[], sessionId: string, clientIp: string | null = null) {
+  await ensureSchemaColumns();
   await expirePendingBookings();
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
   const locked: string[] = [];
   const failed: string[] = [];
 
   await transaction(async (connection) => {
+    let remainingIpBudget = Infinity;
+    if (clientIp) {
+      const [activeCountRows] = await connection.execute<{ count: string }>(
+        `SELECT COUNT(*) AS count FROM slot_locks WHERE client_ip = ? AND expires_at > NOW()`,
+        [clientIp]
+      );
+      const activeCount = Number(activeCountRows[0]?.count ?? 0);
+      remainingIpBudget = MAX_ACTIVE_LOCKS_PER_IP - activeCount;
+    }
+
     for (const slot of slots) {
       // A slot whose own start time has already passed can't be secured —
       // checked here (not just reflected in /api/slots/status) since this is
@@ -332,21 +352,33 @@ export async function lockSlots(arenaId: number, bookingDate: string, slots: str
         continue;
       }
 
+      // Renewing a lock this same session already holds doesn't grow this
+      // IP's total footprint — only a brand-new grant (a fresh row, or
+      // taking over one that expired/belonged to someone else) does.
+      const isNewGrantForThisIp = !existingLock || existingLock.session_id !== sessionId;
+      if (isNewGrantForThisIp && remainingIpBudget <= 0) {
+        failed.push(slot);
+        continue;
+      }
+
       if (existingLock) {
         await connection.execute(
           `UPDATE slot_locks
-              SET session_id = ?, locked_at = NOW(), expires_at = ?
+              SET session_id = ?, locked_at = NOW(), expires_at = ?, client_ip = ?
             WHERE id = ?`,
-          [sessionId, expiresAt, existingLock.id]
+          [sessionId, expiresAt, clientIp, existingLock.id]
         );
       } else {
         await connection.execute(
-          `INSERT INTO slot_locks (arena_id, booking_date, time_slot, session_id, locked_at, expires_at)
-           VALUES (?, ?, ?, ?, NOW(), ?)`,
-          [arenaId, bookingDate, slot, sessionId, expiresAt]
+          `INSERT INTO slot_locks (arena_id, booking_date, time_slot, session_id, locked_at, expires_at, client_ip)
+           VALUES (?, ?, ?, ?, NOW(), ?, ?)`,
+          [arenaId, bookingDate, slot, sessionId, expiresAt, clientIp]
         );
       }
 
+      if (isNewGrantForThisIp) {
+        remainingIpBudget--;
+      }
       locked.push(slot);
     }
   });
@@ -594,6 +626,17 @@ export async function createBookingBatch(params: {
   return { bookingRef, created, userId: effectiveUserId };
 }
 
+/**
+ * Confirms a booking's payment — but only while it's still `pending`. Without
+ * this guard, a PayU success callback replayed (or duplicated, or simply
+ * delayed) after the booking was independently cancelled would silently flip
+ * it back to `confirmed`, letting a customer keep both a refund and a live
+ * booking. Returns null both when the booking doesn't exist and when it does
+ * but is no longer `pending` — callers that need to tell those apart should
+ * check existence separately first (see app/api/payment/callback/route.ts,
+ * which re-checks actual status on a null return to handle the legitimate
+ * race of two near-simultaneous success deliveries).
+ */
 export async function confirmPayment(bookingRef: string, mihpayid: string | null) {
   const bookings = await getBookingsByRef(bookingRef);
 
@@ -601,14 +644,21 @@ export async function confirmPayment(bookingRef: string, mihpayid: string | null
     return null;
   }
 
+  let confirmedRowCount = 0;
   await transaction(async (connection) => {
-    await connection.execute(
+    const [result] = await connection.execute(
       `UPDATE bookings
           SET payment_status = 'confirmed', payu_mihpayid = ?, updated_at = NOW()
-        WHERE booking_ref = ?`,
+        WHERE booking_ref = ? AND payment_status = 'pending'
+        RETURNING id`,
       [mihpayid, bookingRef]
     );
+    confirmedRowCount = result.length;
   });
+
+  if (confirmedRowCount === 0) {
+    return null;
+  }
 
   return bookings[0];
 }

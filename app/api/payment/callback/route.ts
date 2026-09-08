@@ -59,13 +59,21 @@ export async function POST(request: Request) {
       console.error('Failed to log payment audit:', logError);
     }
 
-    // Callback idempotency checking
+    // Callback idempotency checking — 'cancelled' is included here (not just
+    // confirmed/failed) so a replayed, duplicated, or simply delayed success
+    // callback can never resurrect a booking the customer already cancelled
+    // (and may already have been refunded for). See confirmPayment()'s own
+    // WHERE-clause guard for the actual enforcement; this is the fast path
+    // that also avoids an unnecessary verifyPaymentWithPayu() round-trip.
     const currentStatus = bookings[0].payment_status;
     if (currentStatus === 'confirmed') {
       return NextResponse.redirect(new URL(`/booking/success/${bookingRef}`, baseUrl), 303);
     }
     if (currentStatus === 'failed') {
       return NextResponse.redirect(new URL(`/booking/payment-failed/${bookingRef}`, baseUrl), 303);
+    }
+    if (currentStatus === 'cancelled') {
+      return NextResponse.redirect(new URL(`/dashboard`, baseUrl), 303);
     }
 
     if (status === 'success') {
@@ -83,6 +91,21 @@ export async function POST(request: Request) {
 
       const booking = await confirmPayment(bookingRef, mihpayid || null);
       if (!booking) {
+        // confirmPayment() no-ops (returns null) when the booking is no
+        // longer 'pending' — could be this same race resolved by a
+        // concurrent callback delivery in the meantime (already confirmed,
+        // a real success — not a failure to report), or the booking having
+        // moved to 'cancelled'/'failed' between our read above and the
+        // update. Re-check the actual current state rather than assuming
+        // failure either way.
+        const latest = await getBookingsByRef(bookingRef);
+        const latestStatus = latest?.[0]?.payment_status;
+        if (latestStatus === 'confirmed') {
+          return NextResponse.redirect(new URL(`/booking/success/${bookingRef}`, baseUrl), 303);
+        }
+        if (latestStatus === 'cancelled') {
+          return NextResponse.redirect(new URL(`/dashboard`, baseUrl), 303);
+        }
         return NextResponse.redirect(new URL(`/booking/payment-failed/${bookingRef}`, baseUrl), 303);
       }
 

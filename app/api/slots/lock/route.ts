@@ -16,7 +16,10 @@ export async function POST(request: Request) {
 
   const payload = bodySchema.parse(await request.json());
   const sessionId = getWritableSessionId(request);
-  const result = await lockSlots(payload.arena_id, payload.date, payload.slots, sessionId);
+  // null (not a placeholder string) when absent — an 'unknown' bucket shared
+  // across every such request would count them all toward one shared cap.
+  const clientIp = request.headers.get('x-forwarded-for') || null;
+  const result = await lockSlots(payload.arena_id, payload.date, payload.slots, sessionId, clientIp);
 
   const response = NextResponse.json({
     success: result?.failed?.length === 0,
