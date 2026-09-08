@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 type Slot = {
   time_slot: string;
   price: number | string;
-  status: 'available' | 'booked' | 'locked' | 'selected' | 'blocked';
+  status: 'available' | 'booked' | 'locked' | 'selected' | 'blocked' | 'past';
 };
 
 const DAYS_VISIBLE = 4;
@@ -493,7 +493,10 @@ export default function BookingSystem({
                         const isSelected = selectedSlots.some((s) => s.time_slot === slot.time_slot);
                         const isBookedOrBlocked = slot.status === 'booked' || slot.status === 'blocked';
                         const isLocked = slot.status === 'locked';
-                        const isClickable = !isBookedOrBlocked && !isLocked;
+                        // Elapsed, not booked by anyone — kept visually distinct from
+                        // "Booked" (red) so a customer doesn't think someone else took it.
+                        const isPast = slot.status === 'past';
+                        const isClickable = !isBookedOrBlocked && !isLocked && !isPast;
 
                         return (
                           <button
@@ -506,15 +509,17 @@ export default function BookingSystem({
                                 ? 'cursor-not-allowed bg-red-500/[0.04] border-red-500/10 text-red-400/50'
                                 : isLocked
                                   ? 'cursor-not-allowed bg-amber-500/[0.04] border-amber-500/10 text-amber-400/50'
-                                  : isSelected
-                                    ? 'border-primary bg-primary/10 text-primary shadow-[0_0_15px_rgba(13,242,32,0.15)]'
-                                    : 'bg-primary/5 border-primary/20 hover:border-primary/50 hover:bg-primary/10 text-primary/90'
+                                  : isPast
+                                    ? 'cursor-not-allowed bg-white/[0.04] border-white/10 text-white/30'
+                                    : isSelected
+                                      ? 'border-primary bg-primary/10 text-primary shadow-[0_0_15px_rgba(13,242,32,0.15)]'
+                                      : 'bg-primary/5 border-primary/20 hover:border-primary/50 hover:bg-primary/10 text-primary/90'
                             }`}
                           >
                             <span className="uppercase italic">{slot.time_slot}</span>
                             <span className="flex items-center gap-1.5">
                               {isSelected && <span className="material-symbols-outlined text-base">check_circle</span>}
-                              {isBookedOrBlocked ? 'Booked' : isLocked ? 'Locked' : `Available · ₹${slot.price}`}
+                              {isBookedOrBlocked ? 'Booked' : isLocked ? 'Locked' : isPast ? 'Unavailable' : `Available · ₹${slot.price}`}
                             </span>
                           </button>
                         );
@@ -580,7 +585,8 @@ export default function BookingSystem({
 
                               const isBookedOrBlocked = slot.status === 'booked' || slot.status === 'blocked';
                               const isLocked = slot.status === 'locked';
-                              const isClickable = !isBookedOrBlocked && !isLocked;
+                              const isPast = slot.status === 'past';
+                              const isClickable = !isBookedOrBlocked && !isLocked && !isPast;
 
                               return (
                                 <td key={d} className="p-1.5 text-center border-l border-white/5">
@@ -593,9 +599,11 @@ export default function BookingSystem({
                                         ? 'cursor-not-allowed bg-red-500/[0.04] border-red-500/10 text-red-400/50'
                                         : isLocked
                                           ? 'cursor-not-allowed bg-amber-500/[0.04] border-amber-500/10 text-amber-400/50'
-                                          : isSelected
-                                            ? 'border-primary bg-primary/10 text-primary shadow-[0_0_15px_rgba(13,242,32,0.15)]'
-                                            : 'bg-primary/5 border-primary/20 hover:border-primary/50 hover:bg-primary/10 text-primary/90'
+                                          : isPast
+                                            ? 'cursor-not-allowed bg-white/[0.04] border-white/10 text-white/30'
+                                            : isSelected
+                                              ? 'border-primary bg-primary/10 text-primary shadow-[0_0_15px_rgba(13,242,32,0.15)]'
+                                              : 'bg-primary/5 border-primary/20 hover:border-primary/50 hover:bg-primary/10 text-primary/90'
                                     }`}
                                   >
                                     {isSelected ? (
@@ -607,6 +615,8 @@ export default function BookingSystem({
                                       'Booked'
                                     ) : isLocked ? (
                                       'Locked'
+                                    ) : isPast ? (
+                                      'Unavailable'
                                     ) : (
                                       `₹${slot.price}`
                                     )}

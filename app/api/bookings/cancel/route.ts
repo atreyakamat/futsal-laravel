@@ -109,6 +109,22 @@ export async function POST(req: NextRequest) {
     const wasVenuePaymentCollected = isOfflineBooking && firstBooking.venue_payment_status === 'PAID';
     const noRefundDue = !refundsEnabledForArena || !eligibility.refundEligible || (isOfflineBooking && !wasVenuePaymentCollected);
 
+    // Which specific reason produced noRefundDue — persisted (as a
+    // cancellation_reason prefix computeRefundLifecycleStatus parses back,
+    // same convention as its existing 'REJECTED: ...' prefix) so the
+    // customer-facing status shown later matches this outcome instead of a
+    // single generic "cancelled" reason for every no-refund case. Order
+    // matches the response message branching below.
+    const noRefundReasonCode = !noRefundDue
+      ? null
+      : isOfflineBooking && !wasVenuePaymentCollected
+        ? 'NO_REFUND: OFFLINE_UNCOLLECTED'
+        : !refundsEnabledForArena
+          ? 'NO_REFUND: ARENA_OPT_OUT'
+          : eligibility.code === 'NO_REFUND_MONTH_EXPIRED'
+            ? 'NO_REFUND: MONTH_EXPIRED'
+            : 'NO_REFUND: LATE_CUTOFF';
+
     // Cancelling frees the slot immediately (payment_status -> 'cancelled', so
     // it drops out of the active-slot query) — the actual refund still
     // requires a super admin to process it via /api/fg-admin/super-admin/refund,
@@ -118,13 +134,13 @@ export async function POST(req: NextRequest) {
       `UPDATE bookings
           SET payment_status = 'cancelled',
               cancellation_requested = TRUE,
-              cancellation_reason = 'User Requested',
+              cancellation_reason = ?,
               refund_amount = ?,
               refund_status = ?,
               updated_at = NOW()
         WHERE booking_ref = ? AND user_id = ? AND payment_status = 'confirmed'
         RETURNING id`,
-      [noRefundDue ? 0 : refundAmount, noRefundDue ? 'NOT_APPLICABLE' : 'PENDING_REVIEW', ref, userId]
+      [noRefundReasonCode ?? 'User Requested', noRefundDue ? 0 : refundAmount, noRefundDue ? 'NOT_APPLICABLE' : 'PENDING_REVIEW', ref, userId]
     );
 
     if (!updatedRows || updatedRows.length === 0) {

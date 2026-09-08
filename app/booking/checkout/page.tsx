@@ -147,8 +147,10 @@ export default async function CheckoutPage({ searchParams }: Props) {
       )}
 
       <div className="grid lg:grid-cols-12 gap-8 lg:gap-16">
-        {/* Checkout Form — Order 1 on mobile, Order 2 on desktop */}
-        <div className="order-1 lg:order-2 lg:col-span-7 space-y-6 sm:space-y-8">
+        {/* Checkout Form — Order 2 on mobile (below the slots/reservation
+            summary, so the customer sees what they're paying for before the
+            Confirm & Pay button), Order 2 on desktop (right column) */}
+        <div className="order-2 lg:order-2 lg:col-span-7 space-y-6 sm:space-y-8">
           {/* Disclaimers render before the form/pay button now — the
               customer should read the lock-expiry and refund terms before
               they commit, not scroll past a "CONFIRM & PAY" button to find
@@ -255,8 +257,9 @@ export default async function CheckoutPage({ searchParams }: Props) {
           </div>
         </div>
 
-        {/* Booking Details Summary — Order 2 on mobile, Order 1 on desktop */}
-        <div className="order-2 lg:order-1 lg:col-span-5 space-y-6 sm:space-y-8">
+        {/* Booking Details Summary — Order 1 on mobile (shown before the
+            Confirm & Pay button), Order 1 on desktop (left column) */}
+        <div className="order-1 lg:order-1 lg:col-span-5 space-y-6 sm:space-y-8">
           <div className="glass-card relative overflow-hidden !p-6 sm:!p-10">
             <div className="absolute top-0 right-0 p-10 opacity-[0.03] hidden sm:block">
               <span className="material-symbols-outlined text-[120px]">receipt_long</span>

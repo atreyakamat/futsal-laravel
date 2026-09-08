@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { getArenaById, getArenaPricingForDate, getBookedSlots, getLockedSlots, getMyLockedSlots, getMaxBookableDate, query } from '@/lib/domain';
 import { getCookieValueFromRequest, getWritableSessionId, persistSessionCookie, SESSION_COOKIE } from '@/lib/session';
+import { getBookingTimeRange } from '@/lib/refund-policy';
 
 export async function GET(request: NextRequest) {
   const arenaId = Number(request.nextUrl.searchParams.get('arena_id'));
@@ -63,6 +64,7 @@ export async function GET(request: NextRequest) {
     )
   ).map((r) => r.time_slot);
 
+  const now = Date.now();
   const slots = pricing.map((price) => {
     const status = bookedSlots.includes(price.time_slot)
       ? 'booked'
@@ -72,7 +74,12 @@ export async function GET(request: NextRequest) {
           ? 'locked'
           : lockedByMe.includes(price.time_slot)
             ? 'selected'
-            : 'available';
+            // A slot nobody booked/locked/blocked but whose own start time
+            // has already elapsed is still not bookable — checked last so a
+            // more specific state (booked/blocked/locked) always wins.
+            : getBookingTimeRange(bookingDate, [price.time_slot]).bookingStart.getTime() <= now
+              ? 'past'
+              : 'available';
 
     return {
       time_slot: price.time_slot,

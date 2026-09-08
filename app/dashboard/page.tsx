@@ -148,6 +148,8 @@ export default async function DashboardPage() {
                         ? 'border-primary/20 text-primary'
                         : firstBooking.payment_status === 'pending'
                         ? 'border-yellow-500/20 text-yellow-500'
+                        : firstBooking.payment_status === 'cancelled'
+                        ? 'border-white/10 text-white/40'
                         : 'border-red-500/20 text-red-500'
                     }`}
                   >
@@ -186,12 +188,17 @@ export default async function DashboardPage() {
                   COMPLETE PAYMENT
                   <span className="material-symbols-outlined text-xl">arrow_forward</span>
                 </Link>
-              ) : (
+              ) : firstBooking.payment_status === 'cancelled' ? (
+                <div className="w-full md:w-auto mt-8 px-6 py-3 rounded-xl border border-white/10 text-white/40 text-[10px] font-black uppercase tracking-widest text-center flex items-center justify-center gap-2">
+                  <span className="material-symbols-outlined text-sm">event_busy</span>
+                  CANCELLED
+                </div>
+              ) : firstBooking.payment_status === 'failed' ? (
                 <div className="w-full md:w-auto mt-8 px-6 py-3 rounded-xl border border-red-500/20 text-red-400 text-[10px] font-black uppercase tracking-widest text-center flex items-center justify-center gap-2">
                   <span className="material-symbols-outlined text-sm">cancel</span>
                   PAYMENT FAILED
                 </div>
-              )}
+              ) : null}
 
               <CancelBookingBtn
                 bookingRef={ref}

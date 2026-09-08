@@ -224,14 +224,28 @@ export function computeRefundLifecycleStatus(booking: {
     };
   }
 
-  // 4b. NOT_APPLICABLE — pay-at-venue booking where nothing was ever collected,
-  // so there is no refund to review or process.
+  // 4b. NOT_APPLICABLE — a cancellation that carries no refund, for one of
+  // several distinct reasons (see app/api/bookings/cancel/route.ts, which
+  // persists the specific one as a 'NO_REFUND: ...' cancellation_reason
+  // prefix). Fall back to the original pay-at-venue wording for a booking
+  // cancelled before this reason-code convention existed.
   if (explicitStatus === 'NOT_APPLICABLE') {
+    const noRefundReasonMessages: Record<string, string> = {
+      OFFLINE_UNCOLLECTED: 'This was a pay-at-venue booking with no payment collected, so no refund applies.',
+      ARENA_OPT_OUT: 'No refund is issued for cancellations at this arena.',
+      MONTH_EXPIRED: 'The refund window for this booking (through the end of the month it was paid in) had already closed when it was cancelled, so no refund applies.',
+      LATE_CUTOFF: 'This booking was cancelled too close to its start time to qualify for a refund.',
+    };
+    const noRefundReasonMatch = /^NO_REFUND:\s*(\w+)/.exec(reason);
+    const customerMessage =
+      (noRefundReasonMatch && noRefundReasonMessages[noRefundReasonMatch[1]]) ||
+      noRefundReasonMessages.OFFLINE_UNCOLLECTED;
+
     return {
       status: 'NOT_APPLICABLE',
       statusText: 'NO REFUND DUE',
       badgeClass: 'border-white/20 text-white/50 bg-white/5',
-      customerMessage: 'This was a pay-at-venue booking with no payment collected, so no refund applies.',
+      customerMessage,
       isRefunded: false,
       isRejected: false,
       isPending: false,

@@ -294,6 +294,14 @@ export async function lockSlots(arenaId: number, bookingDate: string, slots: str
 
   await transaction(async (connection) => {
     for (const slot of slots) {
+      // A slot whose own start time has already passed can't be secured —
+      // checked here (not just reflected in /api/slots/status) since this is
+      // the actual server-side gate a direct request would have to pass.
+      if (getBookingTimeRange(bookingDate, [slot]).bookingStart.getTime() <= Date.now()) {
+        failed.push(slot);
+        continue;
+      }
+
       const [bookedRows] = await connection.execute(
         `SELECT id FROM bookings
           WHERE arena_id = ?
@@ -423,6 +431,17 @@ export async function createBookingBatch(params: {
   const maxBookableDate = await getMaxBookableDate();
   if (params.bookingDate > maxBookableDate) {
     throw new Error(`Bookings are only open up to ${maxBookableDate}.`);
+  }
+
+  // Same reasoning, lower bound: a slot whose own start time has already
+  // passed can't be booked. Skipped for adminCreated — staff sometimes
+  // record a walk-in/pay-at-venue booking for a slot just after it started.
+  if (!params.adminCreated) {
+    for (const slot of params.slots) {
+      if (getBookingTimeRange(params.bookingDate, [slot]).bookingStart.getTime() <= Date.now()) {
+        throw new Error('Cannot book a slot that has already started.');
+      }
+    }
   }
 
   const bookingRef = `REF-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
