@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getBookingsByRef } from '@/lib/domain';
+import { getBookingsByRef, query } from '@/lib/domain';
 import { getPayuConfig, generatePayuHash, getEnforcePaymethod } from '@/lib/payment';
 import { readRequestOrigin } from '@/lib/session';
 
@@ -47,6 +47,35 @@ export async function POST(request: Request) {
     };
 
     const hash = generatePayuHash(payuParams);
+
+    // Log the outgoing request BEFORE the client redirects to PayU — see
+    // the matching comment in app/payment/checkout/[ref]/page.tsx for why
+    // (a request PayU rejects before processing, e.g. a gateway-level
+    // "Too many Requests" block, otherwise leaves zero trace on our side).
+    // Never includes PAYU_MERCHANT_SALT — that's not part of `payuParams`.
+    try {
+      await query(
+        `INSERT INTO payment_audit_logs (booking_ref, status, amount, mihpayid, payload, created_at)
+         VALUES (?, 'initiated', ?, NULL, ?, NOW())`,
+        [
+          payload.booking_ref,
+          totalAmount,
+          JSON.stringify({
+            gateway_url: payuUrl,
+            merchant_key: merchantKey,
+            txnid: payuParams.txnid,
+            amount: payuParams.amount,
+            email: payuParams.email,
+            phone: payuParams.phone,
+            firstname: payuParams.firstname,
+            productinfo: payuParams.productinfo,
+            enforce_paymethod: payuParams.enforce_paymethod,
+          }),
+        ]
+      );
+    } catch (e) {
+      console.error('Failed to write payment initiation audit log:', e);
+    }
 
     return NextResponse.json({
       success: true,

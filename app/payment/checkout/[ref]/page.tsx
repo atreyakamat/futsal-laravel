@@ -1,4 +1,4 @@
-import { getBookingsByRef } from '@/lib/domain';
+import { getBookingsByRef, query } from '@/lib/domain';
 import { getPayuConfig, generatePayuHash, getEnforcePaymethod } from '@/lib/payment';
 import { readRequestOrigin, readAuthUserId } from '@/lib/session';
 import { getAdminContext } from '@/lib/admin';
@@ -81,6 +81,43 @@ export default async function PaymentCheckoutPage({ params }: Props) {
 
   const hash = generatePayuHash(payuParams);
   const { payuUrl, merchantKey } = getPayuConfig();
+
+  // Log the outgoing request BEFORE redirecting, not just PayU's callback
+  // afterward — payment_audit_logs previously only got a row once PayU
+  // called back, which meant a request PayU rejected before processing
+  // (e.g. the "Too many Requests" gateway-level block) left zero trace on
+  // our side, indistinguishable after the fact from "never attempted".
+  // This row is the durable proof of exactly what we sent — merchant key,
+  // txnid, amount, email/phone, gateway URL, timestamp — so a future
+  // support escalation isn't dependent on memory or screenshots, and any
+  // malformed/placeholder value on our end (like the old `test@example.com`
+  // fallback) is caught immediately by reading this table instead of
+  // guessed at afterward. Never includes PAYU_MERCHANT_SALT — that's not
+  // part of `payuParams` and must never be logged anywhere.
+  try {
+    await query(
+      `INSERT INTO payment_audit_logs (booking_ref, status, amount, mihpayid, payload, created_at)
+       VALUES (?, 'initiated', ?, NULL, ?, NOW())`,
+      [
+        bookingRef,
+        totalAmount,
+        JSON.stringify({
+          gateway_url: payuUrl,
+          merchant_key: merchantKey,
+          txnid: payuParams.txnid,
+          amount: payuParams.amount,
+          email: payuParams.email,
+          phone: payuParams.phone,
+          firstname: payuParams.firstname,
+          productinfo: payuParams.productinfo,
+          enforce_paymethod: payuParams.enforce_paymethod,
+        }),
+      ]
+    );
+  } catch (e) {
+    // Logging must never block a real checkout attempt.
+    console.error('Failed to write payment initiation audit log:', e);
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-dark text-white px-6 text-center">
