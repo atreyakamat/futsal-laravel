@@ -71,7 +71,11 @@ export default async function Home() {
       </section>
 
       {/* Arenas Section */}
-      <div id="arenas" className="relative">
+      {/* scroll-mt-20 matches Header's sticky h-20 (80px) — without it, the
+          native anchor scroll from "Explore Arenas" lands this section
+          flush under the sticky header instead of below it, hiding the
+          top of the heading/search bar. */}
+      <div id="arenas" className="relative scroll-mt-20">
         <ArenaGrid arenas={arenas} />
       </div>
 

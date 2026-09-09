@@ -151,6 +151,20 @@ export default async function ArenaPage({ params, searchParams }: Props) {
             </div>
           </div>
         </div>
+
+        {/* Scroll cue — first-time visitors land here with slot selection
+            and booking controls below the fold and no other hint that
+            there's more content; a small bouncing indicator is enough
+            without adding a dismissible overlay or onboarding state.
+            Left-anchored below `sm:` because the hero content stacks
+            vertically on mobile (flex-col), which puts the price card at
+            the bottom of the stack too — centering here would sit right
+            behind it. From `sm:` up content is a row (price card on the
+            right), so centering is clear. */}
+        <div className="absolute bottom-3 sm:bottom-5 left-6 sm:left-1/2 sm:-translate-x-1/2 z-10 flex flex-col items-center gap-0.5 pointer-events-none animate-bounce">
+          <span className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em]">Scroll to book</span>
+          <span className="material-symbols-outlined text-2xl text-white/40">expand_more</span>
+        </div>
       </section>
 
       {(arena.contact_phone || arena.whatsapp_number) && (

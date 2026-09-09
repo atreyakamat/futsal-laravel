@@ -55,7 +55,10 @@ export default function ArenaGrid({ arenas }: { arenas: ArenaSummary[] }) {
                 href={`/arena/${arena.slug}`}
                 className="glass-card !p-0 block overflow-hidden transition-all duration-500 hover:shadow-[0_0_80px_rgba(13,242,32,0.15)] hover:scale-[1.02] active:scale-[0.98] rounded-[3rem]"
               >
-                <div className="h-80 overflow-hidden relative">
+                {/* Shorter on mobile so the arena name (below, in the card
+                    body) is reachable within one viewport after the
+                    "Explore Arenas" jump — desktop keeps the full h-80. */}
+                <div className="h-48 md:h-80 overflow-hidden relative">
                   <img
                     src={arena.cover_image || 'https://images.unsplash.com/photo-1551958219-acbc608c6377?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'}
                     className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
