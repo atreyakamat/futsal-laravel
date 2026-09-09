@@ -1,5 +1,5 @@
 import { getBookingsByRef, query } from '@/lib/domain';
-import { getPayuConfig, generatePayuHash, getEnforcePaymethod } from '@/lib/payment';
+import { getPayuConfig, generatePayuHash, getEnforcePaymethod, toPayuPhone } from '@/lib/payment';
 import { readRequestOrigin, readAuthUserId } from '@/lib/session';
 import { getAdminContext } from '@/lib/admin';
 import { redirect } from 'next/navigation';
@@ -72,7 +72,7 @@ export default async function PaymentCheckoutPage({ params }: Props) {
     // fraud/WAF filters commonly block outright. Fall back to a real,
     // merchant-owned domain instead when the customer didn't supply an email.
     email: firstBooking.customer_email || `guest-${bookingRef}@agnelarenagoa.com`,
-    phone: firstBooking.customer_mobile || '9999999999',
+    phone: toPayuPhone(firstBooking.customer_mobile),
     surl: `${origin}/api/payment/callback`,
     furl: `${origin}/api/payment/callback`,
     // Enforce allowed payment modes per business rules

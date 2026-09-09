@@ -18,6 +18,21 @@ export function getEnforcePaymethod(): string {
   return process.env.PAYU_ENFORCE_PAYMETHOD || DEFAULT_ENFORCE_PAYMETHOD;
 }
 
+/**
+ * `bookings.customer_mobile` is always stored as a 12-digit, 91-prefixed
+ * number (see lib/phone.ts's normalizePhoneNumber — needed for WhatsApp/OTP
+ * elsewhere). PayU's `phone` field expects a plain 10-digit Indian mobile
+ * number (their docs show `phone=9876543210`) and explicitly feeds it, along
+ * with email, into their transaction risk scoring — so passing the 91-prefixed
+ * value straight through sends a malformed-looking number into that scoring
+ * on every request. Strip to the last 10 digits specifically for what's sent
+ * to PayU; the 91-prefixed form stays untouched everywhere else.
+ */
+export function toPayuPhone(mobile: string | null | undefined): string {
+  const digits = (mobile || '').replace(/\D/g, '');
+  return digits.slice(-10) || '9999999999';
+}
+
 export function getPayuConfig() {
   const isProd = process.env.PAYU_ENV === 'production' || process.env.PAYU_TEST_MODE === 'false';
   

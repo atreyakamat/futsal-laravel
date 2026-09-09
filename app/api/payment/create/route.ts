@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getBookingsByRef, query } from '@/lib/domain';
-import { getPayuConfig, generatePayuHash, getEnforcePaymethod } from '@/lib/payment';
+import { getPayuConfig, generatePayuHash, getEnforcePaymethod, toPayuPhone } from '@/lib/payment';
 import { readRequestOrigin } from '@/lib/session';
 
 const bodySchema = z.object({
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
       // that fraud/WAF filters commonly block outright. Fall back to a real,
       // merchant-owned domain instead when the customer didn't supply an email.
       email: firstBooking.customer_email || `guest-${payload.booking_ref}@agnelarenagoa.com`,
-      phone: firstBooking.customer_mobile,
+      phone: toPayuPhone(firstBooking.customer_mobile),
       surl: `${origin}/api/payment/callback`,
       furl: `${origin}/api/payment/callback`,
       // Enforce allowed payment modes per business rules
