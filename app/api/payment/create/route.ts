@@ -34,7 +34,11 @@ export async function POST(request: Request) {
       amount: totalAmount.toFixed(2),
       productinfo: `Agnel Arena Booking: ${payload.booking_ref}`,
       firstname: firstBooking.customer_name,
-      email: firstBooking.customer_email || 'test@example.com',
+      // `example.com` is an IANA-reserved documentation-only domain — sending
+      // it to a live payment gateway is a classic bot/test-traffic signal
+      // that fraud/WAF filters commonly block outright. Fall back to a real,
+      // merchant-owned domain instead when the customer didn't supply an email.
+      email: firstBooking.customer_email || `guest-${payload.booking_ref}@agnelarenagoa.com`,
       phone: firstBooking.customer_mobile,
       surl: `${origin}/api/payment/callback`,
       furl: `${origin}/api/payment/callback`,

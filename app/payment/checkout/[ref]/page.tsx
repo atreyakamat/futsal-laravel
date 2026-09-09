@@ -67,7 +67,11 @@ export default async function PaymentCheckoutPage({ params }: Props) {
     amount: totalAmount.toFixed(2),
     productinfo: `AgnelBooking_${bookingRef}`,
     firstname: firstBooking.customer_name,
-    email: firstBooking.customer_email || 'test@example.com',
+    // `example.com` is an IANA-reserved documentation-only domain — sending
+    // it to a live payment gateway is a classic bot/test-traffic signal that
+    // fraud/WAF filters commonly block outright. Fall back to a real,
+    // merchant-owned domain instead when the customer didn't supply an email.
+    email: firstBooking.customer_email || `guest-${bookingRef}@agnelarenagoa.com`,
     phone: firstBooking.customer_mobile || '9999999999',
     surl: `${origin}/api/payment/callback`,
     furl: `${origin}/api/payment/callback`,
